@@ -1,0 +1,76 @@
+# Configuração do vídeo diário. Tudo aqui pode ser sobrescrito na hora de rodar
+# (GitHub → Actions → "Vídeo diário" → Run workflow) ou pela linha de comando:
+#   python -m videobot run --tema "chips de IA" --formato curto --narracao edge
+
+# ---------------- TEMA E PESQUISA ----------------
+tema:
+  nicho: "IA e tecnologia"          # assunto geral do canal (vai no prompt do roteiro)
+  tema_fixo: ""                     # se preencher, pula a pesquisa no YouTube e usa este tema
+  buscas:                           # mínimo 12 buscas em inglês (o prompt mestre pede ≥12)
+    - AI explained animation
+    - AI news
+    - stop motion AI
+    - Claude Motion
+    - Remotion
+    - motion graphics AI
+    - LEGO AI
+    - AI bubble
+    - AI agents explained
+    - coding animation shorts
+    - tech news animated
+    - AI data center
+    - AI jobs
+    - OpenAI news this week
+  buscas_extras: []                 # somadas às de cima (ex.: notícias do dia)
+  janela_dias: 15                   # CRIVO 1: só vídeos publicados nos últimos N dias
+  nao_repetir_dias: 7               # veta tema usado nos últimos N dias (historico/temas.json)
+  candidatos_por_busca: 20
+  temas_reserva:                    # usados se o YouTube e a API falharem no dia
+    - "Quanto de energia a IA realmente gasta"
+    - "Agentes de IA: o que já funciona de verdade"
+    - "Chips de IA: por que a Nvidia vale tanto"
+    - "IA e empregos: o que os dados mostram"
+    - "Modelos de IA abertos vs fechados"
+    - "Data centers e a conta de luz"
+    - "Robôs humanoides: promessa e realidade"
+
+# ---------------- FORMATO ----------------
+formato: longo                      # longo (16:9, capítulos) | curto (9:16, Shorts/TikTok)
+duracao:
+  longo_min: 7                      # alvo em minutos (o prompt aceita 6 a 10)
+  curto_seg: 65                     # alvo em segundos (55 a 75)
+idioma: pt-BR
+
+# ---------------- NARRAÇÃO ----------------
+narracao:
+  provedor: auto                    # auto = Google AI Studio (Gemini TTS) e, só se falhar, edge-tts | gemini | edge
+  gemini_voz: Charon                # Charon (masculina), Kore (feminina), Puck, Fenrir, Aoede, Orus...
+  gemini_modelos_preferidos:        # ordem de tentativa; o script também descobre os modelos TTS da sua chave
+    - pro-preview-tts
+    - flash-preview-tts
+    - tts
+  edge_voz: pt-BR-AntonioNeural     # alternativa: pt-BR-FranciscaNeural
+  edge_velocidade: "+10%"
+
+# ---------------- VISUAL ----------------
+visual:
+  fps: 30
+  acento: "#ff4f12"                 # laranja (cor principal)
+  acento2: "#d4ff3a"                # volt (destaques e legenda ativa)
+  marca: ""                         # texto discreto no canto (ex.: @seucanal); vazio = nada
+  legendas: true
+  musica: true                      # trilha gerada em código, baixinha por baixo da voz
+  efeitos: true                     # whoosh/pop gerados em código
+  workers: 0                        # 0 = um por núcleo de CPU
+
+# ---------------- ROTEIRO (Google AI Studio) ----------------
+llm:
+  modelos:                          # tentados em ordem; precisa da secret GEMINI_API_KEY
+    - gemini-2.5-pro
+    - gemini-2.5-flash
+  min_fontes: 3                     # CRIVO 3: fontes confiáveis distintas, conferidas por download
+
+# ---------------- ENTREGA ----------------
+entrega:
+  release: true                     # publica um Release no GitHub com vídeo, thumbs e textos
+  limite_previa_mb: 30              # prévia que abre no celular

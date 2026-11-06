@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+saida/
+engine/vendor/
+.venv/

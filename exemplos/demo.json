@@ -1,0 +1,62 @@
+{
+  "tema": "Data center no espaço",
+  "slug": "demo_datacenter_espaco",
+  "formato": "longo",
+  "chapters": [
+    {
+      "title": "Intro",
+      "scenes": [
+        {"id": "hook", "template": "bignumber", "source": "Engadget, 31/01/2026",
+         "params": {"label": "Pedido à FCC", "value": 1000000, "sub": "satélites de IA que a SpaceX quer lançar", "icon": "satellite"},
+         "text": "Um milhão de satélites. Esse é o tamanho do data center que a SpaceX quer colocar em órbita."},
+        {"id": "pergunta", "template": "question", "source": "",
+         "params": {"text": "Dá para esfriar um chip de IA no vácuo?", "highlight": ["esfriar", "vácuo"], "options": ["DÁ SIM", "É MIRAGEM"]},
+         "text": "Mas tem um problema que quase ninguém comenta. Como você esfria um chip de IA no vácuo?"}
+      ]
+    },
+    {
+      "title": "A aposta de dois trilhões",
+      "scenes": [
+        {"id": "ipo", "template": "kpis", "source": "CNBC, 12/06/2026",
+         "params": {"title": "O IPO da SpaceX", "items": [
+           {"value": 75, "prefix": "US$ ", "suffix": " bi", "label": "captados no IPO", "icon": "money"},
+           {"value": 2.1, "prefix": "US$ ", "suffix": " tri", "decimals": 1, "label": "valor no primeiro dia", "icon": "trendup"},
+           {"value": 2028, "label": "satélites de IA a partir de", "icon": "calendar"}]},
+         "text": "Em junho, a SpaceX abriu capital e captou setenta e cinco bilhões de dólares. No primeiro dia, passou de dois trilhões em valor. E prometeu satélites de IA a partir de dois mil e vinte e oito."},
+        {"id": "chat", "template": "chat", "source": "CNBC, 10/12/2025",
+         "params": {"prompt": "Treine um modelo pequeno com textos de Shakespeare.", "answer": "Feito. Treino concluído a bordo do Starcloud-1, em órbita, com uma GPU H100.", "app": "Starcloud-1 · em órbita"},
+         "text": "E não é só promessa. A Starcloud já treinou um modelo pequeno com textos de Shakespeare, usando uma GPU em órbita."}
+      ]
+    },
+    {
+      "title": "O problema da física",
+      "scenes": [
+        {"id": "calor", "template": "headline", "source": "IEEE Spectrum, 11/06/2026",
+         "params": {"eyebrow": "Física básica", "text": "Quase toda a energia do chip vira calor", "highlight": ["calor"], "icon": "fire"},
+         "text": "Praticamente toda a energia que um chip consome vira calor. Na Terra, o ar e a água levam esse calor embora."},
+        {"id": "radiador", "template": "compare", "source": "IEEE Spectrum, 11/06/2026",
+         "params": {"title": "Radiador necessário no espaço", "left": {"label": "Uma GPU H100", "value": 3, "suffix": " m²", "tone": "neutral"},
+           "right": {"label": "Um rack de 40 kW", "value": 80, "suffix": " m²", "tone": "bad", "note": "do tamanho de um apartamento"}, "winner": "right"},
+         "text": "No vácuo, só sobra o radiador. Uma única GPU precisa de uns três metros quadrados. Um rack inteiro, uns oitenta."},
+        {"id": "lista", "template": "list", "source": "IEEE Spectrum, 11/06/2026",
+         "params": {"title": "O que pesa na conta", "items": ["Radiadores enormes", "Painéis solares gigantes", "Custo de cada quilo lançado", "Desgaste por radiação"]},
+         "text": "E a lista não para aí: radiadores enormes, painéis gigantes, o custo de cada quilo lançado e o desgaste por radiação."},
+        {"id": "massa", "template": "gauge", "source": "IEEE Spectrum, 11/06/2026",
+         "params": {"value": 70, "label": "da massa pode ser só radiador e painel", "sub": "estimativa da IEEE Spectrum para um data center orbital"},
+         "text": "Somados, radiador e painel podem ser setenta por cento da massa do satélite."}
+      ]
+    },
+    {
+      "title": "O veredito",
+      "scenes": [
+        {"id": "linha", "template": "timeline", "source": "Google Research, 04/11/2025; CNBC, 12/06/2026",
+         "params": {"title": "O calendário prometido", "events": [{"date": "2025", "label": "Starcloud-1 em órbita"}, {"date": "2027", "label": "Protótipos do Google"}, {"date": "2028", "label": "Satélites de IA da SpaceX"}, {"date": "Anos 2030", "label": "Lançamento abaixo de US$ 200/kg"}]},
+         "text": "O calendário é apertado: protótipos do Google em dois mil e vinte e sete, satélites da SpaceX em dois mil e vinte e oito."},
+        {"id": "cta", "template": "cta", "source": "",
+         "params": {"text": "Data center no espaço: vai dar certo?", "highlight": ["espaço"], "options": ["VAI DAR CERTO", "É MIRAGEM"]},
+         "text": "E você, acha que vai dar certo ou é miragem? Comenta aí com uma palavra só."}
+      ]
+    }
+  ],
+  "thumb": {"lines": [{"text": "DATA CENTER"}, {"text": "NO ESPAÇO?", "hl": true}], "number": "1.000.000", "numberLabel": "de satélites de IA", "icon": "satellite"}
+}
