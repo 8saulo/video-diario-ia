@@ -1,5 +1,6 @@
 playwright==1.52.0
 faster-whisper==1.1.1
+av==13.1.0  # o faster-whisper 1.1.1 quebra com av>=14 (metadata_errors)
 edge-tts  # sem versão fixa: a Microsoft muda o protocolo e versões antigas levam 403
 numpy==2.2.6
 Pillow==11.2.1

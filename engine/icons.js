@@ -4,7 +4,7 @@ window.ICONS = {
   chip: '<rect x="12" y="12" width="24" height="24" rx="4"/><rect x="18" y="18" width="12" height="12" rx="2"/><path d="M18 5v7M24 5v7M30 5v7M18 36v7M24 36v7M30 36v7M5 18h7M5 24h7M5 30h7M36 18h7M36 24h7M36 30h7"/>',
   robot: '<rect x="9" y="14" width="30" height="22" rx="7"/><circle cx="18" cy="25" r="3"/><circle cx="30" cy="25" r="3"/><path d="M24 14V7M20 7h8M5 21v9M43 21v9M19 32h10"/>',
   rocket: '<path d="M24 4c7 6 10 14 8 24H16c-2-10 1-18 8-24z"/><circle cx="24" cy="17" r="4"/><path d="M16 26l-6 6 2 7 6-4M32 26l6 6-2 7-6-4M20 35l4 9 4-9"/>',
-  satellite: '<rect x="4" y="18" width="12" height="12" rx="1.5"/><rect x="32" y="18" width="12" height="12" rx="1.5"/><rect x="19" y="16" width="10" height="16" rx="2.5"/><path d="M16 24h3M29 24h3M24 32v5M18 43a8 8 0 0 1 12 0"/>',
+  satellite: '<g transform="rotate(-30 24 24)"><rect x="3" y="19" width="13" height="10" rx="1.5"/><rect x="32" y="19" width="13" height="10" rx="1.5"/><path d="M8 19v10M11 19v10M37 19v10M40 19v10M16 24h3M29 24h3"/><rect x="19" y="16.5" width="10" height="15" rx="2.5"/></g><path d="M33 38a7 7 0 0 0 5-5M35 44a13 13 0 0 0 9-9"/>',
   globe: '<circle cx="24" cy="24" r="19"/><ellipse cx="24" cy="24" rx="8" ry="19"/><path d="M5 24h38M8 14h32M8 34h32"/>',
   money: '<rect x="4" y="12" width="40" height="24" rx="4"/><circle cx="24" cy="24" r="6"/><path d="M10 18h.01M38 30h.01"/>',
   coin: '<ellipse cx="24" cy="13" rx="15" ry="6"/><path d="M9 13v21c0 3.3 6.7 6 15 6s15-2.7 15-6V13M9 23.5c0 3.3 6.7 6 15 6s15-2.7 15-6"/>',

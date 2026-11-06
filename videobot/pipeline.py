@@ -93,7 +93,7 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug,
                         "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],
-             "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": f"video-{data_hoje.isoformat()}-{slug}"[:100],
+             "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:100],
              "titulo": pacote["titulo"], "modo": modo}
     escrever_json(RAIZ / "saida" / "ultimo.json", saida)
     resumo_github(Path(pacote["relatorio"]).read_text(encoding="utf-8"))

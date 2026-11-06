@@ -26,7 +26,9 @@
     e.style.fontSize = f + 'px';
     for (let i = 0; i < 60; i++) {
       const r = e.getBoundingClientRect();
-      const over = e.scrollWidth > e.clientWidth + 1 || (maxW && r.width > maxW + 1) || (maxH && r.height > maxH + 1);
+      const rg = document.createRange(); rg.selectNodeContents(e);
+      const cw = rg.getBoundingClientRect().width;
+      const over = e.scrollWidth > e.clientWidth + 1 || (maxW && cw > maxW + 1) || (maxH && r.height > maxH + 1);
       if (!over || f <= minF) break;
       f = Math.max(minF, f * 0.95);
       e.style.fontSize = f + 'px';
@@ -75,11 +77,13 @@
     const n = el('span', 'n', d);
     const sx = el('span', 'sx', d); sx.textContent = p.suffix || '';
     const dec = p.decimals || 0;
+    const ano = isNum(p.value) && Number.isInteger(p.value) && p.value >= 1900 && p.value <= 2100 && !p.prefix && !p.suffix;
+    if (ano) { n.textContent = String(p.value); return { d, n, dec, ano: true }; }
     if (isNum(p.value)) n.textContent = fmt(p.value, dec); else n.textContent = String(p.text || p.value || '');
     return { d, n, dec };
   }
   function countUp(c, nb, p, at, dur) {
-    if (isNum(p.value)) c.counters.push({ el: nb.n, from: isNum(p.from) ? p.from : 0, to: p.value, dec: nb.dec, at, dur: dur || 1.3 });
+    if (isNum(p.value) && !nb.ano) c.counters.push({ el: nb.n, from: isNum(p.from) ? p.from : 0, to: p.value, dec: nb.dec, at, dur: dur || 1.3 });
   }
   function hlColor(tl, spans, at) {
     spans.forEach((s, i) => {
@@ -523,12 +527,14 @@
     // cursor que toca o botão
     const tgt = btns[0];
     const br = tgt.getBoundingClientRect(), cr = c.cam.getBoundingClientRect();
-    const tx = br.left - cr.left + br.width * 0.72, ty = br.top - cr.top + br.height * 0.62;
-    const cur = el('div', 'abs', c.cam); css(cur, { left: '0', top: '0', width: '86px', height: '86px', marginLeft: '-43px', marginTop: '-43px', borderRadius: '50%', background: 'rgba(255,255,255,.55)', boxShadow: '0 0 0 5px rgba(255,255,255,.95), 0 12px 30px rgba(0,0,0,.45)' });
+    const tx = br.left - cr.left + br.width * 0.92, ty = br.top - cr.top + br.height * 0.95;
+    const curw = el('div', 'abs', c.cam); css(curw, { left: '0', top: '0' });
+    const cur = el('div', 'abs', curw); css(cur, { left: '0', top: '0', width: '86px', height: '86px', marginLeft: '-43px', marginTop: '-43px', borderRadius: '50%', background: 'rgba(255,255,255,.55)', boxShadow: '0 0 0 5px rgba(255,255,255,.95), 0 12px 30px rgba(0,0,0,.45)' });
     const rip = el('div', 'ring', c.cam); css(rip, { left: tx - 60 + 'px', top: ty - 60 + 'px', width: '120px', height: '120px', borderColor: '#fff' });
     const t0 = Math.min(1.3, c.d * 0.35);
     c.tl.fromTo(cur, { x: STAGE.clientWidth + 100, y: STAGE.clientHeight + 100, autoAlpha: 1 }, { x: tx, y: ty, duration: 0.7, ease: 'power3.out' }, t0);
     c.tl.fromTo(cur, { scale: 1 }, { scale: 0.8, duration: 0.12, yoyo: true, repeat: 1 }, t0 + 0.75);
+    c.tl.fromTo(curw, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3, immediateRender: false }, t0 + 1.25);
     c.tl.fromTo(rip, { scale: 0.3, autoAlpha: 1 }, { scale: 2.2, autoAlpha: 0, duration: 0.6, ease: 'power2.out' }, t0 + 0.8);
     c.tl.fromTo(row, { scale: 1 }, { scale: 0.94, duration: 0.12, yoyo: true, repeat: 1 }, t0 + 0.75);
   };
