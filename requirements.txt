@@ -1,6 +1,6 @@
 playwright==1.52.0
 faster-whisper==1.1.1
-edge-tts==7.0.2
+edge-tts  # sem versão fixa: a Microsoft muda o protocolo e versões antigas levam 403
 numpy==2.2.6
 Pillow==11.2.1
 PyYAML==6.0.2
