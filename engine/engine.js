@@ -240,7 +240,7 @@
       css(lb, { width: labW + 'px', fontWeight: 700, fontSize: '36px', color: b.highlight ? 'var(--fog-50)' : 'var(--fog-200)', textAlign: c.port ? 'left' : 'right' });
       fit(lb, 36, 22, labW, 92);
       const tr = el('div', '', r);
-      css(tr, { position: 'relative', flex: '1', height: c.port ? '70px' : '74px', borderRadius: '18px', background: 'var(--ink-700)', boxShadow: 'inset 0 0 0 2px var(--ink-600)' });
+      css(tr, { position: 'relative', flex: c.port ? 'none' : '1', height: c.port ? '70px' : '74px', borderRadius: '18px', background: 'var(--ink-700)', boxShadow: 'inset 0 0 0 2px var(--ink-600)' });
       const fill = el('div', 'abs', tr);
       const frac = Math.max(0.04, Math.abs(b.value || 0) / mx);
       css(fill, { left: '0', top: '0', bottom: '0', width: (frac * 100).toFixed(2) + '%', borderRadius: '18px', transformOrigin: '0 50%',
