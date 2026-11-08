@@ -168,6 +168,7 @@ def mixar(segs: list[dict], total: float, pasta: Path, cfg: dict) -> tuple[Path,
     mix = voz.copy()
     if cfg["visual"].get("musica", True):
         mus = trilha(n / SR)
+        mus = np.pad(mus, (0, max(0, n - len(mus))))[:n]  # int(n / SR * SR) pode dar n - 1
         env = _envelope(voz)
         ganho = 1.0 - 0.62 * np.clip(env * 1.6, 0, 1)
         mix += mus[:n] * ganho
