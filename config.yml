@@ -79,7 +79,7 @@ visual:
   marca_logo: "assets/logo_marca.png"  # marca d'água em imagem (PNG transparente); vazio = sem logo
   marca_opacidade: 0.5              # 0 a 1; 0.5 = discreta
   marca_troca_s: 9                  # a logo troca de canto a cada N segundos
-  cena3d: "gpon"                    # "gpon" = fundo 3D em código (Three.js: cidade, fibra, OLT e ONU); vazio = fundo 2D
+  cena3d: "tema"                    # "tema" = objetos 3D em código escolhidos para cada cena (foguete, chip, moedas...); "gpon" = cena fixa de fibra óptica; vazio = fundo 2D
   escala3d: 0.75                    # resolução interna do 3D (menor = render mais rápido)
   legendas: true
   musica: true                      # trilha gerada em código, baixinha por baixo da voz

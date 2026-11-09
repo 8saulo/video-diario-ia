@@ -103,6 +103,8 @@
     }
     if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
   }
+  // 3D: "gpon" = cena fixa de fibra óptica (scene3d.js); qualquer outro valor = objetos do tema por cena (tema3d.js)
+  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : window.W3T; }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
 
   // ---------- templates ----------
@@ -701,7 +703,7 @@
     }
     updateHud(t, active);
     moveLogo(t);
-    if (window.W3D && window.W3D.on) window.W3D.render(t, active, active ? segs.indexOf(active) : 0);
+    const m3 = modulo3d(); if (m3 && m3.on) m3.render(t, active, active ? segs.indexOf(active) : 0);
     return true;
   };
 
@@ -731,7 +733,7 @@
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('700 60px Figtree'); await document.fonts.load('500 60px Figtree');
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
-    if (ST.scene3d && window.W3D && window.THREE) { STAGE.classList.add('mode3d'); window.W3D.init(STAGE, ST); }
+    if (ST.scene3d && modulo3d() && window.THREE) { STAGE.classList.add('mode3d'); modulo3d().init(STAGE, ST); }
     const fotos = [...new Set((ST.segments || []).map(s => s.params && s.params._photo).filter(Boolean))];
     if (fotos.length) {
       STAGE.classList.add('mode-photo');

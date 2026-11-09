@@ -10,6 +10,7 @@ Gera **todo dia, sozinho, no GitHub Actions** um vídeo em português sobre IA e
 6. **Anima** em código no estilo "estúdio escuro": cenas HTML + GSAP renderizadas quadro a quadro no Chromium, a 30 fps.
    - Tipos de cena: número gigante, comparação, lista, barras, citação, linha do tempo, KPIs, chat de IA, ícones, pergunta, medidor, fluxo e CTA.
    - Legendas karaokê, cartelas de capítulo, fonte no rodapé e barra de progresso.
+   - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica.
 7. **Confere** o resultado:
    - prévia de layout (CRIVO 5);
    - ffprobe, folha de quadros e volume entre −18 e −14 dB, com loudnorm a −14 LUFS (CRIVO 6);
@@ -127,6 +128,7 @@ No Windows, também dá para dar duplo clique em `Abrir interface.bat`. Abre `ht
 | `videobot/render.py` | Render determinístico em paralelo, CRIVOs 5, 6 e 7, thumbs |
 | `videobot/publish.py` | `publicacao.md` e relatório |
 | `engine/` | Motor visual (HTML/CSS/GSAP) e ícones desenhados para o projeto |
+| `engine/tema3d.js` + `videobot/objetos3d.py` | 3D do tema: catálogo de objetos em Three.js e a escolha por cena |
 | `exemplos/demo.json` | Roteiro de demonstração |
 | `historico/temas.json` | Temas já usados (para o veto de 7 dias) |
 | `prompts/prompt_mestre_original.md` | Prompt original que este pipeline automatiza |
