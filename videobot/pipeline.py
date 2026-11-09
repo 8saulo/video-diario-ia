@@ -27,8 +27,38 @@ def registrar_tema(entrada: dict):
     escrever_json(HIST, h[-200:])
 
 
+def escolher_paleta(cfg: dict, hist: list, data: dt.date) -> str:
+    """Aplica a paleta de cores do vídeo em cfg['visual'] e devolve o nome dela.
+
+    'rodizio' alterna a cada vídeo publicado: pega a paleta seguinte à do último vídeo do histórico
+    (sem histórico, usa o dia do ano). Um nome fixo (ex.: 'roxo') usa sempre aquela.
+    Vazio ou 'fixa' mantém acento/acento2 do config."""
+    v = cfg["visual"]
+    paletas = v.get("paletas") or {}
+    pedido = str(v.get("paleta") or "").strip().lower()
+    if not paletas or pedido in ("", "fixa"):
+        return "fixa"
+    nomes = list(paletas)
+    if pedido == "rodizio":
+        ultima = next((h.get("paleta") for h in reversed(hist) if h.get("paleta") in paletas), None)
+        nome = nomes[(nomes.index(ultima) + 1) % len(nomes)] if ultima else nomes[data.toordinal() % len(nomes)]
+    elif pedido in paletas:
+        nome = pedido
+    else:
+        nota(f"Paleta '{pedido}' não existe em visual.paletas; usei '{nomes[0]}'.")
+        nome = nomes[0]
+    p = paletas[nome]
+    v["acento"] = p.get("acento", v.get("acento"))
+    v["acento2"] = p.get("acento2", v.get("acento2"))
+    if p.get("acento_suave"):
+        v["acento_suave"] = p["acento_suave"]
+    log(f"paleta de cores: {nome} ({v['acento']} / {v['acento2']})")
+    return nome
+
+
 def executar(cfg: dict, modo: str = "completo") -> dict:
     data_hoje = hoje()
+    paleta = escolher_paleta(cfg, historico(), data_hoje)
     curto = cfg["formato"] == "curto"
     pesquisa = fatos = None
     if modo == "demo":
@@ -36,11 +66,18 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         roteiro["formato"] = cfg["formato"]
         nota("Modo demo: roteiro fixo de exemplo (sem pesquisa e sem LLM), só para testar motor, voz e render.")
     else:
-        from . import facts, research, script
+        from . import facts, llm, research, script
         from .util import chave
-        if not chave("GEMINI_API_KEY"):
-            falhar("Falta a secret **GEMINI_API_KEY** (chave do Google AI Studio). Ela escreve o roteiro, checa fatos e narra. "
-                   "Adicione em Settings → Secrets and variables → Actions → New repository secret.")
+        provs = llm.disponiveis(cfg)
+        if not provs:
+            envs = ", ".join(f"**{llm.PROVEDORES[p]['env']}**" for p in llm.ordem(cfg))
+            falhar(f"Falta a chave de pelo menos um provedor de texto ({envs}). Eles fazem a triagem, a checagem de fatos e o roteiro. "
+                   "No GitHub: Settings → Secrets and variables → Actions → New repository secret. No PC: setx NOME \"chave\".")
+        log("texto: " + " → ".join(llm.PROVEDORES[p]["titulo"] for p in provs)
+            + f"; busca: {'Tavily + ' if chave('TAVILY_API_KEY') else ''}Wikipedia"
+            + f"; voz: {'Gemini TTS' if chave('GEMINI_API_KEY') else 'edge-tts'}")
+        if not chave("TAVILY_API_KEY"):
+            nota("Sem TAVILY_API_KEY: a busca de fontes fica só com a Wikipedia. Notícias recentes ficam de fora.")
         etapa("pesquisa", "Pesquisa de tema no YouTube")
         pesquisa = research.pesquisar(cfg, historico(), data_hoje)
         etapa("fatos", "Checagem de fatos nas fontes")
@@ -100,7 +137,7 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
             p.unlink()
     shutil.rmtree(pasta / "audio", ignore_errors=True)
     if modo != "demo":
-        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug,
+        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug, "paleta": paleta,
                         "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],
              "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:100],

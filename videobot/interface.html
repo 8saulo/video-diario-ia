@@ -220,9 +220,20 @@ const ESCOLHAS = {
   "formato": [["longo", "longo (16:9, capítulos)"], ["curto", "curto (9:16, Shorts/TikTok)"]],
   "narracao.provedor": [["auto", "auto: Gemini e, se falhar, edge-tts"], ["gemini", "só Gemini TTS"], ["edge", "só edge-tts"]],
   "visual.cena3d": [["", "nenhum (fundo 2D)"], ["gpon", "gpon (fundo 3D em Three.js)"]],
+  "visual.paleta": [["rodizio", "rodízio: alterna a cada vídeo publicado"], ["laranja", "laranja"], ["roxo", "roxo cibernético"], ["azul", "azul cibernético"], ["fixa", "fixa: usa acento/acento2"]],
 };
-const LISTAS_MODELO = { "llm.modelos": "texto", "narracao.gemini_modelos_preferidos": "tts" };
-const TITULOS = { geral: "Geral", tema: "Tema e pesquisa", duracao: "Duração", narracao: "Narração", visual: "Visual", llm: "Roteiro (Google AI Studio)", entrega: "Entrega" };
+const LISTAS_MODELO = { "llm.ordem": "provs", "llm.groq.modelos": "groq", "llm.openrouter.modelos": "openrouter",
+  "llm.gemini.modelos": "gemini", "narracao.gemini_modelos_preferidos": "tts" };
+const PROVS = { groq: ["Groq", "GROQ_API_KEY"], openrouter: ["OpenRouter", "OPENROUTER_API_KEY"], gemini: ["Gemini (texto)", "GEMINI_API_KEY"] };
+function nomesDisponiveis(tipo) {
+  const m = S.modelos;
+  if (tipo === "provs") return Object.keys(PROVS);
+  if (!m?.ok) return null;
+  if (tipo === "tts") return S.ambiente.chaves?.GEMINI_API_KEY ? m.tts.map(x => x.nome) : null;
+  const pv = m.provedores?.[tipo];
+  return pv && pv.chave ? pv.modelos.map(x => x.nome) : null;
+}
+const TITULOS = { geral: "Geral", tema: "Tema e pesquisa", duracao: "Duração", narracao: "Narração", visual: "Visual", llm: "Texto: triagem, fatos e roteiro", busca: "Busca na web (fontes)", entrega: "Entrega" };
 
 /* ---------------- campos genéricos ---------------- */
 function rotulo(p) { return p.split(".").at(-1).replace(/_/g, " "); }
@@ -255,17 +266,21 @@ function campo(p, opts = {}) {
 function listaModelos(p) {
   const lista = get(S.cfg, p) || [];
   const tipo = LISTAS_MODELO[p];
-  const disp = S.modelos?.ok ? S.modelos[tipo].map(m => m.nome) : null;
+  const disp = nomesDisponiveis(tipo);
   const itens = lista.map((m, i) => {
-    const existe = !disp || (tipo === "tts" ? disp.some(d => d.includes(m)) : disp.includes(m));
-    return `<li><span class="pos">${i + 1}</span><code>${esc(m)}</code>${existe ? "" : `<span class="tag">não disponível para a sua chave</span>`}
+    let tag = "";
+    if (tipo === "provs") {
+      const pv = PROVS[m];
+      tag = !pv ? "provedor desconhecido" : S.ambiente.chaves?.[pv[1]] ? "" : `sem ${pv[1]}: será pulado`;
+    } else if (disp && disp.length && !disp.some(d => d === m || d.includes(m))) tag = "não disponível para a sua chave";
+    return `<li><span class="pos">${i + 1}</span><code>${esc(m)}</code>${tag ? `<span class="tag">${esc(tag)}</span>` : ""}
       <button class="icone" data-mod="${p}" data-acao="sobe" data-i="${i}" ${i === 0 ? "disabled" : ""} title="Subir">↑</button>
       <button class="icone" data-mod="${p}" data-acao="desce" data-i="${i}" ${i === lista.length - 1 ? "disabled" : ""} title="Descer">↓</button>
       <button class="icone" data-mod="${p}" data-acao="tira" data-i="${i}" title="Remover">✕</button></li>`;
   }).join("");
   const dl = `dl-${tipo}`;
   return `<ul class="modelos" data-lista="${p}">${itens || `<li><span class="dica" style="margin:0">Lista vazia: o script usa os modelos que descobrir na sua chave.</span></li>`}</ul>
-    <div class="add"><input type="text" list="${dl}" placeholder="${tipo === "tts" ? "nome ou trecho do nome, ex.: flash-preview-tts" : "ex.: gemini-2.5-flash"}" data-novo="${p}"><button class="btn peq" data-mod="${p}" data-acao="add">Adicionar</button></div>`;
+    <div class="add"><input type="text" list="${dl}" placeholder="${tipo === "provs" ? "groq, openrouter ou gemini" : "nome ou trecho do nome (escolha na lista)"}" data-novo="${p}"><button class="btn peq" data-mod="${p}" data-acao="add">Adicionar</button></div>`;
 }
 
 function atualizaListasDatalist() {
@@ -273,7 +288,8 @@ function atualizaListasDatalist() {
   $("#datalists").innerHTML = `
     <datalist id="dl-gemini">${opts(VOZES_GEMINI)}</datalist>
     <datalist id="dl-edge">${opts(VOZES_EDGE)}</datalist>
-    <datalist id="dl-texto">${opts(S.modelos?.texto || [])}</datalist>
+    <datalist id="dl-provs">${opts(Object.keys(PROVS))}</datalist>
+    ${Object.keys(PROVS).map(k => `<datalist id="dl-${k}">${opts(S.modelos?.provedores?.[k]?.modelos || [])}</datalist>`).join("")}
     <datalist id="dl-tts">${opts(S.modelos?.tts || [])}</datalist>`;
 }
 
@@ -281,10 +297,10 @@ function atualizaListasDatalist() {
 function renderNovo() {
   const c = S.cfg, curto = c.formato === "curto", manual = S.temaManual;
   const prov = c.narracao.provedor;
-  const semChave = !S.ambiente.gemini;
+  const semChave = !S.ambiente.texto;
   const m = S.modelos;
   $("#aba-novo").innerHTML = `
-    ${semChave ? `<div class="aviso-box">A <code>GEMINI_API_KEY</code> não foi encontrada. Só o modo <b>Demo</b> funciona até ela ser configurada.</div>` : ""}
+    ${semChave ? `<div class="aviso-box">Nenhuma chave de texto encontrada (<code>GROQ_API_KEY</code> ou <code>OPENROUTER_API_KEY</code>). Só o modo <b>Demo</b> funciona até uma delas ser configurada.</div>` : ""}
     <div class="card">
       <h2><span class="num">1</span> Modo</h2>
       <div class="opcoes">
@@ -308,7 +324,7 @@ function renderNovo() {
       ${manual ? `
         ${campo("tema.tema_fixo", { titulo: "Assunto do vídeo", ajuda: "Pula a pesquisa no YouTube. O Gemini busca fontes e confere os números sobre este assunto.", placeholder: "ex.: chips de IA da Nvidia" })}
       ` : `
-        <p class="dica">Busca os vídeos em inglês que mais cresceram nos últimos dias, aplica os filtros e escolhe o tema vencedor. ${S.ambiente.youtube ? "" : "Sem <code>YOUTUBE_API_KEY</code>: lê as páginas públicas do YouTube."}</p>
+        <p class="dica">Busca os vídeos em inglês que mais cresceram nos últimos dias, aplica os filtros e escolhe o tema vencedor. ${S.ambiente.chaves?.YOUTUBE_API_KEY ? "" : "Sem <code>YOUTUBE_API_KEY</code>: lê as páginas públicas do YouTube."}</p>
         ${campo("tema.nicho")}
         ${campo("tema.buscas", { titulo: "Buscas pré-definidas (em inglês)" })}
         ${campo("tema.buscas_extras", { titulo: "Buscas extras só desta vez" })}
@@ -328,9 +344,14 @@ function renderNovo() {
 
     <div class="card">
       <h2><span class="num">5</span> Modelos de IA</h2>
-      <p class="dica">${m == null ? "Consultando os modelos disponíveis para a sua chave…" : m.ok ? `Sua chave tem ${m.texto.length} modelos de texto e ${m.tts.length} de voz disponíveis (sugeridos no campo “Adicionar”).` : `Não consegui listar os modelos (${esc(m.erro)}). Dá para digitar o nome à mão.`}
-      São tentados em ordem: se o 1º falhar ou estourar a cota, passa para o próximo.</p>
-      ${campo("llm.modelos", { titulo: "Modelos de texto (roteiro e checagem de fatos)" })}
+      <p class="dica">Texto (triagem, fatos e roteiro) usa IAs grátis; o Gemini fica só com a voz. Tudo é tentado em ordem: se um estoura a cota, passa para o próximo.
+      ${m == null ? "Consultando os modelos das suas chaves…" : "Os modelos disponíveis aparecem como sugestão no campo “Adicionar”."}</p>
+      ${campo("llm.ordem", { titulo: "Ordem dos provedores de texto" })}
+      ${c.llm.ordem.filter(k => PROVS[k]).map(k => {
+        const pv = m?.provedores?.[k];
+        const info = !S.ambiente.chaves?.[PROVS[k][1]] ? `sem ${PROVS[k][1]}` : pv ? `${pv.modelos.length} modelos na sua chave` : "";
+        return campo(`llm.${k}.modelos`, { titulo: `Modelos preferidos: ${PROVS[k][0]}`, ajuda: info + (info ? ". " : "") + "Os preferidos vêm primeiro; depois o script tenta os outros da chave, do maior para o menor." });
+      }).join("")}
       ${campo("narracao.gemini_modelos_preferidos", { titulo: "Modelos de voz (Gemini TTS)" })}
     </div>
 
@@ -338,6 +359,8 @@ function renderNovo() {
       <h2><span class="num">6</span> Acabamento</h2>
       <div class="linha">${campo("visual.legendas")}${campo("visual.musica")}${campo("visual.efeitos")}</div>
       ${campo("visual.cena3d")}
+      ${campo("visual.paleta", { titulo: "Paleta de cores" })}
+      <div class="hist">${Object.entries(c.visual.paletas || {}).map(([n, p]) => `<span style="display:inline-flex;gap:6px;align-items:center${c.visual.paleta === n ? ";border-color:var(--acento);color:var(--texto)" : ""}"><i style="width:12px;height:12px;border-radius:50%;background:${esc(p.acento)}"></i><i style="width:12px;height:12px;border-radius:50%;background:${esc(p.acento2)}"></i>${esc(n)}</span>`).join("")}</div>
       <p class="dica">Cores, marca d'água, número de processos do render e o resto ficam em “Todas as configurações”.</p>
     </div>`;
 }
@@ -405,7 +428,7 @@ document.addEventListener("input", e => {
   set(S.cfg, p, v);
   $$(`[data-path="${p}"]`).forEach(o => { if (o !== el) escreveValor(o, v); });
   if (p === "tema.tema_fixo") S.temaManual = true;
-  if (["formato", "narracao.provedor", "visual.cena3d"].includes(p)) renderNovo();
+  if (["formato", "narracao.provedor", "visual.cena3d", "visual.paleta"].includes(p) || p.startsWith("visual.paletas.")) renderNovo();
   contaAlteracoes();
 });
 
@@ -571,10 +594,10 @@ async function carregarConfig(redesenha = true) {
   atualizaListasDatalist();
   S.ambiente = await api("/api/ambiente");
   $("#badges").innerHTML = `
-    <span class="badge ${S.ambiente.gemini ? "ok" : "no"}">${S.ambiente.gemini ? "✓" : "✗"} GEMINI_API_KEY</span>
-    <span class="badge ${S.ambiente.youtube ? "ok" : ""}">${S.ambiente.youtube ? "✓" : "–"} YOUTUBE_API_KEY</span>
+    ${[["GROQ_API_KEY", "Groq"], ["OPENROUTER_API_KEY", "OpenRouter"], ["TAVILY_API_KEY", "Tavily"], ["GEMINI_API_KEY", "Gemini (voz)"], ["YOUTUBE_API_KEY", "YouTube"]]
+      .map(([k, t]) => `<span class="badge ${S.ambiente.chaves[k] ? "ok" : ""}" title="${k}">${S.ambiente.chaves[k] ? "✓" : "–"} ${t}</span>`).join("")}
     <span class="badge">Python ${esc(S.ambiente.python)}</span>`;
-  if (!S.ambiente.gemini) S.modo = "demo";
+  if (!S.ambiente.texto) S.modo = "demo";
   await carregarConfig(true);
   renderPassos();
   poll();

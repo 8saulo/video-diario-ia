@@ -11,8 +11,9 @@ from urllib.parse import urlparse
 
 import requests
 
+from .busca import buscar
 from .llm import gerar_json
-from .util import log
+from .util import log, nota
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 RUINS = ("medium.com", "blogspot.", "wordpress.com", "substack.com", "linkedin.com", "quora.com", "reddit.com", "youtube.com", "tiktok.com",
@@ -23,7 +24,17 @@ ESCALA = {"thousand": 1e3, "mil": 1e3, "k": 1e3, "million": 1e6, "milhão": 1e6,
 EXTENSO = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
 
+_CACHE: dict[str, str | None] = {}
+
+
 def _texto(url: str) -> str | None:
+    """Texto da página (baixado uma vez só por execução: a extração e a conferência usam o mesmo)."""
+    if url not in _CACHE:
+        _CACHE[url] = _baixar(url)
+    return _CACHE[url]
+
+
+def _baixar(url: str) -> str | None:
     try:
         r = requests.get(url, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8"}, timeout=25, allow_redirects=True)
         if r.status_code != 200 or "html" not in r.headers.get("content-type", "html"):
@@ -113,48 +124,148 @@ def _verificar(f: dict) -> dict:
     return dict(f, ok=True, conferidos=conferidos, dominio=dom)
 
 
-def coletar(cand: dict, cfg: dict) -> dict:
-    tema = cand["tema"]
-    ref = f'Vídeo de referência (só para entender o tema; NÃO copie o conteúdo): "{cand.get("titulo")}"' if cand.get("titulo") else ""
-    prompt = f"""Pesquise na web o tema: "{tema}". {ref}
-Monte uma base de fatos para um vídeo brasileiro sobre {cfg['tema'].get('nicho', 'IA e tecnologia')}.
+CONFIAVEIS = ("reuters.com", "apnews.com", "afp.com", "cnbc.com", "bloomberg.com", "wsj.com", "ft.com", "theverge.com", "arstechnica.com",
+              "spectrum.ieee.org", "nature.com", "science.org", "technologyreview.com", "wired.com", "techcrunch.com", "bbc.", "nytimes.com",
+              "theguardian.com", "economist.com", "axios.com", "iea.org", "arxiv.org", ".gov", ".edu", "who.int", "oecd.org", "imf.org",
+              "worldbank.org", "statista.com", "nvidia.com", "openai.com", "anthropic.com", "google", "microsoft.com", "meta.com",
+              "apple.com", "amazon", "spacex.com", "nasa.gov", "g1.globo.com", "folha.uol.com.br", "estadao.com.br", "valor.globo.com",
+              "tecmundo.com.br", "olhardigital.com.br", "canaltech.com.br", "wikipedia.org")
 
-Regras:
-- 14 a 22 fatos, com números verificáveis sempre que possível, dos últimos meses quando for notícia.
-- Só fontes confiáveis: agências (Reuters, AP, AFP), CNBC, Bloomberg, WSJ, FT, The Verge, Ars Technica, IEEE Spectrum, Nature, sites oficiais de empresas e governos, papers; Wikipedia só como apoio. Nada de blogs de SEO, agregadores ou páginas geradas por IA.
-- Inclua o contraponto (críticos, riscos, limites) e quem defende.
-- "url" é a URL exata da matéria onde o número aparece (não a home do site). "numeros" são os números exatamente como escritos na página (ex.: "2.1 trillion", "75 billion", "40%", "2028"). "trecho" é uma frase curta copiada literalmente da página contendo o número (até 25 palavras, no idioma original).
-- "data" é a data de publicação da matéria no formato DD/MM/AAAA.
-- Se dois veículos divergem num número, use o da fonte mais confiável e diga em "obs".
+
+def _dominio(url: str) -> str:
+    return urlparse(url).netloc.lower().removeprefix("www.")
+
+
+def _confiavel(url: str) -> bool:
+    d = _dominio(url)
+    return any(c in d for c in CONFIAVEIS)
+
+
+def _trechos(pg: str, limite: int) -> str:
+    """Frases da página que têm números (é delas que saem os fatos), até `limite` caracteres."""
+    frases = re.split(r"(?<=[.!?])\s+", pg)
+    boas = [f.strip() for f in frases if re.search(r"\d", f) and 40 <= len(f.strip()) <= 400]
+    out, total = [], 0
+    for f in boas:
+        if total + len(f) > limite:
+            break
+        out.append(f)
+        total += len(f) + 1
+    return " ".join(out)
+
+
+def _plano(cand: dict, cfg: dict) -> tuple[dict, str]:
+    tema = cand["tema"]
+    ref = f'Título do vídeo de referência (só para entender o tema): "{cand.get("titulo")}"' if cand.get("titulo") else ""
+    prompt = f"""Vamos pesquisar fatos com números para um vídeo brasileiro sobre {cfg['tema'].get('nicho', 'IA e tecnologia')}.
+Tema: "{tema}". {ref}
 
 Responda SOMENTE com JSON:
-{{"tema_pt": "título curto do tema em PT-BR", "angulo": "ângulo do vídeo em 1 frase", "financas": true/false,
- "fatos": [{{"afirmacao": "frase em PT-BR", "numeros": ["..."], "fonte": "nome do veículo", "url": "https://...", "data": "DD/MM/AAAA", "trecho": "...", "lado": "a favor|contra|neutro", "obs": ""}}]}}"""
+{{"tema_pt": "título curto do tema em PT-BR", "angulo": "ângulo do vídeo em 1 frase", "financas": true/false (se fala de dinheiro/investimento),
+ "buscas": ["6 a 8 buscas para um buscador web, a maioria em inglês, específicas, cobrindo: números principais, quem defende, críticos e riscos, contexto histórico, dados oficiais"]}}"""
     try:
-        js, meta, modelo = gerar_json(prompt, cfg, busca=True, temperatura=0.3)
+        js, _, modelo = gerar_json(prompt, cfg, temperatura=0.3, max_tokens=1200)
+        if isinstance(js, dict) and js.get("buscas"):
+            return js, modelo
     except Exception as e:
-        return {"ok": False, "motivo": f"pesquisa de fatos falhou: {e}", "fatos": [], "cortados": []}
-    brutos = [f for f in (js.get("fatos") or []) if isinstance(f, dict)]
-    # URLs da busca (redirecionamentos do Google) resolvidas: usadas quando o modelo erra a URL exata
-    chunks = [c.get("web", {}) for c in (meta.get("groundingChunks") or [])]
+        nota(f"Fatos: não consegui gerar as buscas com IA ({str(e)[:120]}); usei o tema direto.")
+    return {"tema_pt": tema, "angulo": "", "financas": False, "buscas": [tema] + ([cand["titulo"]] if cand.get("titulo") else [])}, ""
+
+
+def _extrair(paginas: list[dict], tema: str, cfg: dict) -> tuple[list[dict], str]:
+    blocos = "\n\n".join(f"### FONTE {i + 1}\nurl: {p['url']}\nveículo: {p['dominio']}\ntítulo: {p['titulo']}\ntexto: {p['trechos']}"
+                         for i, p in enumerate(paginas))
+    prompt = f"""Tema do vídeo: "{tema}".
+Abaixo estão trechos REAIS de páginas da web. Extraia os fatos úteis para o vídeo, usando SOMENTE o que está escrito nos trechos.
+
+Regras:
+- Cada fato precisa de pelo menos um número que aparece literalmente no trecho.
+- "numeros": os números exatamente como escritos no trecho (ex.: "2.1 trillion", "75 billion", "40%", "2028").
+- "trecho": copie LITERALMENTE uma frase do texto da fonte que contém o número (até 25 palavras, no idioma original, sem mudar nada).
+- "url": a url da FONTE de onde o trecho saiu, exatamente como está acima.
+- "afirmacao": o fato reescrito em PT-BR, claro e fiel ao trecho.
+- Ignore publicidade, menus, links e números soltos sem contexto. Se uma fonte não tiver nada útil, pule.
+- No máximo 8 fatos por fonte.
+
+Responda SOMENTE com JSON:
+{{"fatos": [{{"afirmacao": "...", "numeros": ["..."], "fonte": "nome do veículo", "url": "https://...", "data": "DD/MM/AAAA ou vazio", "trecho": "...", "lado": "a favor|contra|neutro", "obs": ""}}]}}
+
+{blocos}"""
+    try:
+        js, _, modelo = gerar_json(prompt, cfg, temperatura=0.2, max_tokens=4000)
+    except Exception as e:
+        log(f"  extração falhou neste lote ({str(e)[:120]})")
+        return [], ""
+    fatos = js.get("fatos") if isinstance(js, dict) else js
+    urls = {p["url"] for p in paginas}
+    return [f for f in (fatos or []) if isinstance(f, dict) and f.get("url") in urls], modelo
+
+
+def _lotes(paginas: list[dict], max_chars: int) -> list[list[dict]]:
+    lotes, atual, tam = [], [], 0
+    for p in paginas:
+        if atual and tam + len(p["trechos"]) > max_chars:
+            lotes.append(atual)
+            atual, tam = [], 0
+        atual.append(p)
+        tam += len(p["trechos"])
+    if atual:
+        lotes.append(atual)
+    return lotes
+
+
+def coletar(cand: dict, cfg: dict) -> dict:
+    tema = cand["tema"]
+    bcfg = cfg.get("busca") or {}
+    plano, modelo = _plano(cand, cfg)
+    buscas = [str(b) for b in plano.get("buscas", []) if str(b).strip()][:8]
+    # 1. buscar: as primeiras buscas olham notícias recentes; as outras, a web toda
+    dias = int(bcfg.get("dias_noticias", 90)) or None
+    achados, vistos = [], set()
+    for i, q in enumerate(buscas):
+        for r in buscar(q, cfg, dias if i < 3 else None):
+            u = r["url"].split("#")[0]
+            d = _dominio(u)
+            if u in vistos or not d or any(x in d for x in RUINS) or u.lower().endswith(".pdf"):
+                continue
+            vistos.add(u)
+            achados.append(dict(r, url=u, dominio=d))
+    if not achados:
+        return {"ok": False, "motivo": "a busca na web não devolveu páginas (Tavily sem chave ou sem cota)",
+                "fatos": [], "cortados": []}
+    achados.sort(key=lambda r: not _confiavel(r["url"]))  # fontes conhecidas primeiro
+    achados = achados[: int(bcfg.get("max_paginas", 18))]
+    # 2. baixar as páginas
     with ThreadPoolExecutor(8) as ex:
-        reais = list(ex.map(lambda c: _resolver(c.get("uri", "")), chunks)) if chunks else []
-    log(f"fatos: {len(brutos)} propostos por {modelo}; {len(reais)} páginas da busca; conferindo nas fontes")
+        textos = list(ex.map(lambda r: _texto(r["url"]), achados))
+    lim = int(bcfg.get("chars_por_pagina", 3500))
+    paginas = []
+    for r, t in zip(achados, textos):
+        tr = _trechos(t, lim) if t else ""
+        if len(tr) > 200:
+            paginas.append(dict(r, trechos=tr))
+    log(f"fatos: {len(buscas)} buscas, {len(achados)} páginas encontradas, {len(paginas)} abriram com números")
+    # 3. extrair fatos em lotes pequenos (cabem nos limites dos planos grátis)
+    brutos = []
+    for lote in _lotes(paginas, int(bcfg.get("chars_por_lote", 11000))):
+        fs, m = _extrair(lote, plano.get("tema_pt") or tema, cfg)
+        brutos += fs
+        modelo = m or modelo
+    unicos, chaves = [], set()
+    for f in brutos:
+        k = (f.get("url"), tuple(sorted(str(n) for n in f.get("numeros") or [])))
+        if k not in chaves:
+            chaves.add(k)
+            unicos.append(f)
+    brutos = unicos[: int(bcfg.get("max_fatos", 30))]
+    log(f"fatos: {len(brutos)} propostos por {modelo or 'nenhum modelo'}; conferindo nas fontes")
+    # 4. conferir cada número na página (mesma regra de antes: na dúvida, corta)
     with ThreadPoolExecutor(8) as ex:
         res = list(ex.map(_verificar, brutos))
-    # segunda chance: trocar a URL por uma página da busca do mesmo domínio
-    for i, r in enumerate(res):
-        if not r["ok"] and "não abriu" in r.get("motivo", ""):
-            dom = urlparse(r.get("url", "")).netloc.lower().removeprefix("www.")
-            for u in reais:
-                if dom and dom in u and u != r.get("url"):
-                    r2 = _verificar(dict(brutos[i], url=u))
-                    if r2["ok"]:
-                        res[i] = r2
-                        break
     ok = [r for r in res if r["ok"]]
     for i, f in enumerate(ok, 1):
         f["id"] = i
+        f["fonte"] = f.get("fonte") or f.get("dominio", "")
     cortados = [{"afirmacao": r.get("afirmacao", ""), "url": r.get("url", ""), "motivo": r.get("motivo", "")} for r in res if not r["ok"]]
     dominios = {f["dominio"] for f in ok}
     minf = int(cfg["llm"].get("min_fontes", 3))
@@ -164,5 +275,5 @@ Responda SOMENTE com JSON:
         motivo = f"só {len(dominios)} fonte(s) confirmada(s); mínimo {minf}"
     elif len(ok) < 5:
         motivo = f"só {len(ok)} fato(s) confirmado(s)"
-    return {"ok": not motivo, "motivo": motivo, "tema": js.get("tema_pt") or tema, "angulo": js.get("angulo", ""), "financas": bool(js.get("financas")),
-            "fatos": ok, "cortados": cortados, "modelo": modelo}
+    return {"ok": not motivo, "motivo": motivo, "tema": plano.get("tema_pt") or tema, "angulo": plano.get("angulo", ""),
+            "financas": bool(plano.get("financas")), "fatos": ok, "cortados": cortados, "modelo": modelo}

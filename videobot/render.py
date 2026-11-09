@@ -67,7 +67,7 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
             "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": roteiro.get("cena3d") or v.get("cena3d") or "",
             "scale3d": float(v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
-            "theme": {"accent": v.get("acento", "#ff4f12"), "accent2": v.get("acento2", "#d4ff3a")}}
+            "theme": _tema(v)}
 
 
 # ---------------------------------------------------------------- navegador
@@ -135,6 +135,13 @@ def folha(thumbs, out: Path, cols: int):
         sheet.paste(im.resize((tw, th), Image.LANCZOS), (x, y + 22))
         d.text((x + 6, y + 3), str(lab)[:40], fill=(230, 230, 230), font=f)
     sheet.save(out)
+
+
+def _tema(v: dict) -> dict:
+    t = {"accent": v.get("acento") or "#ff4f12", "accent2": v.get("acento2") or "#d4ff3a"}
+    if v.get("acento_suave"):
+        t["accentSoft"] = v["acento_suave"]
+    return t
 
 
 # ---------------------------------------------------------------- render completo
@@ -230,7 +237,7 @@ def thumbs(info: dict, cfg: dict, pasta: Path, curto: bool) -> list[Path]:
     for nome, w, h in alvos:
         pw, br, pg = _abrir(w, h)
         try:
-            dd = dict(info, w=w, h=h, theme={"accent": v.get("acento"), "accent2": v.get("acento2")})
+            dd = dict(info, w=w, h=h, theme=_tema(v))
             res = pg.evaluate("d => window.bootThumb(d)", dd)
             png = pg.screenshot(type="png")
         finally:

@@ -91,6 +91,11 @@
     });
   }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
+  // cor de destaque com transparência (os brilhos acompanham a paleta do vídeo)
+  function accA(a) {
+    const h = getAcc().replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
 
   // ---------- templates ----------
   T.headline = function (c, p) {
@@ -142,7 +147,7 @@
     c.tl.fromTo(nb.d, { autoAlpha: 0, scale: 0.72 }, { autoAlpha: 1, scale: 1, duration: 0.6, ease: 'back.out(1.6)' }, 0.25);
     countUp(c, nb, p, 0.3, 1.3);
     c.tl.fromTo(ring, { autoAlpha: 0.9, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.9, ease: 'power2.out' }, 1.45);
-    c.tl.fromTo(nb.d, { textShadow: '0 0 0px rgba(255,79,18,0)' }, { textShadow: '0 0 60px rgba(255,79,18,.55)', duration: 0.4 }, 1.5);
+    c.tl.fromTo(nb.d, { textShadow: '0 0 0px ' + accA(0) }, { textShadow: '0 0 60px ' + accA(.55), duration: 0.4 }, 1.5);
     if (sub) riseIn(c.tl, sub, 1.2);
   };
 
@@ -174,7 +179,7 @@
       return { k, nb, s, bd };
     });
     const vs = el('div', 'chip', row, 'VS');
-    css(vs, { position: 'absolute', width: '120px', height: '120px', borderRadius: '50%', fontSize: '52px', left: '50%', top: '50%', marginLeft: '-60px', marginTop: '-60px', boxShadow: '0 0 0 10px var(--ink-900), 0 0 40px rgba(255,79,18,.5)' });
+    css(vs, { position: 'absolute', width: '120px', height: '120px', borderRadius: '50%', fontSize: '52px', left: '50%', top: '50%', marginLeft: '-60px', marginTop: '-60px', boxShadow: '0 0 0 10px var(--ink-900), 0 0 40px ' + accA(.5) });
     // limita altura total
     const total = col.getBoundingClientRect().height;
     if (total > c.ch) css(col, { transform: 'scale(' + (c.ch / total).toFixed(3) + ')' });
@@ -199,7 +204,7 @@
       const r = el('div', 'card chk', col);
       css(r, { display: 'flex', alignItems: 'center', gap: '30px', padding: '22px 34px 22px 22px', borderRadius: '28px' });
       const gw = el('div', 'abs', r); css(gw, { inset: '0' });
-      const glow = el('div', 'abs', gw); css(glow, { inset: '0', borderRadius: '28px', boxShadow: 'inset 0 0 0 3px var(--acc), 0 0 40px rgba(255,79,18,.22)' });
+      const glow = el('div', 'abs', gw); css(glow, { inset: '0', borderRadius: '28px', boxShadow: 'inset 0 0 0 3px var(--acc), 0 0 40px ' + accA(.22) });
       const ch = el('div', 'chip', r, p.numbered === false ? window.iconSVG('check', 4).replace('<circle cx="24" cy="24" r="19"/>', '') : String(i + 1));
       css(ch, { width: '84px', height: '84px', fontSize: '50px', position: 'relative' });
       if (p.numbered === false) css(ch.querySelector('svg'), { width: '56px', height: '56px' });
@@ -245,7 +250,7 @@
       const frac = Math.max(0.04, Math.abs(b.value || 0) / mx);
       css(fill, { left: '0', top: '0', bottom: '0', width: (frac * 100).toFixed(2) + '%', borderRadius: '18px', transformOrigin: '0 50%',
         background: b.highlight ? 'linear-gradient(90deg, var(--acc), var(--acc-soft))' : 'linear-gradient(90deg, var(--ink-500), var(--fog-600))',
-        boxShadow: b.highlight ? '0 0 34px rgba(255,79,18,.45)' : 'none' });
+        boxShadow: b.highlight ? '0 0 34px ' + accA(.45) : 'none' });
       const vb = numBlock(tr, { value: b.value, prefix: b.prefix || p.prefix, suffix: b.suffix || p.suffix || '', decimals: b.decimals != null ? b.decimals : p.decimals, text: b.text });
       const inside = frac > 0.55;
       css(vb.d, { position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '50px', color: inside ? 'var(--ink-950)' : 'var(--fog-50)',
@@ -446,7 +451,7 @@
     const g = el('div', 'chk', col); css(g, { position: 'relative', width: S + 'px', height: S + 'px', flex: 'none' });
     const r = 220, Cc = 2 * Math.PI * r;
     g.innerHTML = '<svg viewBox="0 0 520 520" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="260" cy="260" r="220" fill="none" stroke="#212126" stroke-width="40"/>' +
-      '<circle class="arc" cx="260" cy="260" r="220" fill="none" stroke="' + getAcc() + '" stroke-width="40" stroke-linecap="round" stroke-dasharray="' + Cc + ' ' + Cc + '" style="filter:drop-shadow(0 0 14px rgba(255,79,18,.6))"/></svg>';
+      '<circle class="arc" cx="260" cy="260" r="220" fill="none" stroke="' + getAcc() + '" stroke-width="40" stroke-linecap="round" stroke-dasharray="' + Cc + ' ' + Cc + '" style="filter:drop-shadow(0 0 14px ' + accA(.6) + ')"/></svg>';
     const arc = g.querySelector('.arc');
     const center = el('div', 'abs', g); css(center, { inset: '0', display: 'grid', placeItems: 'center' });
     const nb = numBlock(center, { value: v, suffix: p.suffix == null ? '%' : p.suffix, decimals: p.decimals || 0 });
@@ -516,7 +521,7 @@
     } else {
       const label = p.button || (kind === 'subscribe' ? 'INSCREVA-SE' : kind === 'like' ? 'CURTIR' : 'COMENTAR');
       const b = el('div', 'pill chk', row, '<span style="width:58px;height:58px;display:inline-block;margin-right:18px">' + window.iconSVG(kind === 'subscribe' ? 'play' : kind === 'like' ? 'heart' : 'chat', 3.4) + '</span>' + esc(label));
-      css(b, { fontSize: '50px', background: 'var(--acc)', color: 'var(--ink-950)', boxShadow: '0 0 60px rgba(255,79,18,.45)' });
+      css(b, { fontSize: '50px', background: 'var(--acc)', color: 'var(--ink-950)', boxShadow: '0 0 60px ' + accA(.45) });
       btns = [b];
     }
     fit(h, c.port ? 112 : 120, 50, c.cw, c.ch - 260 - (sub ? 120 : 0));
@@ -750,6 +755,7 @@
     const port = data.h > data.w;
     const root = document.documentElement;
     root.style.setProperty('--acc', ST.theme.accent); root.style.setProperty('--acc2', ST.theme.accent2);
+    if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
     STAGE = document.getElementById('stage');
     css(STAGE, { width: data.w + 'px', height: data.h + 'px' });
     STAGE.className = port ? 'port' : 'land';
@@ -760,10 +766,10 @@
     const icX = port ? (W - icS) / 2 : W - M - icS - 30, icY = port ? 210 : (H - icS) / 2;
     const rw = el('div', 'abs', STAGE); css(rw, { left: (icX + icS / 2 - 1300) + 'px', top: (icY + icS / 2 - 1300) + 'px', width: '2600px', height: '2600px' });
     const rays = el('div', 'rays', rw); css(rays, { left: '0', top: '0', margin: '0', transform: 'rotate(8deg)', opacity: 1.6 });
-    const glow = el('div', 'abs', STAGE); css(glow, { left: (icX - icS * 0.4) + 'px', top: (icY - icS * 0.4) + 'px', width: icS * 1.8 + 'px', height: icS * 1.8 + 'px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,79,18,.55), transparent 60%)' });
+    const glow = el('div', 'abs', STAGE); css(glow, { left: (icX - icS * 0.4) + 'px', top: (icY - icS * 0.4) + 'px', width: icS * 1.8 + 'px', height: icS * 1.8 + 'px', borderRadius: '50%', background: 'radial-gradient(circle, ' + accA(.55) + ', transparent 60%)' });
     const icw = el('div', 'abs', STAGE); css(icw, { left: icX + 'px', top: icY + 'px', width: icS + 'px', height: icS + 'px', transform: 'rotate(-6deg)' });
     const tile = el('div', 'tile', icw, window.iconSVG(data.icon || 'ia', 2.6));
-    css(tile.querySelector('svg'), { filter: 'drop-shadow(0 0 26px rgba(255,79,18,.8))' });
+    css(tile.querySelector('svg'), { filter: 'drop-shadow(0 0 26px ' + accA(.8) + ')' });
     const txW = port ? W - 2 * M : icX - M - 40;
     const col = el('div', 'abs', STAGE); css(col, { left: M + 'px', width: txW + 'px', display: 'flex', flexDirection: 'column', gap: port ? '22px' : '14px', alignItems: port ? 'center' : 'flex-start' });
     const lines = (data.lines || []).slice(0, 2);

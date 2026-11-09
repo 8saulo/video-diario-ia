@@ -47,11 +47,11 @@ html, body { background: #000; overflow: hidden; }
 
 .card { position: relative; background: linear-gradient(180deg, var(--ink-800), var(--ink-850)); border-radius: 36px;
   box-shadow: inset 0 0 0 2px var(--ink-600), 0 40px 90px rgba(0,0,0,.55); }
-.card.hot { box-shadow: inset 0 0 0 3px var(--acc), 0 0 60px rgba(255,79,18,.25), 0 40px 90px rgba(0,0,0,.55); }
+.card.hot { box-shadow: inset 0 0 0 3px var(--acc), 0 0 60px color-mix(in srgb, var(--acc) 25%, transparent), 0 40px 90px rgba(0,0,0,.55); }
 .tile { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 28%;
   background: radial-gradient(80% 80% at 30% 20%, var(--ink-600), var(--ink-800) 70%);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.10), 0 30px 70px rgba(0,0,0,.6), 0 0 80px rgba(255,79,18,.18); color: var(--acc); }
-.tile svg { width: 58%; height: 58%; overflow: visible; filter: drop-shadow(0 0 18px rgba(255,79,18,.55)); }
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.10), 0 30px 70px rgba(0,0,0,.6), 0 0 80px color-mix(in srgb, var(--acc) 18%, transparent); color: var(--acc); }
+.tile svg { width: 58%; height: 58%; overflow: visible; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--acc) 55%, transparent)); }
 .badge { position: absolute; width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; }
 .badge svg { width: 60%; height: 60%; }
 .badge.ok { background: var(--green); color: #04210c; }
@@ -60,7 +60,7 @@ html, body { background: #000; overflow: hidden; }
   font-family: "Anton", sans-serif; flex: none; }
 .ring { position: absolute; border-radius: 50%; border: 6px solid var(--acc); pointer-events: none; }
 .rays { position: absolute; left: 50%; top: 50%; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px;
-  background: repeating-conic-gradient(from 0deg, rgba(255,79,18,.10) 0deg 6deg, transparent 6deg 18deg);
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--acc) 10%, transparent) 0deg 6deg, transparent 6deg 18deg);
   -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 55%); }
 .pill { display: inline-flex; align-items: center; justify-content: center; padding: 22px 44px; border-radius: 999px; font-weight: 800; white-space: nowrap; }
 

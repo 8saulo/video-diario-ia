@@ -3,8 +3,8 @@
   python -m videobot ui            # abre http://127.0.0.1:8765
   python -m videobot ui --porta 9000 --sem-navegador
 
-Só escuta em 127.0.0.1 (nada fica exposto na rede). A chave do Gemini nunca vai para o navegador:
-o servidor só informa se ela existe e usa a chave para listar os modelos disponíveis.
+Só escuta em 127.0.0.1 (nada fica exposto na rede). As chaves nunca vão para o navegador:
+o servidor só informa se cada uma existe e usa as chaves para listar os modelos disponíveis.
 """
 from __future__ import annotations
 
@@ -33,16 +33,22 @@ TIPOS_ARQUIVO = {".mp4": "video/mp4", ".jpg": "image/jpeg", ".jpeg": "image/jpeg
                  ".txt": "text/plain; charset=utf-8"}
 
 
-# ---------------------------------------------------------------- chave
-def garantir_chave_no_ambiente() -> bool:
-    """Se o processo foi aberto antes do `setx`, busca a chave salva na conta do Windows."""
-    if os.environ.get("GEMINI_API_KEY", "").strip():
-        return True
-    if sys.platform == "win32":
+# ---------------------------------------------------------------- chaves
+CHAVES = ("GROQ_API_KEY", "OPENROUTER_API_KEY", "TAVILY_API_KEY", "GEMINI_API_KEY", "YOUTUBE_API_KEY")
+CHAVES_TEXTO = ("GROQ_API_KEY", "OPENROUTER_API_KEY")
+
+
+def _tem(nome: str) -> bool:
+    return bool(os.environ.get(nome, "").strip())
+
+
+def carregar_chaves() -> dict[str, bool]:
+    """Se o processo foi aberto antes do `setx`, busca as chaves salvas na conta do Windows."""
+    if sys.platform == "win32" and not all(_tem(n) for n in CHAVES):
         try:
             import winreg
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
-                for nome in ("GEMINI_API_KEY", "YOUTUBE_API_KEY"):
+                for nome in CHAVES:
                     try:
                         v, _ = winreg.QueryValueEx(k, nome)
                         if str(v).strip() and not os.environ.get(nome):
@@ -51,7 +57,14 @@ def garantir_chave_no_ambiente() -> bool:
                         pass
         except OSError:
             pass
-    return bool(os.environ.get("GEMINI_API_KEY", "").strip())
+    return {n: _tem(n) for n in CHAVES}
+
+
+def tem_texto() -> bool:
+    carregar_chaves()
+    from . import llm
+    from .util import carregar_config
+    return bool(llm.disponiveis(carregar_config()))
 
 
 # ---------------------------------------------------------------- configuração
@@ -119,25 +132,25 @@ _cache_modelos: dict = {}
 
 
 def listar_modelos() -> dict:
-    if not garantir_chave_no_ambiente():
-        return {"ok": False, "erro": "GEMINI_API_KEY não encontrada", "texto": [], "tts": []}
+    """Modelos de cada provedor de texto e os de voz do Gemini, consultados com as chaves do ambiente."""
+    carregar_chaves()
     if _cache_modelos.get("t", 0) > time.time() - 600:
         return _cache_modelos["v"]
-    from .tts import _gemini
-    st, js = _gemini("GET", "/models?pageSize=1000", os.environ["GEMINI_API_KEY"].strip(), timeout=30)
-    if st != 200:
-        return {"ok": False, "erro": f"o Google respondeu HTTP {st}", "texto": [], "tts": []}
-    texto, tts = [], []
-    for m in js.get("models", []):
-        if "generateContent" not in m.get("supportedGenerationMethods", []):
-            continue
-        nome = m["name"].split("/")[-1]
-        item = {"nome": nome, "titulo": m.get("displayName", nome)}
-        if "tts" in nome:
-            tts.append(item)
-        elif nome.startswith("gemini") and not re.search(r"image|banana|embedding|audio|transcribe|live|vision|robotics|computer|customtools", nome):
-            texto.append(item)
-    v = {"ok": True, "texto": texto, "tts": tts}
+    from concurrent.futures import ThreadPoolExecutor
+    from . import llm
+    provs = list(llm.PROVEDORES)
+    with ThreadPoolExecutor(len(provs)) as ex:
+        listas = dict(zip(provs, ex.map(lambda p: llm.listar_modelos(p, forcar=True), provs)))
+    out = {p: {"chave": _tem(llm.PROVEDORES[p]["env"]), "titulo": llm.PROVEDORES[p]["titulo"],
+               "modelos": [{"nome": n, "titulo": ""} for n in listas[p]]} for p in provs}
+    tts = []
+    if _tem("GEMINI_API_KEY"):
+        from .tts import _gemini
+        st, js = _gemini("GET", "/models?pageSize=1000", os.environ["GEMINI_API_KEY"].strip(), timeout=30)
+        if st == 200:
+            tts = [{"nome": m["name"].split("/")[-1], "titulo": m.get("displayName", "")} for m in js.get("models", [])
+                   if "tts" in m["name"] and "generateContent" in m.get("supportedGenerationMethods", [])]
+    v = {"ok": True, "provedores": out, "tts": tts}
     _cache_modelos.update(t=time.time(), v=v)
     return v
 
@@ -156,8 +169,8 @@ class Execucao:
         with self.lock:
             if self.status == "rodando":
                 return "Já existe uma execução em andamento."
-            if modo == "completo" and not garantir_chave_no_ambiente():
-                return "Falta a GEMINI_API_KEY. O modo completo precisa dela (o demo não)."
+            if modo == "completo" and not tem_texto():
+                return "Falta a chave de um provedor de texto (GROQ_API_KEY ou OPENROUTER_API_KEY). O demo funciona sem."
             SAIDA.mkdir(exist_ok=True)
             CFG_EXEC.write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
             env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
@@ -247,8 +260,8 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/config":
             self._json(estado_config())
         elif u.path == "/api/ambiente":
-            self._json({"gemini": garantir_chave_no_ambiente(), "youtube": bool(os.environ.get("YOUTUBE_API_KEY", "").strip()),
-                        "python": sys.version.split()[0], "raiz": str(RAIZ)})
+            ch = carregar_chaves()
+            self._json({"chaves": ch, "texto": any(ch[n] for n in CHAVES_TEXTO), "python": sys.version.split()[0], "raiz": str(RAIZ)})
         elif u.path == "/api/modelos":
             self._json(listar_modelos())
         elif u.path == "/api/estado":
@@ -345,7 +358,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def servir(porta: int = 8765, abrir: bool = True):
-    garantir_chave_no_ambiente()
+    carregar_chaves()
     srv = ThreadingHTTPServer(("127.0.0.1", porta), Handler)
     url = f"http://127.0.0.1:{porta}"
     print(f"Interface do vídeo diário em {url}  (Ctrl+C para fechar)", flush=True)

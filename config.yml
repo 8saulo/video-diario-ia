@@ -35,19 +35,20 @@ tema:
     - "Robôs humanoides: promessa e realidade"
 
 # ---------------- FORMATO ----------------
-formato: longo                      # longo (16:9, capítulos) | curto (9:16, Shorts/TikTok)
+formato: curto                      # longo (16:9, capítulos) | curto (9:16, Shorts/TikTok)
 duracao:
   longo_min: 7                      # alvo em minutos (o prompt aceita 6 a 10)
   curto_seg: 65                     # alvo em segundos (55 a 75)
 idioma: pt-BR
 
-# ---------------- NARRAÇÃO ----------------
+# ---------------- NARRAÇÃO (único uso do Gemini por padrão) ----------------
 narracao:
   provedor: auto                    # auto = Google AI Studio (Gemini TTS) e, só se falhar, edge-tts | gemini | edge
   gemini_voz: Charon                # Charon (masculina), Kore (feminina), Puck, Fenrir, Aoede, Orus...
   gemini_modelos_preferidos:        # ordem de tentativa; o script também descobre os modelos TTS da sua chave
-    - pro-preview-tts
     - flash-preview-tts
+    - flash-tts
+    - pro-preview-tts
     - tts
   edge_voz: pt-BR-AntonioNeural     # alternativa: pt-BR-FranciscaNeural
   edge_velocidade: "+10%"
@@ -55,25 +56,72 @@ narracao:
 # ---------------- VISUAL ----------------
 visual:
   fps: 30
-  acento: "#ff4f12"                 # laranja (cor principal)
-  acento2: "#d4ff3a"                # volt (destaques e legenda ativa)
+  paleta: rodizio                   # rodizio = alterna a cada vídeo publicado | laranja | roxo | azul | fixa = usa acento/acento2 abaixo
+  paletas:                          # cores de cada paleta (acento = principal, acento2 = legenda ativa, acento_suave = barra de progresso)
+    laranja:
+      acento: "#ff4f12"
+      acento2: "#d4ff3a"
+      acento_suave: "#ff8a52"
+    roxo:                           # roxo cibernético
+      acento: "#a64dff"
+      acento2: "#3df5ff"
+      acento_suave: "#c993ff"
+    azul:                           # azul cibernético
+      acento: "#1f8bff"
+      acento2: "#ff4fd8"
+      acento_suave: "#6cb6ff"
+  acento: "#ff4f12"                 # laranja (cor principal; só vale com paleta: fixa)
+  acento2: "#d4ff3a"                # volt (destaques e legenda ativa; só vale com paleta: fixa)
   marca: ""                         # texto discreto no canto (ex.: @seucanal); vazio = nada
   marca_logo: "assets/logo_marca.png"  # marca d'água em imagem (PNG transparente); vazio = sem logo
   marca_opacidade: 0.5              # 0 a 1; 0.5 = discreta
   marca_troca_s: 9                  # a logo troca de canto a cada N segundos
-  cena3d: ""                        # "gpon" = fundo 3D em código (Three.js); vazio = fundo 2D
+  cena3d: "gpon"                    # "gpon" = fundo 3D em código (Three.js: cidade, fibra, OLT e ONU); vazio = fundo 2D
   escala3d: 0.75                    # resolução interna do 3D (menor = render mais rápido)
   legendas: true
   musica: true                      # trilha gerada em código, baixinha por baixo da voz
   efeitos: true                     # whoosh/pop gerados em código
   workers: 0                        # 0 = um por núcleo de CPU
 
-# ---------------- ROTEIRO (Google AI Studio) ----------------
+# ---------------- TEXTO: triagem, fatos e roteiro (IAs grátis) ----------------
+# Cada provedor precisa da sua chave no ambiente (GitHub: Secrets; PC: setx). Sem chave, ele é pulado.
+#   groq → GROQ_API_KEY (console.groq.com) · openrouter → OPENROUTER_API_KEY (openrouter.ai, só modelos :free)
+#   gemini → GEMINI_API_KEY (opcional; por padrão o Gemini fica só com a voz)
 llm:
-  modelos:                          # tentados em ordem; precisa da secret GEMINI_API_KEY
-    - gemini-2.5-pro
-    - gemini-2.5-flash
+  ordem:                            # provedores tentados em ordem; se um esgota a cota, passa para o próximo
+    - groq
+    - openrouter
+  groq:
+    modelos:                        # preferidos primeiro (nome ou trecho do nome); depois os outros da sua chave
+      - gpt-oss-120b
+      - qwen
+      - gpt-oss-20b
+  openrouter:
+    modelos:                        # só os gratuitos (:free) entram; os gigantes grátis costumam travar, por isso vêm depois
+      - nemotron-3-nano
+      - gemma-4
+      - gpt-oss
+      - deepseek
+  gemini:
+    modelos:                        # só é usado para texto se "gemini" estiver na ordem acima
+      - gemini-3.8-flash
+      - flash
+  modelos_por_provedor: 4           # quantos modelos de cada provedor tentar antes de passar ao próximo
+  max_tokens: 8000                  # tamanho máximo da resposta
+  espera_max_s: 65                  # se a cota pede para esperar mais que isso, pula o modelo
   min_fontes: 3                     # CRIVO 3: fontes confiáveis distintas, conferidas por download
+
+# ---------------- BUSCA NA WEB (fontes dos fatos) ----------------
+busca:
+  provedores:                       # só APIs oficiais. tavily: TAVILY_API_KEY (tavily.com) · wikipedia: sem chave
+    - tavily
+    - wikipedia
+  resultados_por_busca: 6
+  dias_noticias: 90                 # as 3 primeiras buscas olham só notícias dos últimos N dias
+  max_paginas: 18                   # páginas baixadas para extrair fatos
+  chars_por_pagina: 3500            # trecho de cada página enviado à IA (frases com números)
+  chars_por_lote: 11000             # páginas agrupadas por pedido (pequeno para caber nos planos grátis)
+  max_fatos: 30
 
 # ---------------- ENTREGA ----------------
 entrega:
