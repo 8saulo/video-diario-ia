@@ -588,6 +588,10 @@
     HUD.chip = el('div', '', hud, '<span class="dot"></span><span class="t"></span>'); HUD.chip.id = 'chip';
     HUD.chipT = HUD.chip.querySelector('.t');
     HUD.brand = el('div', '', hud); HUD.brand.id = 'brand'; HUD.brand.textContent = ST.brand || '';
+    if (ST.brandLogo) {  // marca d'água discreta (logo do canal)
+      HUD.logo = el('img', '', hud); HUD.logo.id = 'brandlogo'; HUD.logo.src = ST.brandLogo; HUD.logo.alt = '';
+      if (ST.brandLogoOpacity != null) HUD.logo.style.opacity = ST.brandLogoOpacity;
+    }
     HUD.src = el('div', '', hud); HUD.src.id = 'src';
     HUD.cap = el('div', '', hud); HUD.cap.id = 'cap';
     HUD.capin = el('div', '', HUD.cap); HUD.capin.id = 'capin';
@@ -680,13 +684,14 @@
     if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
     STAGE = document.getElementById('stage');
     css(STAGE, { width: data.w + 'px', height: data.h + 'px' });
-    STAGE.className = ST.port ? 'port' : 'land';
+    STAGE.className = (ST.port ? 'port' : 'land') + (ST.brandLogo ? ' has-logo' : '');
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('700 60px Figtree'); await document.fonts.load('500 60px Figtree');
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
     SCN = el('div', '', STAGE); css(SCN, { position: 'absolute', inset: '0' });
     ST.segments.forEach(makeSeg);
     buildHud(STAGE);
+    if (HUD.logo) { try { await HUD.logo.decode(); } catch (e) { HUD.logo.remove(); HUD.logo = null; } }
     window.renderAt(0);
     return { ok: true, n: ST.segments.length, errors: ST.segments.filter(s => s.error).map(s => [s.id, s.error]) };
   };

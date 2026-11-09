@@ -20,6 +20,18 @@ FINAL_EXTRA = 1.5
 
 
 # ---------------------------------------------------------------- linha do tempo
+def _logo(v: dict) -> dict:
+    """Marca d'água em imagem (visual.marca_logo): caminho relativo à raiz do repo ou absoluto."""
+    p = (v.get("marca_logo") or "").strip()
+    if not p:
+        return {}
+    f = Path(p) if Path(p).is_absolute() else ENGINE.parent / p
+    if not f.exists():
+        nota(f"marca_logo não encontrada: {p}; vídeo sai sem marca d'água.")
+        return {}
+    return {"brandLogo": f.resolve().as_uri(), "brandLogoOpacity": float(v.get("marca_opacidade", 0.5))}
+
+
 def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     longo = roteiro["formato"] == "longo"
     W, H = (1920, 1080) if longo else (1080, 1920)
@@ -53,7 +65,7 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
         a["end"] = min(a["end"], b["start"])
     v = cfg["visual"]
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
-            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""),
+            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v),
             "theme": {"accent": v.get("acento", "#ff4f12"), "accent2": v.get("acento2", "#d4ff3a")}}
 
 

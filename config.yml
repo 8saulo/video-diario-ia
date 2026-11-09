@@ -58,6 +58,8 @@ visual:
   acento: "#ff4f12"                 # laranja (cor principal)
   acento2: "#d4ff3a"                # volt (destaques e legenda ativa)
   marca: ""                         # texto discreto no canto (ex.: @seucanal); vazio = nada
+  marca_logo: "assets/logo_marca.png"  # marca d'água em imagem (PNG transparente); vazio = sem logo
+  marca_opacidade: 0.5              # 0 a 1; 0.5 = discreta
   legendas: true
   musica: true                      # trilha gerada em código, baixinha por baixo da voz
   efeitos: true                     # whoosh/pop gerados em código

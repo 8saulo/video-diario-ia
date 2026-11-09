@@ -77,6 +77,9 @@ html, body { background: #000; overflow: hidden; }
 .land #chip { left: 56px; top: 44px; } .port #chip { left: 50%; top: 150px; transform: translateX(-50%); }
 #brand { position: absolute; font-weight: 800; font-size: 24px; letter-spacing: .06em; color: var(--fog-400); }
 .land #brand { right: 60px; top: 54px; } .port #brand { display: none; }
+#brandlogo { position: absolute; opacity: .5; pointer-events: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
+.land #brandlogo { right: 56px; top: 40px; width: 220px; } .port #brandlogo { right: 44px; top: 54px; width: 190px; }
+.land.has-logo #brand { display: none; }
 #src { position: absolute; font-weight: 600; color: var(--fog-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .land #src { left: 60px; right: 60px; bottom: 30px; font-size: 22px; }
 .port #src { left: 70px; right: 140px; top: 1560px; font-size: 26px; }
