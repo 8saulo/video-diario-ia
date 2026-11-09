@@ -93,11 +93,14 @@ def escrever(roteiro, data, pesquisa, fatos, voz, conf, medidas, issues, pasta: 
     desc += [t for t in yt.get("topicos", [])]
     desc += ["", yt.get("cta", "").strip(), ""]
     aviso = (yt.get("aviso") or "").strip()
-    desc.append(((aviso + " ") if aviso else "") + "Animação feita 100% em código e narração com voz sintética.")
+    desc.append(((aviso + " ") if aviso else "") + ("Animação em código com fotos de licença livre" if roteiro.get("creditos_fotos") else "Animação feita 100% em código") + " e narração com voz sintética.")
     if caps:
         desc += ["", "CAPÍTULOS"] + [f"{a} {b}" for a, b in caps]
     if fontes:
         desc += ["", "FONTES"] + [f"{n} ({d}): {u}" for n, u, d in fontes]
+    fotos = roteiro.get("creditos_fotos") or []
+    if fotos:
+        desc += ["", "FOTOS (Wikimedia Commons)"] + [f"{f['credito']}: {f['pagina']}" for f in fotos]
     desc += ["", " ".join(yt.get("hashtags", [])[:5])]
     descricao = "\n".join(desc).strip()
     corte = corte_tiktok(data, roteiro) if not curto else None
@@ -119,7 +122,13 @@ def escrever(roteiro, data, pesquisa, fatos, voz, conf, medidas, issues, pasta: 
           "### Texto da capa", "```", tk.get("capa", ""), "```", "", "### Primeira frase (prende em até 2 s)", f"\"{(corte or {}).get('frase') or tk.get('primeira_frase', '')}\"", "",
           "### Rótulo \"Conteúdo gerado por IA\"", f"**{tk['rotulo_ia']['resposta']}.** {tk['rotulo_ia']['motivo']}", "",
           "### Som", tk.get("som", ""), "", "### Horário sugerido", tk.get("horario", ""), "",
-          "## Créditos", "Sem mídia de terceiros. Cenas, ícones, trilha e efeitos gerados em código. Fontes tipográficas Figtree e Anton (SIL Open Font License)."]
+          "## Créditos"]
+    if fotos:
+        L += ["Fotos de licença livre do Wikimedia Commons (crédito na tela e na descrição; licenças CC BY/CC BY-SA exigem atribuição):", ""]
+        L += [f"- {f['titulo']} — {f['credito']} — {f['pagina']}" for f in fotos] + [""]
+        L += ["Cenas, ícones, trilha e efeitos gerados em código. Fontes tipográficas Figtree e Anton (SIL Open Font License)."]
+    else:
+        L += ["Sem mídia de terceiros. Cenas, ícones, trilha e efeitos gerados em código. Fontes tipográficas Figtree e Anton (SIL Open Font License)."]
     pub_md = pasta / "publicacao.md"
     pub_md.write_text("\n".join(L) + "\n", encoding="utf-8")
 

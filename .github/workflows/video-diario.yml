@@ -20,11 +20,11 @@ on:
         description: "Formato (vazio = o do config.yml)"
         type: choice
         options: ["", longo, curto]
-        default: ""
+        default: curto
       duracao:
         description: "Duração: minutos (longo) ou segundos (curto). Vazio = config.yml"
         type: string
-        default: ""
+        default: 70
       narracao:
         description: "auto = Google AI Studio e, se falhar, edge-tts"
         type: choice
