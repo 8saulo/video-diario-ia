@@ -80,6 +80,16 @@ html, body { background: #000; overflow: hidden; }
 #brandlogo { position: absolute; opacity: .5; pointer-events: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
 .land #brandlogo { right: 56px; top: 40px; width: 220px; } .port #brandlogo { right: 44px; top: 54px; width: 190px; }
 .land.has-logo #brand { display: none; }
+/* ---------- modo 3D ---------- */
+#gl3d { position: absolute; left: 0; top: 0; width: 100% !important; height: 100% !important; }
+#shade3d { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5,7,13,.88) 0%, rgba(5,7,13,.62) 30%, rgba(5,7,13,.08) 47%, rgba(5,7,13,0) 58%, rgba(5,7,13,.25) 68%, rgba(5,7,13,.8) 86%, rgba(5,7,13,.92) 100%); }
+.land #shade3d { background: linear-gradient(90deg, rgba(5,7,13,.85) 0%, rgba(5,7,13,.5) 40%, rgba(5,7,13,0) 62%), linear-gradient(180deg, transparent 70%, rgba(5,7,13,.85) 100%); }
+.mode3d #bg .orb, .mode3d #grid { display: none; }
+.port.mode3d .box { top: 240px; bottom: 1110px; }
+.land.mode3d .box { right: 900px; }
+.mode3d .card { background: linear-gradient(180deg, rgba(22,26,36,.86), rgba(14,17,24,.86)); }
+#brandlogo { transition: none; }
 #src { position: absolute; font-weight: 600; color: var(--fog-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .land #src { left: 60px; right: 60px; bottom: 30px; font-size: 22px; }
 .port #src { left: 70px; right: 140px; top: 1560px; font-size: 26px; }

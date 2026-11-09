@@ -671,8 +671,24 @@
       if (on !== s.vis) { s.el.style.visibility = on ? 'visible' : 'hidden'; s.vis = on; }
     }
     updateHud(t, active);
+    moveLogo(t);
+    if (window.W3D && window.W3D.on) window.W3D.render(t, active, active ? segs.indexOf(active) : 0);
     return true;
   };
+
+  /* Marca d'água que troca de canto ao longo do vídeo (com fade), longe da legenda e dos botões do app. */
+  function moveLogo(t) {
+    if (!HUD.logo) return;
+    const P = ST.brandLogoPeriod || 9, F = 0.45;
+    const spots = ST.port
+      ? [{ right: 44, top: 54 }, { left: 44, top: 54 }, { left: 44, top: ST.scene3d ? 1170 : 1470 }]
+      : [{ right: 56, top: 40 }, { left: 56, top: 110 }, { right: 56, top: 880 }];
+    const k = Math.floor(t / P) % spots.length, lt = t - Math.floor(t / P) * P;
+    if (HUD.logoK !== k) { const s = spots[k]; css(HUD.logo, { left: s.left != null ? s.left + 'px' : 'auto', right: s.right != null ? s.right + 'px' : 'auto', top: s.top + 'px' }); HUD.logoK = k; }
+    const base = ST.brandLogoOpacity != null ? ST.brandLogoOpacity : 0.5;
+    const f = t < F ? 1 : Math.min(1, lt / F, (P - lt) / F);
+    HUD.logo.style.opacity = (base * Math.max(0, f)).toFixed(3);
+  }
 
   window.boot = async function (data) {
     ST = data;
@@ -688,6 +704,7 @@
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('700 60px Figtree'); await document.fonts.load('500 60px Figtree');
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
+    if (ST.scene3d && window.W3D && window.THREE) { STAGE.classList.add('mode3d'); window.W3D.init(STAGE, ST); }
     SCN = el('div', '', STAGE); css(SCN, { position: 'absolute', inset: '0' });
     ST.segments.forEach(makeSeg);
     buildHud(STAGE);

@@ -76,7 +76,22 @@ def carregar_config(path: Path | None = None, extra: dict | None = None) -> dict
     return deep_merge(cfg, extra or {})
 
 
+THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+
+
+def garantir_three():
+    alvo = ENGINE / "vendor" / "three.min.js"
+    if alvo.exists() and alvo.stat().st_size > 100_000:
+        return alvo
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    log("baixando Three.js 0.160.0 (licença MIT)")
+    with urllib.request.urlopen(THREE_URL, timeout=60) as r:
+        alvo.write_bytes(r.read())
+    return alvo
+
+
 def garantir_gsap():
+    garantir_three()
     alvo = ENGINE / "vendor" / "gsap.min.js"
     if alvo.exists() and alvo.stat().st_size > 10_000:
         return alvo

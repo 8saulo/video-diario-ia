@@ -6,3 +6,7 @@
 - **GSAP 3.13** — GreenSock, licença padrão gratuita; baixado em tempo de execução de cdn.jsdelivr.net (não é redistribuído aqui).
 - **Ícones** — desenhados para este projeto (`engine/icons.js`).
 - **Trilha e efeitos sonoros** — sintetizados em código (`videobot/audio.py`).
+
+## Three.js
+
+- Three.js 0.160.0 — licença MIT — https://threejs.org — baixado automaticamente para `engine/vendor/` (usado no modo 3D, `visual.cena3d`).

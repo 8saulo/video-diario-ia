@@ -65,7 +65,8 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
         a["end"] = min(a["end"], b["start"])
     v = cfg["visual"]
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
-            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v),
+            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": roteiro.get("cena3d") or v.get("cena3d") or "",
+            "scale3d": float(v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
             "theme": {"accent": v.get("acento", "#ff4f12"), "accent2": v.get("acento2", "#d4ff3a")}}
 
 
