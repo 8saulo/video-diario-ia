@@ -79,6 +79,19 @@ python -m videobot run --tema "robôs humanoides" --formato curto --duracao 60 -
 
 O resultado vai para `saida/AAAA-MM-DD_tema/`.
 
+### Interface local (navegador)
+
+```bash
+python -m videobot ui
+```
+
+No Windows, também dá para dar duplo clique em `Abrir interface.bat`. Abre `http://127.0.0.1:8765`, que só fica acessível nesta máquina.
+
+- **Novo vídeo:** modo (completo/demo), formato e duração, pesquisa automática ou assunto manual, voz e modelos do Gemini (lista os disponíveis para a sua chave).
+- **Todas as configurações:** cada variável do `config.yml` com a explicação do próprio arquivo. "Salvar como padrão" grava só o que mudou em `config.local.yml` (fora do git), que também vale para o comando no terminal.
+- **Execução:** passo a passo das etapas, progresso do render e o terminal ao vivo; no fim, o vídeo e os arquivos.
+- A chave é lida do ambiente ou, no Windows, das variáveis da conta (`setx`) e nunca vai para o navegador.
+
 ## Regras fixas (valem sempre)
 
 - Não usar mídia de terceiros. Exceção: fontes tipográficas OFL, com crédito em [CREDITS.md](CREDITS.md).

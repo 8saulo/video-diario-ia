@@ -6,3 +6,4 @@ numpy==2.2.6
 Pillow==11.2.1
 PyYAML==6.0.2
 requests==2.32.3
+tzdata  # o Windows não tem base de fusos; sem isso ZoneInfo("America/Sao_Paulo") falha

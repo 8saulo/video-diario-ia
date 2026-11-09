@@ -149,9 +149,12 @@ def _worker(args):
         enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "image2pipe", "-framerate", str(fps), "-c:v", "mjpeg", "-i", "-",
                                 "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(fps),
                                 "-g", str(fps * 2), "-x264-params", "keyint=" + str(fps * 2), str(out)], stdin=subprocess.PIPE)
+        passo = max(1, (f1 - f0) // 20)
         for f in range(f0, f1):
             pg.evaluate("t => window.renderAt(t)", f / fps)
             enc.stdin.write(_shot(cdp))
+            if (f - f0 + 1) % passo == 0 or f == f1 - 1:
+                print(f"  render {Path(out).stem}: {f - f0 + 1}/{f1 - f0} quadros", flush=True)
         enc.stdin.close()
         enc.wait()
         if enc.returncode:

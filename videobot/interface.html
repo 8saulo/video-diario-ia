@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vídeo Diário IA</title>
+<style>
+@font-face { font-family: "Figtree"; src: url("/fonte.ttf") format("truetype"); font-weight: 300 900; font-display: swap; }
+:root {
+  --bg: #0c0c0e; --painel: #151518; --painel2: #1c1c21; --borda: #2a2a31; --borda2: #3a3a43;
+  --texto: #ececf1; --suave: #9a9aa6; --fraco: #6b6b76;
+  --acento: #ff4f12; --acento-f: rgba(255,79,18,.14); --volt: #d4ff3a;
+  --ok: #4ade80; --aviso: #fbbf24; --erro: #f87171; --info: #7dd3fc;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --r: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--texto); }
+body { font: 14px/1.5 "Figtree", "Segoe UI", system-ui, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--info); }
+
+header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: rgba(12,12,14,.92); backdrop-filter: blur(8px); z-index: 5; flex-wrap: wrap; }
+.logo { font-weight: 800; font-size: 17px; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+.logo i { width: 10px; height: 10px; border-radius: 50%; background: var(--acento); box-shadow: 0 0 12px var(--acento); }
+.badges { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--borda2); color: var(--suave); white-space: nowrap; }
+.badge.ok { color: var(--ok); border-color: rgba(74,222,128,.35); }
+.badge.no { color: var(--aviso); border-color: rgba(251,191,36,.35); }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 20px 24px 40px; max-width: 1600px; margin: 0 auto; }
+@media (max-width: 1050px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
+
+.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--borda); margin-bottom: 16px; overflow-x: auto; }
+.aba { background: none; border: 0; padding: 10px 14px; color: var(--suave); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 600; }
+.aba:hover { color: var(--texto); }
+.aba.ativa { color: var(--texto); border-bottom-color: var(--acento); }
+.aba .n { font-size: 11px; background: var(--acento-f); color: var(--acento); border-radius: 99px; padding: 0 7px; margin-left: 6px; }
+
+.card { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); margin: 0 0 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.card h2 .num { color: var(--acento); }
+.dica { color: var(--suave); font-size: 12.5px; margin: 6px 0 0; }
+.dica code, .ajuda code { font-family: var(--mono); font-size: 12px; background: var(--painel2); padding: 1px 5px; border-radius: 4px; }
+
+.seg { display: inline-flex; background: var(--painel2); border: 1px solid var(--borda); border-radius: 9px; padding: 3px; gap: 3px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; padding: 7px 14px; border-radius: 7px; cursor: pointer; color: var(--suave); font-weight: 600; }
+.seg button.on { background: var(--acento); color: #fff; }
+.opcoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.opcao { text-align: left; background: var(--painel2); border: 1px solid var(--borda); border-radius: 9px; padding: 12px 14px; cursor: pointer; }
+.opcao b { display: block; font-size: 14.5px; }
+.opcao span { color: var(--suave); font-size: 12.5px; }
+.opcao.on { border-color: var(--acento); background: var(--acento-f); }
+.opcao .forma { float: right; border: 2px solid var(--fraco); border-radius: 3px; margin-top: 2px; }
+.opcao.on .forma { border-color: var(--acento); }
+
+.campo { margin-top: 12px; }
+.campo > label, .rot { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; margin-bottom: 5px; }
+.campo .ajuda { color: var(--suave); font-size: 12px; margin: -2px 0 6px; }
+.campo .chave { font-family: var(--mono); font-size: 11px; color: var(--fraco); font-weight: 400; }
+.alterado::after { content: "alterado"; font-size: 10.5px; color: var(--volt); border: 1px solid rgba(212,255,58,.35); border-radius: 99px; padding: 0 6px; font-weight: 600; }
+input[type=text], input[type=number], select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--borda2); border-radius: 8px; padding: 8px 10px; outline: none; }
+input:focus, select:focus, textarea:focus { border-color: var(--acento); }
+textarea { min-height: 90px; resize: vertical; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+input[type=number] { max-width: 160px; }
+.linha { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.linha > * { flex: 1 1 180px; }
+.cor { display: flex; gap: 8px; align-items: center; }
+.cor input[type=color] { width: 42px; height: 36px; border: 1px solid var(--borda2); border-radius: 8px; background: none; padding: 2px; flex: none; }
+.cor input[type=text] { max-width: 140px; font-family: var(--mono); }
+.chk { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.chk input { width: 38px; height: 22px; appearance: none; background: var(--borda2); border-radius: 99px; position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.chk input::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: left .15s; }
+.chk input:checked { background: var(--acento); }
+.chk input:checked::after { left: 19px; }
+
+.modelos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.modelos li { display: flex; align-items: center; gap: 8px; background: var(--painel2); border: 1px solid var(--borda); border-radius: 8px; padding: 6px 8px 6px 12px; }
+.modelos li .pos { color: var(--acento); font-weight: 800; width: 16px; }
+.modelos li code { font-family: var(--mono); font-size: 12.5px; flex: 1; overflow-wrap: anywhere; }
+.modelos li .tag { font-size: 11px; color: var(--aviso); }
+.icone { background: none; border: 1px solid transparent; color: var(--suave); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; flex: none; }
+.icone:hover { border-color: var(--borda2); color: var(--texto); }
+.icone:disabled { opacity: .3; cursor: default; }
+.add { display: flex; gap: 8px; margin-top: 8px; }
+.add input { flex: 1; font-family: var(--mono); font-size: 12.5px; }
+
+.btn { border: 1px solid var(--borda2); background: var(--painel2); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.btn:hover { border-color: var(--suave); }
+.btn.prim { background: var(--acento); border-color: var(--acento); color: #fff; }
+.btn.prim:hover { filter: brightness(1.1); }
+.btn.perigo { color: var(--erro); border-color: rgba(248,113,113,.4); }
+.btn:disabled { opacity: .45; cursor: default; filter: none; }
+.btn.peq { padding: 5px 10px; font-size: 12.5px; }
+.acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.barra-acoes { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 18px 0 4px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.barra-acoes .info { color: var(--suave); font-size: 12.5px; }
+
+.hist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hist span { font-size: 12px; background: var(--painel2); border: 1px solid var(--borda); border-radius: 99px; padding: 2px 10px; color: var(--suave); }
+
+/* execução */
+.direita { position: sticky; top: 72px; align-self: start; }
+@media (max-width: 1050px) { .direita { position: static; } }
+.status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status .estado { font-weight: 800; font-size: 16px; }
+.status .tempo { font-family: var(--mono); color: var(--suave); }
+.ponto { width: 10px; height: 10px; border-radius: 50%; background: var(--fraco); flex: none; }
+.ponto.rodando { background: var(--acento); animation: pulsa 1s infinite; }
+.ponto.ok { background: var(--ok); } .ponto.erro, .ponto.interrompido { background: var(--erro); }
+@keyframes pulsa { 50% { opacity: .35; } }
+
+.passos { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; }
+.passos li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 7px; color: var(--fraco); }
+.passos li .m { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--borda2); display: grid; place-items: center; font-size: 10px; }
+.passos li.feito { color: var(--suave); }
+.passos li.feito .m { border-color: var(--ok); background: var(--ok); color: #0c0c0e; }
+.passos li.feito .m::after { content: "✓"; font-weight: 900; }
+.passos li.atual { color: var(--texto); background: var(--acento-f); font-weight: 600; }
+.passos li.atual .m { border-color: var(--acento); border-top-color: transparent; animation: gira .8s linear infinite; }
+.passos li.falhou { color: var(--erro); } .passos li.falhou .m { border-color: var(--erro); }
+.passos li.pulado { text-decoration: line-through; }
+.passos li small { font-family: var(--mono); font-size: 11.5px; color: var(--suave); }
+@keyframes gira { to { transform: rotate(360deg); } }
+.prog { height: 4px; background: var(--borda); border-radius: 99px; overflow: hidden; margin-top: 4px; grid-column: 2 / 4; }
+.prog i { display: block; height: 100%; background: var(--acento); width: 0; transition: width .4s; }
+
+.terminal { background: #08080a; border: 1px solid var(--borda); border-radius: 8px; font: 12px/1.6 var(--mono); padding: 10px 12px; height: 380px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin-top: 12px; }
+.terminal .et { color: var(--acento); font-weight: 700; margin-top: 6px; display: block; }
+.terminal .nota { color: var(--aviso); }
+.terminal .erro { color: var(--erro); }
+.terminal .ok { color: var(--ok); }
+.terminal .cmd { color: var(--info); }
+.terminal .vazio { color: var(--fraco); }
+.terminal-topo { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 8px; flex-wrap: wrap; }
+
+.resultado video { width: 100%; border-radius: 8px; background: #000; max-height: 420px; margin-top: 8px; }
+.arquivos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.arquivos a { font-size: 12px; font-family: var(--mono); background: var(--painel2); border: 1px solid var(--borda); padding: 3px 9px; border-radius: 6px; text-decoration: none; color: var(--texto); }
+.arquivos a:hover { border-color: var(--acento); }
+.saida-item { border-top: 1px solid var(--borda); padding: 12px 0; }
+.saida-item:first-child { border-top: 0; padding-top: 0; }
+.saida-item b { font-family: var(--mono); font-size: 13px; }
+
+.secao-cfg summary { cursor: pointer; font-weight: 700; font-size: 15px; list-style: none; display: flex; align-items: center; gap: 8px; }
+.secao-cfg summary::before { content: "▸"; color: var(--acento); transition: transform .15s; }
+.secao-cfg[open] summary::before { transform: rotate(90deg); }
+.secao-cfg summary .n { font-size: 11px; color: var(--volt); font-weight: 600; }
+.aviso-box { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); color: #fde68a; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--painel2); border: 1px solid var(--borda2); padding: 10px 18px; border-radius: 8px; z-index: 50; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>Vídeo Diário IA <span style="color:var(--fraco);font-weight:500">· local</span></div>
+  <div class="badges" id="badges"></div>
+</header>
+
+<main>
+  <section>
+    <nav class="abas">
+      <button class="aba ativa" data-aba="novo">Novo vídeo</button>
+      <button class="aba" data-aba="tudo">Todas as configurações <span class="n" id="n-alt" hidden></span></button>
+      <button class="aba" data-aba="saidas">Vídeos gerados</button>
+    </nav>
+
+    <div id="aba-novo"></div>
+    <div id="aba-tudo" hidden></div>
+    <div id="aba-saidas" hidden></div>
+
+    <div class="barra-acoes" id="barra">
+      <button class="btn prim" id="b-gerar">▶ Gerar vídeo</button>
+      <button class="btn" id="b-salvar" title="Grava as escolhas em config.local.yml (só nesta máquina)">Salvar como padrão</button>
+      <button class="btn" id="b-restaurar" title="Apaga config.local.yml e volta ao config.yml do repositório">Restaurar config.yml</button>
+      <span class="info" id="info-alt"></span>
+    </div>
+  </section>
+
+  <aside class="direita">
+    <div class="card">
+      <h2>Execução</h2>
+      <div class="status">
+        <span class="ponto" id="ponto"></span>
+        <span class="estado" id="estado">Parado</span>
+        <span class="tempo" id="tempo"></span>
+        <span style="margin-left:auto" class="acoes"><button class="btn perigo peq" id="b-parar" hidden>■ Parar</button></span>
+      </div>
+      <ol class="passos" id="passos"></ol>
+      <div class="terminal-topo">
+        <span class="rot" style="margin:0">Terminal</span>
+        <label class="chk" style="font-weight:500;font-size:12px"><input type="checkbox" id="auto-rolar" checked> rolar sozinho</label>
+      </div>
+      <div class="terminal" id="terminal"><span class="vazio">Nada rodando. Escolha as opções e clique em “Gerar vídeo”.</span></div>
+    </div>
+    <div class="card resultado" id="resultado" hidden></div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const api = async (url, corpo) => {
+  const r = await fetch(url, corpo === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+  return r.json();
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+const get = (o, p) => p.split(".").reduce((a, k) => (a == null ? a : a[k]), o);
+const set = (o, p, v) => { const ks = p.split("."); let a = o; ks.slice(0, -1).forEach(k => { if (typeof a[k] !== "object" || a[k] === null) a[k] = {}; a = a[k]; }); a[ks.at(-1)] = v; };
+const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+
+const S = { base: {}, cfg: {}, ajuda: {}, historico: [], modo: "completo", ambiente: {}, modelos: null, temaAnterior: "" };
+
+const VOZES_GEMINI = ["Charon", "Kore", "Puck", "Fenrir", "Aoede", "Orus", "Zephyr", "Leda", "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi", "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"];
+const VOZES_EDGE = ["pt-BR-AntonioNeural", "pt-BR-FranciscaNeural", "pt-BR-ThalitaMultilingualNeural"];
+const ESCOLHAS = {
+  "formato": [["longo", "longo (16:9, capítulos)"], ["curto", "curto (9:16, Shorts/TikTok)"]],
+  "narracao.provedor": [["auto", "auto: Gemini e, se falhar, edge-tts"], ["gemini", "só Gemini TTS"], ["edge", "só edge-tts"]],
+  "visual.cena3d": [["", "nenhum (fundo 2D)"], ["gpon", "gpon (fundo 3D em Three.js)"]],
+};
+const LISTAS_MODELO = { "llm.modelos": "texto", "narracao.gemini_modelos_preferidos": "tts" };
+const TITULOS = { geral: "Geral", tema: "Tema e pesquisa", duracao: "Duração", narracao: "Narração", visual: "Visual", llm: "Roteiro (Google AI Studio)", entrega: "Entrega" };
+
+/* ---------------- campos genéricos ---------------- */
+function rotulo(p) { return p.split(".").at(-1).replace(/_/g, " "); }
+function marcaAlterado(p) { return igual(get(S.cfg, p), get(S.base, p)) ? "" : " alterado"; }
+
+function campo(p, opts = {}) {
+  const v = get(S.cfg, p);
+  const ajuda = opts.ajuda ?? S.ajuda[p] ?? "";
+  const tit = opts.titulo ?? rotulo(p);
+  const cab = `<label class="${marcaAlterado(p).trim()}" data-alt="${p}">${esc(tit)} <span class="chave">${esc(p)}</span></label>${ajuda ? `<div class="ajuda">${esc(ajuda)}</div>` : ""}`;
+  let ctl;
+  if (LISTAS_MODELO[p]) return `<div class="campo">${cab}${listaModelos(p)}</div>`;
+  if (ESCOLHAS[p]) {
+    ctl = `<select data-path="${p}" data-tipo="str">${ESCOLHAS[p].map(([k, t]) => `<option value="${esc(k)}"${k === v ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  } else if (typeof v === "boolean") {
+    return `<div class="campo"><label class="chk"><input type="checkbox" data-path="${p}" data-tipo="bool"${v ? " checked" : ""}> <span data-alt="${p}" class="${marcaAlterado(p).trim()}">${esc(tit)} <span class="chave">${esc(p)}</span></span></label>${ajuda ? `<div class="ajuda" style="margin:4px 0 0 48px">${esc(ajuda)}</div>` : ""}</div>`;
+  } else if (typeof v === "number") {
+    ctl = `<input type="number" step="any" data-path="${p}" data-tipo="num" value="${v}">`;
+  } else if (Array.isArray(v)) {
+    ctl = `<textarea data-path="${p}" data-tipo="lista" rows="${Math.min(14, Math.max(3, v.length + 1))}" placeholder="um item por linha">${esc(v.join("\n"))}</textarea><div class="ajuda" style="margin-top:4px">${v.length} item(ns) · um por linha</div>`;
+  } else if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) {
+    ctl = `<div class="cor"><input type="color" data-path="${p}" data-tipo="str" value="${v}"><input type="text" data-path="${p}" data-tipo="str" value="${esc(v)}"></div>`;
+  } else {
+    const dl = p === "narracao.gemini_voz" ? "dl-gemini" : p === "narracao.edge_voz" ? "dl-edge" : "";
+    ctl = `<input type="text" data-path="${p}" data-tipo="str" value="${esc(v ?? "")}"${dl ? ` list="${dl}"` : ""}${opts.placeholder ? ` placeholder="${esc(opts.placeholder)}"` : ""}>`;
+  }
+  return `<div class="campo">${cab}${ctl}</div>`;
+}
+
+function listaModelos(p) {
+  const lista = get(S.cfg, p) || [];
+  const tipo = LISTAS_MODELO[p];
+  const disp = S.modelos?.ok ? S.modelos[tipo].map(m => m.nome) : null;
+  const itens = lista.map((m, i) => {
+    const existe = !disp || (tipo === "tts" ? disp.some(d => d.includes(m)) : disp.includes(m));
+    return `<li><span class="pos">${i + 1}</span><code>${esc(m)}</code>${existe ? "" : `<span class="tag">não disponível para a sua chave</span>`}
+      <button class="icone" data-mod="${p}" data-acao="sobe" data-i="${i}" ${i === 0 ? "disabled" : ""} title="Subir">↑</button>
+      <button class="icone" data-mod="${p}" data-acao="desce" data-i="${i}" ${i === lista.length - 1 ? "disabled" : ""} title="Descer">↓</button>
+      <button class="icone" data-mod="${p}" data-acao="tira" data-i="${i}" title="Remover">✕</button></li>`;
+  }).join("");
+  const dl = `dl-${tipo}`;
+  return `<ul class="modelos" data-lista="${p}">${itens || `<li><span class="dica" style="margin:0">Lista vazia: o script usa os modelos que descobrir na sua chave.</span></li>`}</ul>
+    <div class="add"><input type="text" list="${dl}" placeholder="${tipo === "tts" ? "nome ou trecho do nome, ex.: flash-preview-tts" : "ex.: gemini-2.5-flash"}" data-novo="${p}"><button class="btn peq" data-mod="${p}" data-acao="add">Adicionar</button></div>`;
+}
+
+function atualizaListasDatalist() {
+  const opts = arr => arr.map(v => `<option value="${esc(typeof v === "string" ? v : v.nome)}">${typeof v === "string" ? "" : esc(v.titulo)}</option>`).join("");
+  $("#datalists").innerHTML = `
+    <datalist id="dl-gemini">${opts(VOZES_GEMINI)}</datalist>
+    <datalist id="dl-edge">${opts(VOZES_EDGE)}</datalist>
+    <datalist id="dl-texto">${opts(S.modelos?.texto || [])}</datalist>
+    <datalist id="dl-tts">${opts(S.modelos?.tts || [])}</datalist>`;
+}
+
+/* ---------------- aba: novo vídeo ---------------- */
+function renderNovo() {
+  const c = S.cfg, curto = c.formato === "curto", manual = S.temaManual;
+  const prov = c.narracao.provedor;
+  const semChave = !S.ambiente.gemini;
+  const m = S.modelos;
+  $("#aba-novo").innerHTML = `
+    ${semChave ? `<div class="aviso-box">A <code>GEMINI_API_KEY</code> não foi encontrada. Só o modo <b>Demo</b> funciona até ela ser configurada.</div>` : ""}
+    <div class="card">
+      <h2><span class="num">1</span> Modo</h2>
+      <div class="opcoes">
+        <button class="opcao${S.modo === "completo" ? " on" : ""}" data-modo="completo"><b>Completo</b><span>Pesquisa, fatos conferidos, roteiro com Gemini, narração e vídeo.</span></button>
+        <button class="opcao${S.modo === "demo" ? " on" : ""}" data-modo="demo"><b>Demo</b><span>Roteiro fixo de exemplo. Testa voz e render, sem chave e sem IA.</span></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span> Formato</h2>
+      <div class="opcoes">
+        <button class="opcao${!curto ? " on" : ""}" data-formato="longo"><i class="forma" style="width:26px;height:15px"></i><b>Longo</b><span>16:9 · 6 a 10 min · com capítulos</span></button>
+        <button class="opcao${curto ? " on" : ""}" data-formato="curto"><i class="forma" style="width:11px;height:19px"></i><b>Curto</b><span>9:16 · 55 a 75 s · Shorts e TikTok</span></button>
+      </div>
+      ${curto ? campo("duracao.curto_seg", { titulo: "Duração (segundos)" }) : campo("duracao.longo_min", { titulo: "Duração (minutos)" })}
+    </div>
+
+    <div class="card" ${S.modo === "demo" ? `style="opacity:.55"` : ""}>
+      <h2><span class="num">3</span> Tema ${S.modo === "demo" ? `<span style="text-transform:none;letter-spacing:0;font-weight:500">(ignorado no demo)</span>` : ""}</h2>
+      <div class="seg"><button data-tema="auto" class="${!manual ? "on" : ""}">Pesquisa automática no YouTube</button><button data-tema="manual" class="${manual ? "on" : ""}">Assunto manual</button></div>
+      ${manual ? `
+        ${campo("tema.tema_fixo", { titulo: "Assunto do vídeo", ajuda: "Pula a pesquisa no YouTube. O Gemini busca fontes e confere os números sobre este assunto.", placeholder: "ex.: chips de IA da Nvidia" })}
+      ` : `
+        <p class="dica">Busca os vídeos em inglês que mais cresceram nos últimos dias, aplica os filtros e escolhe o tema vencedor. ${S.ambiente.youtube ? "" : "Sem <code>YOUTUBE_API_KEY</code>: lê as páginas públicas do YouTube."}</p>
+        ${campo("tema.nicho")}
+        ${campo("tema.buscas", { titulo: "Buscas pré-definidas (em inglês)" })}
+        ${campo("tema.buscas_extras", { titulo: "Buscas extras só desta vez" })}
+        <div class="linha">${campo("tema.janela_dias")}${campo("tema.nao_repetir_dias")}</div>
+      `}
+      ${S.historico.length ? `<div class="campo"><span class="rot">Temas já usados (vetados por ${c.tema.nao_repetir_dias} dias)</span><div class="hist">${S.historico.map(h => `<span title="${esc(h.data)}">${esc(h.data.slice(5))} · ${esc(h.tema)}</span>`).join("")}</div></div>` : ""}
+    </div>
+
+    <div class="card">
+      <h2><span class="num">4</span> Narração</h2>
+      ${campo("narracao.provedor", { titulo: "Provedor de voz" })}
+      <div class="linha">
+        ${prov !== "edge" ? campo("narracao.gemini_voz", { titulo: "Voz do Gemini" }) : ""}
+        ${prov !== "gemini" ? campo("narracao.edge_voz", { titulo: "Voz do edge-tts" }) : ""}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">5</span> Modelos de IA</h2>
+      <p class="dica">${m == null ? "Consultando os modelos disponíveis para a sua chave…" : m.ok ? `Sua chave tem ${m.texto.length} modelos de texto e ${m.tts.length} de voz disponíveis (sugeridos no campo “Adicionar”).` : `Não consegui listar os modelos (${esc(m.erro)}). Dá para digitar o nome à mão.`}
+      São tentados em ordem: se o 1º falhar ou estourar a cota, passa para o próximo.</p>
+      ${campo("llm.modelos", { titulo: "Modelos de texto (roteiro e checagem de fatos)" })}
+      ${campo("narracao.gemini_modelos_preferidos", { titulo: "Modelos de voz (Gemini TTS)" })}
+    </div>
+
+    <div class="card">
+      <h2><span class="num">6</span> Acabamento</h2>
+      <div class="linha">${campo("visual.legendas")}${campo("visual.musica")}${campo("visual.efeitos")}</div>
+      ${campo("visual.cena3d")}
+      <p class="dica">Cores, marca d'água, número de processos do render e o resto ficam em “Todas as configurações”.</p>
+    </div>`;
+}
+
+/* ---------------- aba: todas as configurações ---------------- */
+function renderTudo() {
+  const grupos = { geral: [] };
+  const percorre = (o, pre) => Object.entries(o).forEach(([k, v]) => {
+    const p = pre ? `${pre}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) percorre(v, p);
+    else { const g = p.includes(".") ? p.split(".")[0] : "geral"; (grupos[g] ||= []).push(p); }
+  });
+  percorre(S.cfg, "");
+  $("#aba-tudo").innerHTML = `<p class="dica" style="margin:0 0 14px">Todas as variáveis do <code>config.yml</code>, com a explicação que está no próprio arquivo. As mudanças valem na próxima execução; “Salvar como padrão” grava só o que mudou em <code>config.local.yml</code> (o <code>config.yml</code> do GitHub fica intacto).</p>` +
+    Object.entries(grupos).filter(([, ps]) => ps.length).map(([g, ps]) => {
+      const n = ps.filter(p => !igual(get(S.cfg, p), get(S.base, p))).length;
+      return `<details class="card secao-cfg" open><summary>${esc(TITULOS[g] || g)} <span class="n">${n ? n + " alterado(s)" : ""}</span></summary>${ps.map(p => campo(p)).join("")}</details>`;
+    }).join("");
+}
+
+/* ---------------- aba: vídeos gerados ---------------- */
+async function renderSaidas() {
+  const lst = await api("/api/saidas");
+  $("#aba-saidas").innerHTML = `<div class="card">${lst.length ? lst.map(s => {
+    const vid = s.arquivos.find(a => a.endsWith(".mp4") && !a.includes("_previa_"));
+    return `<div class="saida-item"><div class="linha" style="justify-content:space-between"><b>${esc(s.pasta)}</b><button class="btn peq" style="flex:none" data-abrir="${esc(s.pasta)}">Abrir pasta</button></div>
+      ${vid ? `<video controls preload="none" src="/saida/${encodeURIComponent(s.pasta)}/${encodeURIComponent(vid)}" poster="${s.arquivos.includes("thumb_1280x720.jpg") ? `/saida/${encodeURIComponent(s.pasta)}/thumb_1280x720.jpg` : ""}" style="width:100%;border-radius:8px;margin-top:8px;max-height:320px;background:#000"></video>` : ""}
+      <div class="arquivos">${s.arquivos.map(a => `<a href="/saida/${encodeURIComponent(s.pasta)}/${encodeURIComponent(a)}" target="_blank">${esc(a)}</a>`).join("")}</div></div>`;
+  }).join("") : `<p class="dica">Nenhum vídeo gerado ainda.</p>`}</div>`;
+}
+
+/* ---------------- estado de alterações ---------------- */
+function contaAlteracoes() {
+  let n = 0;
+  const percorre = (o, pre) => Object.entries(o).forEach(([k, v]) => {
+    const p = pre ? `${pre}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) percorre(v, p); else if (!igual(v, get(S.base, p))) n++;
+  });
+  percorre(S.cfg, "");
+  const e = $("#n-alt"); e.hidden = !n; e.textContent = n;
+  $("#info-alt").textContent = n ? `${n} valor(es) diferente(s) do config.yml` : "Usando o config.yml do repositório";
+  $$("[data-alt]").forEach(el => el.classList.toggle("alterado", !igual(get(S.cfg, el.dataset.alt), get(S.base, el.dataset.alt))));
+}
+
+function lerValor(el) {
+  const t = el.dataset.tipo;
+  if (t === "bool") return el.checked;
+  if (t === "num") { const n = parseFloat(String(el.value).replace(",", ".")); return isNaN(n) ? 0 : n; }
+  if (t === "lista") return el.value.split("\n").map(s => s.trim()).filter(Boolean);
+  return el.value;
+}
+function escreveValor(el, v) {
+  const t = el.dataset.tipo;
+  if (t === "bool") el.checked = !!v;
+  else if (t === "lista") el.value = (v || []).join("\n");
+  else el.value = v ?? "";
+}
+
+function renderTudoAtual() { renderNovo(); renderTudo(); contaAlteracoes(); }
+
+document.addEventListener("input", e => {
+  const el = e.target.closest("[data-path]");
+  if (!el) return;
+  const p = el.dataset.path, v = lerValor(el);
+  set(S.cfg, p, v);
+  $$(`[data-path="${p}"]`).forEach(o => { if (o !== el) escreveValor(o, v); });
+  if (p === "tema.tema_fixo") S.temaManual = true;
+  if (["formato", "narracao.provedor", "visual.cena3d"].includes(p)) renderNovo();
+  contaAlteracoes();
+});
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.aba) {
+    $$(".aba").forEach(a => a.classList.toggle("ativa", a === b));
+    ["novo", "tudo", "saidas"].forEach(n => $(`#aba-${n}`).hidden = n !== b.dataset.aba);
+    $("#barra").hidden = b.dataset.aba === "saidas";
+    if (b.dataset.aba === "tudo") renderTudo();
+    if (b.dataset.aba === "saidas") renderSaidas();
+    contaAlteracoes();
+  } else if (b.dataset.modo) { S.modo = b.dataset.modo; renderNovo(); contaAlteracoes(); }
+  else if (b.dataset.formato) { S.cfg.formato = b.dataset.formato; renderTudoAtual(); }
+  else if (b.dataset.tema) {
+    if (b.dataset.tema === "auto") { S.temaAnterior = S.cfg.tema.tema_fixo || S.temaAnterior; S.cfg.tema.tema_fixo = ""; S.temaManual = false; }
+    else { S.temaManual = true; S.cfg.tema.tema_fixo = S.cfg.tema.tema_fixo || S.temaAnterior; }
+    renderTudoAtual();
+    if (S.temaManual) $('[data-path="tema.tema_fixo"]')?.focus();
+  } else if (b.dataset.mod) {
+    const p = b.dataset.mod, lista = [...(get(S.cfg, p) || [])], i = +b.dataset.i;
+    if (b.dataset.acao === "add") {
+      const inp = $(`[data-novo="${p}"]`, b.parentElement); const v = inp.value.trim();
+      if (!v) return; if (!lista.includes(v)) lista.push(v);
+    } else if (b.dataset.acao === "sobe") [lista[i - 1], lista[i]] = [lista[i], lista[i - 1]];
+    else if (b.dataset.acao === "desce") [lista[i + 1], lista[i]] = [lista[i], lista[i + 1]];
+    else if (b.dataset.acao === "tira") lista.splice(i, 1);
+    set(S.cfg, p, lista);
+    renderTudoAtual();
+  } else if (b.dataset.abrir) {
+    api("/api/abrir-pasta", { pasta: b.dataset.abrir });
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.dataset?.novo) { e.preventDefault(); e.target.nextElementSibling.click(); }
+});
+
+$("#b-salvar").onclick = async () => { await api("/api/config/salvar", { cfg: S.cfg }); await carregarConfig(false); toast("Salvo em config.local.yml. Vale também para o comando no terminal."); };
+$("#b-restaurar").onclick = async () => {
+  if (!confirm("Descartar os ajustes e voltar ao config.yml do repositório?")) return;
+  await api("/api/config/restaurar", {}); await carregarConfig(true); toast("Voltou ao config.yml do repositório.");
+};
+$("#b-gerar").onclick = async () => {
+  if (S.modo === "completo" && S.temaManual && !S.cfg.tema.tema_fixo.trim()) { toast("Escreva o assunto ou volte para a pesquisa automática."); return; }
+  const r = await api("/api/executar", { modo: S.modo, cfg: S.cfg });
+  if (!r.ok) { toast(r.erro); return; }
+  L.reset(S.modo); poll();
+};
+$("#b-parar").onclick = async () => { if (confirm("Parar a geração agora? O que já foi feito nesta execução é descartado.")) await api("/api/parar", {}); };
+
+/* ---------------- execução: passo a passo + terminal ---------------- */
+const ETAPAS = [
+  ["pesquisa", "Pesquisa de tema no YouTube"], ["fatos", "Checagem de fatos nas fontes"], ["roteiro", "Roteiro"],
+  ["narracao", "Narração e alinhamento das palavras"], ["cenas", "Montagem das cenas e prévia de layout"],
+  ["audio", "Trilha, efeitos e mixagem"], ["render", "Render quadro a quadro"], ["conferencia", "Conferência do arquivo e prévia leve"],
+  ["thumbs", "Thumbnails"], ["pacote", "Pacote de publicação"],
+];
+const L = {
+  total: 0, atual: null, feitas: new Set(), info: {}, partes: {}, modo: "completo", status: "parado",
+  reset(modo) {
+    this.total = 0; this.atual = null; this.feitas = new Set(); this.info = {}; this.partes = {}; this.modo = modo;
+    $("#terminal").innerHTML = ""; $("#resultado").hidden = true;
+  },
+};
+
+function etapasDoModo() { return L.modo === "demo" ? ETAPAS.slice(3) : ETAPAS; }
+
+function renderPassos() {
+  const st = L.status;
+  $("#passos").innerHTML = etapasDoModo().map(([k, t]) => {
+    let cls = L.feitas.has(k) ? "feito" : L.atual === k ? (st === "rodando" ? "atual" : st === "ok" ? "feito" : "falhou") : "";
+    let extra = "";
+    if (k === "render" && Object.keys(L.partes).length) {
+      const ps = Object.values(L.partes), f = ps.reduce((a, p) => a + p[0], 0), tot = ps.reduce((a, p) => a + p[1], 0);
+      const pct = tot ? Math.round(100 * f / tot) : 0;
+      extra = `<small>${pct}%</small><div class="prog"><i style="width:${pct}%"></i></div>`;
+    } else if (L.info[k]) extra = `<small>${esc(L.info[k])}</small>`;
+    return `<li class="${cls}"><span class="m"></span><span>${esc(t)}</span>${extra}</li>`;
+  }).join("");
+}
+
+function linhaHTML(l) {
+  let cls = "";
+  if (/== ETAPA /.test(l)) return `<span class="et">▸ ${esc(l.replace(/^\[\s*[\d.]+s\]\s*== ETAPA \w+: /, ""))}</span>`;
+  if (/NOTA:/.test(l)) cls = "nota";
+  else if (/ERRO:|Traceback|Error|Exception|^\s+File "/.test(l)) cls = "erro";
+  else if (/pronto:|terminou com código 0/.test(l)) cls = "ok";
+  else if (/^\$ /.test(l)) cls = "cmd";
+  return cls ? `<span class="${cls}">${esc(l)}</span>\n` : esc(l) + "\n";
+}
+
+function processa(linhas) {
+  const term = $("#terminal");
+  let html = "";
+  for (const l of linhas) {
+    const r = l.match(/render (_parte_\d+): (\d+)\/(\d+) quadros/);
+    if (r) { L.partes[r[1]] = [+r[2], +r[3]]; continue; }
+    const e = l.match(/== ETAPA (\w+):/);
+    if (e) { if (L.atual) L.feitas.add(L.atual); L.atual = e[1]; }
+    const nq = l.match(/render: (\d+) quadros/); if (nq) L.info.render = `${nq[1]} quadros`;
+    const pq = l.match(/pesquisa: (\d+) vídeos/); if (pq) L.info.pesquisa = `${pq[1]} vídeos`;
+    const tt = l.match(/tentando o tema: (.*)/); if (tt) L.info.fatos = tt[1].slice(0, 50);
+    const fc = l.match(/fatos conferidos: (\d+) ok/); if (fc) L.info.fatos = `${fc[1]} fatos ok`;
+    const rt = l.match(/roteiro pronto \(([^)]+)\)/); if (rt) L.info.roteiro = rt[1];
+    const vz = l.match(/Gemini TTS: tentando (\S+)/); if (vz) L.info.narracao = vz[1];
+    if (/edge-tts/.test(l) && /Narração/.test(l)) L.info.narracao = "edge-tts";
+    const au = l.match(/(-?[\d.]+) LUFS/); if (au) L.info.audio = `${au[1]} LUFS`;
+    html += linhaHTML(l);
+  }
+  if (html) {
+    if (term.querySelector(".vazio")) term.innerHTML = "";
+    term.insertAdjacentHTML("beforeend", html);
+    if ($("#auto-rolar").checked) term.scrollTop = term.scrollHeight;
+  }
+}
+
+function fmtTempo(s) { s = Math.round(s); const m = Math.floor(s / 60); return m ? `${m} min ${String(s % 60).padStart(2, "0")} s` : `${s} s`; }
+const NOMES = { parado: "Parado", rodando: "Gerando…", ok: "Concluído", erro: "Falhou", interrompido: "Interrompido" };
+
+function renderResultado(r) {
+  if (!r || !r.video) return;
+  const pasta = r.pasta.split(/[\\/]/).at(-1), nome = f => `/saida/${encodeURIComponent(pasta)}/${encodeURIComponent(f.split(/[\\/]/).at(-1))}`;
+  const box = $("#resultado");
+  box.hidden = false;
+  box.innerHTML = `<h2>Resultado</h2><b>${esc(r.titulo || pasta)}</b>
+    <video controls src="${nome(r.video)}" poster="${r.thumbs?.[0] ? nome(r.thumbs[0]) : ""}"></video>
+    <div class="arquivos">${[r.video, r.previa, ...(r.thumbs || []), r.publicacao, r.relatorio].filter(Boolean).map(f => `<a href="${nome(f)}" target="_blank">${esc(f.split(/[\\/]/).at(-1))}</a>`).join("")}</div>
+    <div class="acoes" style="margin-top:10px"><button class="btn peq" data-abrir="${esc(pasta)}">Abrir pasta no Explorer</button></div>`;
+}
+
+let timer = null;
+async function poll() {
+  clearTimeout(timer);
+  let r;
+  try { r = await api(`/api/estado?desde=${L.total}`); }
+  catch { $("#estado").textContent = "Interface desconectada do servidor"; timer = setTimeout(poll, 3000); return; }
+  if (r.total < L.total) { L.reset(L.modo); r = await api("/api/estado?desde=0"); }
+  if (L.total === 0 && r.linhas[0]) L.modo = /--modo demo/.test(r.linhas[0]) ? "demo" : "completo";
+  processa(r.linhas); L.total = r.total; L.status = r.status;
+  if (r.status === "ok" && L.atual) L.feitas.add(L.atual);
+  renderPassos();
+  $("#estado").textContent = NOMES[r.status] || r.status;
+  $("#ponto").className = "ponto " + r.status;
+  $("#tempo").textContent = r.segundos ? fmtTempo(r.segundos) : "";
+  $("#b-parar").hidden = r.status !== "rodando";
+  $("#b-gerar").disabled = r.status === "rodando";
+  $("#b-gerar").textContent = r.status === "rodando" ? "Gerando…" : "▶ Gerar vídeo";
+  if (r.status === "ok" && $("#resultado").hidden) renderResultado(r.resumo);
+  timer = setTimeout(poll, r.status === "rodando" ? 800 : 4000);
+}
+
+/* ---------------- início ---------------- */
+async function carregarConfig(redesenha = true) {
+  const c = await api("/api/config");
+  S.base = c.base; S.ajuda = c.ajuda; S.historico = c.historico;
+  if (redesenha) { S.cfg = clone(c.efetivo); S.temaManual = !!(S.cfg.tema.tema_fixo || "").trim(); }
+  renderTudoAtual();
+}
+
+(async () => {
+  document.body.insertAdjacentHTML("beforeend", `<div id="datalists"></div>`);
+  atualizaListasDatalist();
+  S.ambiente = await api("/api/ambiente");
+  $("#badges").innerHTML = `
+    <span class="badge ${S.ambiente.gemini ? "ok" : "no"}">${S.ambiente.gemini ? "✓" : "✗"} GEMINI_API_KEY</span>
+    <span class="badge ${S.ambiente.youtube ? "ok" : ""}">${S.ambiente.youtube ? "✓" : "–"} YOUTUBE_API_KEY</span>
+    <span class="badge">Python ${esc(S.ambiente.python)}</span>`;
+  if (!S.ambiente.gemini) S.modo = "demo";
+  await carregarConfig(true);
+  renderPassos();
+  poll();
+  S.modelos = await api("/api/modelos");
+  atualizaListasDatalist();
+  renderNovo(); if (!$("#aba-tudo").hidden) renderTudo(); contaAlteracoes();
+})();
+</script>
+</body>
+</html>

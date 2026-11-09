@@ -8,7 +8,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from . import audio, render, tts
-from .util import NOTAS, RAIZ, escrever_json, falhar, ler_json, log, nota, resumo_github, slugify
+from .util import NOTAS, RAIZ, escrever_json, etapa, falhar, ler_json, log, nota, resumo_github, slugify
 
 HIST = RAIZ / "historico" / "temas.json"
 
@@ -41,7 +41,9 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         if not chave("GEMINI_API_KEY"):
             falhar("Falta a secret **GEMINI_API_KEY** (chave do Google AI Studio). Ela escreve o roteiro, checa fatos e narra. "
                    "Adicione em Settings → Secrets and variables → Actions → New repository secret.")
+        etapa("pesquisa", "Pesquisa de tema no YouTube")
         pesquisa = research.pesquisar(cfg, historico(), data_hoje)
+        etapa("fatos", "Checagem de fatos nas fontes")
         escolhido = None
         for cand in pesquisa["ranking"][:3]:
             log(f"tentando o tema: {cand['tema']}")
@@ -53,6 +55,7 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         if not escolhido:
             falhar("Nenhum tema do dia passou na checagem de fatos (CRIVOs 2 e 3). Nada foi publicado.")
         pesquisa["vencedor"] = escolhido
+        etapa("roteiro", "Roteiro")
         roteiro = script.escrever(escolhido, fatos, cfg, data_hoje)
 
     slug = roteiro.get("slug") or slugify(roteiro.get("tema", "video"))
@@ -67,22 +70,29 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         escrever_json(pasta / "fatos.json", fatos)
 
     # 4. narração
+    etapa("narracao", "Narração e alinhamento das palavras")
     narr = tts.narrar(roteiro, cfg, pasta)
     # 5. animação
+    etapa("cenas", "Montagem das cenas e prévia de layout")
     data = render.montar_timeline(roteiro, narr, cfg)
     escrever_json(pasta / "timeline.json", data)
     issues = render.previa(data, pasta)
     if issues:
         nota(f"CRIVO 5: {len(issues)} alerta(s) de layout na prévia (ver previa_crivo5.png): "
              + "; ".join(f"{i['seg']}:{i['tipo']}" for i in issues[:8]))
+    etapa("audio", "Trilha, efeitos e mixagem")
     mix, medidas = audio.mixar(data["segments"], data["duration"], pasta, cfg)
     nome = f"{slug}_{'curto' if curto else 'longo'}.mp4"
+    etapa("render", "Render quadro a quadro")
     video = render.render(data, mix, pasta, nome, int(cfg["visual"].get("workers", 0)))
+    etapa("conferencia", "Conferência do arquivo e prévia leve")
     conf = render.conferir(video, data, pasta)
     prev = render.previa_leve(video, pasta, float(cfg["entrega"].get("limite_previa_mb", 30)))
     # 6. thumbs
+    etapa("thumbs", "Thumbnails")
     th = render.thumbs(roteiro["thumb"], cfg, pasta, curto)
     # 7. pacote
+    etapa("pacote", "Pacote de publicação")
     from . import publish
     pacote = publish.escrever(roteiro, data, pesquisa, fatos, narr["voz"], conf, medidas, issues, pasta, cfg, data_hoje, modo)
     for p in pasta.glob("_*"):
