@@ -127,7 +127,8 @@ def edge_trecho(texto: str, voz: str, rate: str, out_mp3: Path):
 def normalizar_wav(src: Path, dst: Path):
     run(["ffmpeg", "-v", "error", "-y", "-i", src, "-af",
          "silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
-         "silenceremove=start_periods=1:start_threshold=-45dB,areverse,aresample=44100",
+         "silenceremove=start_periods=1:start_threshold=-45dB,areverse,aresample=44100,"
+         "afade=t=in:d=0.006,adelay=70:all=1,apad=pad_dur=0.1",
          "-ac", "1", "-sample_fmt", "s16", dst])
 
 
@@ -184,6 +185,37 @@ def alinhar(palavras: list[str], asr: list[dict] | None, dur: float):
     return tempos, casadas
 
 
+# ---------------------------------------------------------------- pronúncia
+def falado(texto: str, pron: dict | None) -> str:
+    """Troca termos pela grafia que a voz pronuncia certo (ex.: GPON → Gêpon). A legenda continua com o original."""
+    for termo, como in (pron or {}).items():
+        texto = re.sub(r"(?<![\w])" + re.escape(termo) + r"(?![\w])", como, texto)
+    return texto
+
+
+# ---------------------------------------------------------------- cortes no silêncio
+def _rms_frames(wav: Path, passo: float = 0.01):
+    import numpy as np
+    with wave.open(str(wav)) as w:
+        sr = w.getframerate()
+        x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+    n = max(1, int(sr * passo))
+    m = len(x) // n
+    rms = np.sqrt((x[: m * n].reshape(m, n) ** 2).mean(1) + 1e-12)
+    return rms, passo
+
+
+def _no_silencio(rms, passo: float, alvo: float, lo: float, hi: float) -> float:
+    """Ponto mais silencioso entre lo e hi (empate: o mais perto do alvo). Evita cortar no meio da fala."""
+    import numpy as np
+    a, b = max(0, int(lo / passo)), min(len(rms), int(hi / passo) + 1)
+    if b - a < 3:
+        return alvo
+    janela = np.convolve(rms[a:b], np.ones(5) / 5, mode="same")  # 50 ms
+    custo = 20 * np.log10(janela + 1e-9) + 0.8 * np.abs(np.arange(a, b) * passo - alvo)
+    return float((a + int(np.argmin(custo))) * passo)
+
+
 # ---------------------------------------------------------------- orquestração
 def _trechos(roteiro: dict) -> list[list[dict]]:
     if roteiro["formato"] == "curto":
@@ -196,8 +228,9 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
     ncfg = cfg["narracao"]
     aud = pasta / "audio"
     aud.mkdir(parents=True, exist_ok=True)
+    pron = ncfg.get("pronuncia") or {}
     trechos = _trechos(roteiro)
-    textos = [" ".join(sc["text"] for sc in tr) for tr in trechos]
+    textos = [falado(" ".join(sc["text"] for sc in tr), pron) for tr in trechos]
     provedor = ncfg.get("provedor", "auto")
     usado = None
     key = chave("GEMINI_API_KEY")
@@ -228,6 +261,9 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
             if not usado:
                 nota("Narração: nenhum modelo Gemini TTS gerou o áudio completo; refiz tudo no edge-tts (sem misturar vozes).")
     if not usado:
+        # edge-tts é grátis e rápido: narra cada cena separada, então nunca há corte no meio da fala
+        trechos = [[sc] for tr in _trechos(roteiro) for sc in tr]
+        textos = [falado(tr[0]["text"], pron) for tr in trechos]
         for i, tx in enumerate(textos):
             mp3 = aud / f"raw_{i}.mp3"
             edge_trecho(tx, ncfg["edge_voz"], ncfg["edge_velocidade"], mp3)
@@ -248,7 +284,7 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         if asr:
             total_asr += len(asr)
             total_rot += len(todas)
-        tempos, casadas = alinhar(todas, asr, dur)
+        tempos, casadas = alinhar([falado(w, pron) for w in todas], asr, dur)
         if asr:
             log(f"trecho {i}: {dur:.1f}s, {casadas}/{len(todas)} palavras casadas com o ASR")
         k = 0
@@ -256,16 +292,22 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         for ws in palavras_cena:
             lim.append((k, k + len(ws) - 1))
             k += len(ws)
+        # pontos de corte entre cenas: no trecho mais silencioso perto da pausa entre as frases
+        cortes = [0.0]
+        if len(tr) > 1:
+            rms, passo = _rms_frames(norm)
+            for j in range(len(tr) - 1):
+                fim, prox = tempos[lim[j][1]][1], tempos[lim[j + 1][0]][0]
+                alvo = (fim + prox) / 2
+                cortes.append(_no_silencio(rms, passo, alvo, min(fim, alvo) - 0.45, max(prox, alvo) + 0.45))
+        cortes.append(dur)
         for j, sc in enumerate(tr):
             a, b = lim[j]
-            ini = tempos[a][0]
-            fim = tempos[b][1]
-            ant = tempos[lim[j - 1][1]][1] if j else 0.0
-            prox = tempos[lim[j + 1][0]][0] if j + 1 < len(tr) else dur
-            c0 = max(0.0, (ant + ini) / 2 if j else 0.0, ini - 0.08)
-            c1 = min(dur, (fim + prox) / 2 if j + 1 < len(tr) else dur, fim + 0.18)
+            c0, c1 = cortes[j], max(cortes[j + 1], cortes[j] + 0.1)
             wav = aud / f"cena_{sc['id']}.wav"
+            fo = max(0.0, c1 - c0 - 0.012)
             run(["ffmpeg", "-v", "error", "-y", "-i", norm, "-ss", f"{c0:.3f}", "-to", f"{c1:.3f}",
+                 "-af", f"afade=t=in:d=0.008,afade=t=out:st={fo:.3f}:d=0.012",
                  "-ar", "44100", "-ac", "1", "-sample_fmt", "s16", wav])
             words = [{"w": todas[q], "s": max(0.0, tempos[q][0] - c0), "e": max(0.0, tempos[q][1] - c0)} for q in range(a, b + 1)]
             cenas[sc["id"]] = {"wav": str(wav), "dur": duracao(wav), "words": words}

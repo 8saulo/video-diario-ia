@@ -83,6 +83,8 @@
     return { d, n, dec };
   }
   function countUp(c, nb, p, at, dur) {
+    const neg = /[-−]/.test(p.prefix || '') || (isNum(p.value) && p.value < 0);
+    if (p.count === false || neg) return;  // negativo (ex.: −27 dBm) contando a partir de "−0" parece defeito
     if (isNum(p.value) && !nb.ano) c.counters.push({ el: nb.n, from: isNum(p.from) ? p.from : 0, to: p.value, dec: nb.dec, at, dur: dur || 1.3 });
   }
   function hlColor(tl, spans, at) {
@@ -136,12 +138,12 @@
     if (sub) { sub.textContent = p.sub; css(sub, { width: c.cw + 'px' }); fit(sub, c.port ? 48 : 46, 28, c.cw, 150); }
     const used = (tile ? (c.port ? 226 : 196) : 0) + (eb ? 90 : 0) + (sub ? sub.getBoundingClientRect().height + 26 : 0);
     fit(nb.d, c.port ? 300 : 320, 90, c.cw, c.ch - used);
-    const ring = el('div', 'ring', c.box); css(ring, { width: '640px', height: '640px', left: '50%', top: '50%', marginLeft: '-320px', marginTop: '-320px' });
+    const ring = el('div', 'ring', c.box); css(ring, { width: '640px', height: '640px', left: '50%', top: '50%', marginLeft: '-320px', marginTop: '-320px', opacity: 0, visibility: 'hidden' });
     if (tile) { popIn(c.tl, tile.tile, 0.05); drawOn(c.tl, tile.svg, 0.15, 0.8); }
     if (eb) popIn(c.tl, eb, 0.1);
     c.tl.fromTo(nb.d, { autoAlpha: 0, scale: 0.72 }, { autoAlpha: 1, scale: 1, duration: 0.6, ease: 'back.out(1.6)' }, 0.25);
     countUp(c, nb, p, 0.3, 1.3);
-    c.tl.fromTo(ring, { autoAlpha: 0.9, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.9, ease: 'power2.out' }, 1.45);
+    c.tl.fromTo(ring, { autoAlpha: 0.9, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.9, ease: 'power2.out', immediateRender: false }, 1.45);
     c.tl.fromTo(nb.d, { textShadow: '0 0 0px rgba(255,79,18,0)' }, { textShadow: '0 0 60px rgba(255,79,18,.55)', duration: 0.4 }, 1.5);
     if (sub) riseIn(c.tl, sub, 1.2);
   };

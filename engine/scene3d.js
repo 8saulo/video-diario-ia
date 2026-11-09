@@ -257,7 +257,7 @@
     R.setPixelRatio(data.scale3d || 0.75); R.setSize(W, H);
     R.outputColorSpace = THREE.SRGBColorSpace;
     R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.35;
-    const cv = R.domElement; cv.id = 'gl3d';
+    const cv = R.domElement; cv.id = 'gl3d'; W3D.cv = cv;
     stage.appendChild(cv);
     S = new THREE.Scene(); S.background = new THREE.Color(0x070b16); S.fog = new THREE.Fog(0x0a1020, 70, 240);
     C = new THREE.PerspectiveCamera(data.h > data.w ? 50 : 38, W / H, 0.1, 400);
@@ -301,6 +301,10 @@
     OBJ.ring.material.opacity = ringOn ? 0.35 * pulse : 0;
     OBJ.ringM.material.opacity = ringOn ? 0.9 : 0;
     OBJ.ringM.scale.setScalar(ringOn ? 1 + 0.08 * pulse : 1);
+    // troca de plano suave: 0,25 s de entrada e 0,2 s de saída a partir do fundo escuro
+    const fin = seg ? Math.min(1, lt / 0.25) : 1, fout = seg ? Math.min(1, Math.max(0, (d - lt) / 0.2)) : 1;
+    const f = idx === 0 && lt < 0.25 ? 1 : Math.max(0.12, Math.min(fin, fout));
+    if (W3D.cv) W3D.cv.style.opacity = f.toFixed(3);
     R.render(S, C);
   };
 

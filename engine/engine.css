@@ -85,7 +85,7 @@ html, body { background: #000; overflow: hidden; }
 #shade3d { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(5,7,13,.88) 0%, rgba(5,7,13,.62) 30%, rgba(5,7,13,.08) 47%, rgba(5,7,13,0) 58%, rgba(5,7,13,.25) 68%, rgba(5,7,13,.8) 86%, rgba(5,7,13,.92) 100%); }
 .land #shade3d { background: linear-gradient(90deg, rgba(5,7,13,.85) 0%, rgba(5,7,13,.5) 40%, rgba(5,7,13,0) 62%), linear-gradient(180deg, transparent 70%, rgba(5,7,13,.85) 100%); }
-.mode3d #bg .orb, .mode3d #grid { display: none; }
+.mode3d #bg .orb, .mode3d #grid, .mode3d .rays, .mode3d .ring { display: none; }
 .port.mode3d .box { top: 240px; bottom: 1110px; }
 .land.mode3d .box { right: 900px; }
 .mode3d .card { background: linear-gradient(180deg, rgba(22,26,36,.86), rgba(14,17,24,.86)); }

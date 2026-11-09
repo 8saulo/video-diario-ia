@@ -51,6 +51,8 @@ narracao:
     - tts
   edge_voz: pt-BR-AntonioNeural     # alternativa: pt-BR-FranciscaNeural
   edge_velocidade: "+10%"
+  pronuncia:                        # só muda o que a voz fala; a legenda mantém o termo original
+    GPON: Gêpon
 
 # ---------------- VISUAL ----------------
 visual:
