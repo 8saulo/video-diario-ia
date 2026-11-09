@@ -67,9 +67,49 @@ def _pub_padrao(roteiro: dict) -> dict:
                        "horario": "19h–21h"}}
 
 
+def _texto(v) -> str:
+    if isinstance(v, (list, tuple)):
+        return " ".join(_texto(x) for x in v if x)
+    return "" if v is None else str(v)
+
+
+def _lista(v) -> list:
+    if v is None or v == "":
+        return []
+    return [str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)]
+
+
+def _sim_nao(v, padrao_resp: str, padrao_motivo: str) -> dict:
+    if isinstance(v, dict):
+        return {"resposta": _texto(v.get("resposta")) or padrao_resp, "motivo": _texto(v.get("motivo")) or padrao_motivo}
+    return {"resposta": _texto(v) or padrao_resp, "motivo": padrao_motivo}
+
+
+def normalizar_publicacao(pub: dict, roteiro: dict) -> dict:
+    """Os modelos às vezes devolvem campos no formato errado (ex.: 3 títulos dentro de 'titulo').
+    Aqui cada campo vira o tipo esperado: o 1º título é o principal e os outros vão para 'alternativos'."""
+    base = _pub_padrao(roteiro)
+    pub = pub if isinstance(pub, dict) else {}
+    yt = dict(base["youtube"], **(pub.get("youtube") if isinstance(pub.get("youtube"), dict) else {}))
+    tk = dict(base["tiktok"], **(pub.get("tiktok") if isinstance(pub.get("tiktok"), dict) else {}))
+    titulos = _lista(yt.get("titulo")) or [base["youtube"]["titulo"]]
+    yt["titulo"] = titulos[0]
+    yt["alternativos"] = [t for t in titulos[1:] + _lista(yt.get("alternativos")) if t != titulos[0]]
+    for k in ("abertura", "cta", "aviso", "comentario_fixado", "categoria", "horario"):
+        yt[k] = _texto(yt.get(k))
+    for k in ("topicos", "hashtags", "tags"):
+        yt[k] = _lista(yt.get(k))
+    yt["sintetico"] = _sim_nao(yt.get("sintetico"), "Não", "animação claramente não realista; voz sintética genérica.")
+    for k in ("legenda", "capa", "primeira_frase", "som", "horario"):
+        tk[k] = _texto(tk.get(k))
+    tk["hashtags"] = _lista(tk.get("hashtags"))
+    tk["rotulo_ia"] = _sim_nao(tk.get("rotulo_ia"), "Sim", "narração com voz sintética.")
+    return {"youtube": yt, "tiktok": tk}
+
+
 def escrever(roteiro, data, pesquisa, fatos, voz, conf, medidas, issues, pasta: Path, cfg, data_hoje, modo) -> dict:
     curto = roteiro["formato"] == "curto"
-    pub = roteiro.get("publicacao") or _pub_padrao(roteiro)
+    pub = normalizar_publicacao(roteiro.get("publicacao"), roteiro)
     yt, tk = pub["youtube"], pub["tiktok"]
     titulo = yt["titulo"].strip()
     if curto and "#shorts" not in titulo.lower():

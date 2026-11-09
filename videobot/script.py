@@ -156,10 +156,13 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
         if pal > 4:
             err.append(f"a thumb tem {pal} palavras grandes; máximo 4")
     yt = (r.get("publicacao") or {}).get("youtube") or {}
-    if not yt.get("titulo"):
+    titulo = yt.get("titulo")
+    if isinstance(titulo, list):  # alguns modelos mandam várias opções; a 1ª vira o título (publish.normalizar_publicacao)
+        titulo = str(titulo[0]) if titulo else ""
+    if not titulo:
         err.append("faltou publicacao.youtube.titulo")
-    elif len(yt["titulo"]) > 70:
-        err.append(f"título com {len(yt['titulo'])} caracteres; máximo 70")
+    elif len(titulo) > 70:
+        err.append(f"título com {len(titulo)} caracteres; máximo 70")
     if not (r.get("publicacao") or {}).get("tiktok"):
         err.append("faltou publicacao.tiktok")
     return err

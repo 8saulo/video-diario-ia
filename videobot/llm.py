@@ -198,6 +198,10 @@ def _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max)
             st, txt, espera, msg = _openai(prov, m, msgs, temperatura, max_tokens)
         if st == 200 and txt:
             return st, txt, espera, msg
+        teto = re.search(r"max_(?:completion_)?tokens`? must be (?:less than or equal to|<=) `?(\d+)", msg or "")
+        if st == 400 and teto and int(teto.group(1)) < max_tokens and tentativa < 2:
+            max_tokens = int(teto.group(1))  # o modelo aceita respostas menores: refaz dentro do limite dele
+            continue
         if st == 429 and 0 < espera <= espera_max and tentativa < 2:
             log(f"  429 em {prov}/{m}; aguardando {espera:.0f}s")
             time.sleep(espera + 1)

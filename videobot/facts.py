@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import html as H
+import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
@@ -12,8 +13,8 @@ from urllib.parse import urlparse
 import requests
 
 from .busca import buscar
-from .llm import gerar_json
-from .util import log, nota
+from .llm import extrair_json, gerar, gerar_json
+from .util import log, nota, sem_acento
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 RUINS = ("medium.com", "blogspot.", "wordpress.com", "substack.com", "linkedin.com", "quora.com", "reddit.com", "youtube.com", "tiktok.com",
@@ -121,7 +122,20 @@ def _verificar(f: dict) -> dict:
         return dict(f, ok=False, motivo="número(s) não encontrado(s) na página: " + ", ".join(faltando), dominio=dom)
     if not nums and not achou_trecho:
         return dict(f, ok=False, motivo="trecho citado não encontrado na página", dominio=dom)
+    if nums and not achou_trecho and not any(_numero_forte(n) for n in nums):
+        # "1", "4", "6"... aparecem em qualquer página: sem a frase citada, não dá para dizer que o fato está lá
+        return dict(f, ok=False, motivo="só números curtos (" + ", ".join(nums) + ") e a frase citada não está na página", dominio=dom)
     return dict(f, ok=True, conferidos=conferidos, dominio=dom)
+
+
+def _numero_forte(n: str) -> bool:
+    """Número específico o bastante para ser conferido sozinho: 3+ algarismos, decimal, % ou escala (bn, trillion...)."""
+    t = n.strip().lower()
+    if re.search(r"\d[.,]\d", t) or "%" in t:
+        return True
+    if re.search(r"\d\s*(thousand|million|billion|trillion|mil|milh|bilh|trilh|bn|tn|trn|k\b|m\b|b\b)", t):
+        return True
+    return len(re.sub(r"\D", "", t)) >= 3
 
 
 CONFIAVEIS = ("reuters.com", "apnews.com", "afp.com", "cnbc.com", "bloomberg.com", "wsj.com", "ft.com", "theverge.com", "arstechnica.com",
@@ -185,20 +199,82 @@ Regras:
 - "url": a url da FONTE de onde o trecho saiu, exatamente como está acima.
 - "afirmacao": o fato reescrito em PT-BR, claro e fiel ao trecho.
 - Ignore publicidade, menus, links e números soltos sem contexto. Se uma fonte não tiver nada útil, pule.
-- No máximo 8 fatos por fonte.
+- No máximo 4 fatos por fonte e 12 no total: escolha os mais fortes. Seja breve em "obs".
+- Use exatamente os nomes de campo abaixo, sem acento.
 
 Responda SOMENTE com JSON:
 {{"fatos": [{{"afirmacao": "...", "numeros": ["..."], "fonte": "nome do veículo", "url": "https://...", "data": "DD/MM/AAAA ou vazio", "trecho": "...", "lado": "a favor|contra|neutro", "obs": ""}}]}}
 
 {blocos}"""
     try:
-        js, _, modelo = gerar_json(prompt, cfg, temperatura=0.2, max_tokens=4000)
+        txt, modelo = gerar(prompt, cfg, temperatura=0.2, max_tokens=6000)
     except Exception as e:
-        log(f"  extração falhou neste lote ({str(e)[:120]})")
+        log(f"  extração falhou neste lote ({str(e)[:400]})")
         return [], ""
-    fatos = js.get("fatos") if isinstance(js, dict) else js
+    try:
+        js = extrair_json(txt)
+        fatos = js.get("fatos") if isinstance(js, dict) else js
+    except Exception:
+        fatos = _objetos_completos(txt)  # resposta cortada: aproveita os fatos que vieram inteiros
+        log(f"  resposta cortada neste lote; aproveitei {len(fatos)} fato(s) completo(s)")
     urls = {p["url"] for p in paginas}
-    return [f for f in (fatos or []) if isinstance(f, dict) and f.get("url") in urls], modelo
+    dom = {p["url"]: p["dominio"] for p in paginas}
+    out = []
+    for f in fatos or []:
+        f = _normalizar(f)
+        if f and f["url"] in urls:
+            f["fonte"] = f["fonte"] or dom[f["url"]]
+            out.append(f)
+    return out, modelo
+
+
+def _normalizar(f) -> dict | None:
+    """Padroniza os campos de um fato vindo da IA (aceita 'afirmação', números como texto etc.).
+    Fato sem afirmação, sem url ou sem número/trecho é descartado."""
+    if not isinstance(f, dict):
+        return None
+    g = {sem_acento(str(k)).lower().strip(): v for k, v in f.items()}
+    afirm = str(g.get("afirmacao") or g.get("fato") or g.get("claim") or "").strip()
+    url = str(g.get("url") or "").strip()
+    nums = g.get("numeros") or g.get("numbers") or []
+    if isinstance(nums, (str, int, float)):
+        nums = [nums]
+    nums = [str(n).strip() for n in nums if str(n).strip()]
+    trecho = str(g.get("trecho") or g.get("quote") or "").strip()
+    if not afirm or not url or not (nums or trecho):
+        return None
+    return {"afirmacao": afirm, "numeros": nums, "fonte": str(g.get("fonte") or "").strip(), "url": url,
+            "data": str(g.get("data") or "").strip(), "trecho": trecho, "lado": str(g.get("lado") or "neutro").strip(),
+            "obs": str(g.get("obs") or "").strip()}
+
+
+def _objetos_completos(txt: str) -> list[dict]:
+    """Objetos JSON inteiros dentro de um texto cortado no meio (ignora o último, incompleto)."""
+    out, nivel, ini, em_str, esc = [], 0, -1, False, False
+    i0 = txt.find("[")
+    for i, ch in enumerate(txt[i0 + 1:] if i0 >= 0 else txt, start=(i0 + 1 if i0 >= 0 else 0)):
+        if em_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                em_str = False
+            continue
+        if ch == '"':
+            em_str, esc = True, False
+        elif ch == "{":
+            if nivel == 0:
+                ini = i
+            nivel += 1
+        elif ch == "}" and nivel:
+            nivel -= 1
+            if nivel == 0:
+                try:
+                    out.append(json.loads(txt[ini:i + 1]))
+                except json.JSONDecodeError:
+                    pass
+    return out
 
 
 def _lotes(paginas: list[dict], max_chars: int) -> list[list[dict]]:
