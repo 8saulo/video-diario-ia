@@ -92,6 +92,17 @@
       if (s.classList.contains('hl')) tl.fromTo(s, { color: '#fafafa' }, { color: getAcc(), duration: 0.3 }, at + i * 0.06 + 0.35);
     });
   }
+  function applyTheme(root) {
+    const a = ST.theme.accent, m = /^#?([0-9a-f]{6})$/i.exec(a || '');
+    root.style.setProperty('--acc', a); root.style.setProperty('--acc2', ST.theme.accent2);
+    if (m) {
+      const n = parseInt(m[1], 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+      root.style.setProperty('--acc-rgb', r + ',' + g + ',' + b);
+      const L = v => Math.round(v + (255 - v) * 0.35);
+      if (!ST.theme.accentSoft) root.style.setProperty('--acc-soft', 'rgb(' + L(r) + ',' + L(g) + ',' + L(b) + ')');
+    }
+    if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
+  }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
 
   // ---------- templates ----------
@@ -144,7 +155,7 @@
     c.tl.fromTo(nb.d, { autoAlpha: 0, scale: 0.72 }, { autoAlpha: 1, scale: 1, duration: 0.6, ease: 'back.out(1.6)' }, 0.25);
     countUp(c, nb, p, 0.3, 1.3);
     c.tl.fromTo(ring, { autoAlpha: 0.9, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.9, ease: 'power2.out', immediateRender: false }, 1.45);
-    c.tl.fromTo(nb.d, { textShadow: '0 0 0px rgba(255,79,18,0)' }, { textShadow: '0 0 60px rgba(255,79,18,.55)', duration: 0.4 }, 1.5);
+    c.tl.fromTo(nb.d, { textShadow: '0 0 0px rgba(var(--acc-rgb),0)' }, { textShadow: '0 0 60px rgba(var(--acc-rgb),.55)', duration: 0.4 }, 1.5);
     if (sub) riseIn(c.tl, sub, 1.2);
   };
 
@@ -176,7 +187,7 @@
       return { k, nb, s, bd };
     });
     const vs = el('div', 'chip', row, 'VS');
-    css(vs, { position: 'absolute', width: '120px', height: '120px', borderRadius: '50%', fontSize: '52px', left: '50%', top: '50%', marginLeft: '-60px', marginTop: '-60px', boxShadow: '0 0 0 10px var(--ink-900), 0 0 40px rgba(255,79,18,.5)' });
+    css(vs, { position: 'absolute', width: '120px', height: '120px', borderRadius: '50%', fontSize: '52px', left: '50%', top: '50%', marginLeft: '-60px', marginTop: '-60px', boxShadow: '0 0 0 10px var(--ink-900), 0 0 40px rgba(var(--acc-rgb),.5)' });
     // limita altura total
     const total = col.getBoundingClientRect().height;
     if (total > c.ch) css(col, { transform: 'scale(' + (c.ch / total).toFixed(3) + ')' });
@@ -201,7 +212,7 @@
       const r = el('div', 'card chk', col);
       css(r, { display: 'flex', alignItems: 'center', gap: '30px', padding: '22px 34px 22px 22px', borderRadius: '28px' });
       const gw = el('div', 'abs', r); css(gw, { inset: '0' });
-      const glow = el('div', 'abs', gw); css(glow, { inset: '0', borderRadius: '28px', boxShadow: 'inset 0 0 0 3px var(--acc), 0 0 40px rgba(255,79,18,.22)' });
+      const glow = el('div', 'abs', gw); css(glow, { inset: '0', borderRadius: '28px', boxShadow: 'inset 0 0 0 3px var(--acc), 0 0 40px rgba(var(--acc-rgb),.22)' });
       const ch = el('div', 'chip', r, p.numbered === false ? window.iconSVG('check', 4).replace('<circle cx="24" cy="24" r="19"/>', '') : String(i + 1));
       css(ch, { width: '84px', height: '84px', fontSize: '50px', position: 'relative' });
       if (p.numbered === false) css(ch.querySelector('svg'), { width: '56px', height: '56px' });
@@ -247,7 +258,7 @@
       const frac = Math.max(0.04, Math.abs(b.value || 0) / mx);
       css(fill, { left: '0', top: '0', bottom: '0', width: (frac * 100).toFixed(2) + '%', borderRadius: '18px', transformOrigin: '0 50%',
         background: b.highlight ? 'linear-gradient(90deg, var(--acc), var(--acc-soft))' : 'linear-gradient(90deg, var(--ink-500), var(--fog-600))',
-        boxShadow: b.highlight ? '0 0 34px rgba(255,79,18,.45)' : 'none' });
+        boxShadow: b.highlight ? '0 0 34px rgba(var(--acc-rgb),.45)' : 'none' });
       const vb = numBlock(tr, { value: b.value, prefix: b.prefix || p.prefix, suffix: b.suffix || p.suffix || '', decimals: b.decimals != null ? b.decimals : p.decimals, text: b.text });
       const inside = frac > 0.55;
       css(vb.d, { position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '50px', color: inside ? 'var(--ink-950)' : 'var(--fog-50)',
@@ -448,7 +459,7 @@
     const g = el('div', 'chk', col); css(g, { position: 'relative', width: S + 'px', height: S + 'px', flex: 'none' });
     const r = 220, Cc = 2 * Math.PI * r;
     g.innerHTML = '<svg viewBox="0 0 520 520" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="260" cy="260" r="220" fill="none" stroke="#212126" stroke-width="40"/>' +
-      '<circle class="arc" cx="260" cy="260" r="220" fill="none" stroke="' + getAcc() + '" stroke-width="40" stroke-linecap="round" stroke-dasharray="' + Cc + ' ' + Cc + '" style="filter:drop-shadow(0 0 14px rgba(255,79,18,.6))"/></svg>';
+      '<circle class="arc" cx="260" cy="260" r="220" fill="none" stroke="' + getAcc() + '" stroke-width="40" stroke-linecap="round" stroke-dasharray="' + Cc + ' ' + Cc + '" style="filter:drop-shadow(0 0 14px rgba(var(--acc-rgb),.6))"/></svg>';
     const arc = g.querySelector('.arc');
     const center = el('div', 'abs', g); css(center, { inset: '0', display: 'grid', placeItems: 'center' });
     const nb = numBlock(center, { value: v, suffix: p.suffix == null ? '%' : p.suffix, decimals: p.decimals || 0 });
@@ -518,7 +529,7 @@
     } else {
       const label = p.button || (kind === 'subscribe' ? 'INSCREVA-SE' : kind === 'like' ? 'CURTIR' : 'COMENTAR');
       const b = el('div', 'pill chk', row, '<span style="width:58px;height:58px;display:inline-block;margin-right:18px">' + window.iconSVG(kind === 'subscribe' ? 'play' : kind === 'like' ? 'heart' : 'chat', 3.4) + '</span>' + esc(label));
-      css(b, { fontSize: '50px', background: 'var(--acc)', color: 'var(--ink-950)', boxShadow: '0 0 60px rgba(255,79,18,.45)' });
+      css(b, { fontSize: '50px', background: 'var(--acc)', color: 'var(--ink-950)', boxShadow: '0 0 60px rgba(var(--acc-rgb),.45)' });
       btns = [b];
     }
     fit(h, c.port ? 112 : 120, 50, c.cw, c.ch - 260 - (sub ? 120 : 0));
@@ -589,6 +600,7 @@
     const hud = el('div', '', stage); hud.id = 'hud';
     HUD.chip = el('div', '', hud, '<span class="dot"></span><span class="t"></span>'); HUD.chip.id = 'chip';
     HUD.chipT = HUD.chip.querySelector('.t');
+    HUD.credit = el('div', '', hud); HUD.credit.id = 'credit';
     HUD.brand = el('div', '', hud); HUD.brand.id = 'brand'; HUD.brand.textContent = ST.brand || '';
     if (ST.brandLogo) {  // marca d'água discreta (logo do canal)
       HUD.logo = el('img', '', hud); HUD.logo.id = 'brandlogo'; HUD.logo.src = ST.brandLogo; HUD.logo.alt = '';
@@ -602,8 +614,16 @@
     (ST.segments || []).forEach(s => { if (s.kind === 'chapter' && s.start > 0.5) { const k = el('div', 'tick', HUD.prog); k.style.left = (100 * s.start / ST.duration).toFixed(3) + '%'; } });
     HUD.lastCap = -2; HUD.lastWord = -2; HUD.lastChip = null; HUD.lastSrc = null;
   }
+  let SEGS_N = 0;
   function makeSeg(seg) {
     const root = el('div', 'seg', SCN);
+    const P = seg.params || {};
+    let photoImg = null, photo = null;
+    if (P._photo) {  // foto de fundo da cena (licença livre; crédito em P._credit)
+      photo = el('div', 'photo', root);
+      photoImg = el('img', '', photo); photoImg.src = P._photo; photoImg.alt = '';
+      el('div', 'tint', photo);
+    }
     const cam = el('div', 'cam', root);
     const box = el('div', 'box', cam);
     root.style.visibility = 'visible';
@@ -614,6 +634,11 @@
     try { fn(c, seg.kind === 'chapter' ? seg : (seg.params || {})); }
     catch (err) { box.innerHTML = ''; c.counters = []; T.headline(c, { text: (seg.params && (seg.params.text || seg.params.title)) || seg.text || '' }); seg.error = String(err); }
     tl.fromTo(cam, { scale: 1 }, { scale: seg.kind === 'chapter' ? 1.06 : 1.04, duration: seg.dur, ease: 'none' }, 0);
+    if (photoImg) {  // Ken Burns: zoom e deslize lentos, direção alternada por cena
+      const dir = (SEGS_N++ % 2) ? 1 : -1;
+      tl.fromTo(photoImg, { scale: 1.06, xPercent: -1.6 * dir }, { scale: 1.16, xPercent: 1.6 * dir, duration: seg.dur, ease: 'none' }, 0);
+      tl.fromTo(photo, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: 'power1.out' }, 0);
+    }
     if (seg.dur > 1.2) tl.fromTo(box, { autoAlpha: 1, y: 0, filter: 'blur(0px)' }, { autoAlpha: 0, y: -26, filter: 'blur(8px)', duration: 0.26, ease: 'power2.in', immediateRender: false }, seg.dur - 0.26);
     tl.seek(0, false);
     root.style.visibility = 'hidden';
@@ -640,6 +665,8 @@
     if (chip !== HUD.lastChip) { HUD.chipT.textContent = chip; HUD.chip.style.visibility = chip ? 'visible' : 'hidden'; HUD.lastChip = chip; }
     const src = seg && seg.source ? 'Fonte: ' + seg.source : '';
     if (src !== HUD.lastSrc) { HUD.src.textContent = src; HUD.lastSrc = src; }
+    const cr = seg && seg.params && seg.params._credit ? 'Foto: ' + seg.params._credit : '';
+    if (HUD.credit && cr !== HUD.lastCr) { HUD.credit.textContent = cr; HUD.lastCr = cr; }
     // legendas
     const caps = ST.captions || [];
     let gi = -1;
@@ -697,9 +724,7 @@
     ST.theme = Object.assign({ accent: '#ff4f12', accent2: '#d4ff3a' }, data.theme || {});
     ST.port = data.h > data.w;
     const root = document.documentElement;
-    root.style.setProperty('--acc', ST.theme.accent);
-    root.style.setProperty('--acc2', ST.theme.accent2);
-    if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
+    applyTheme(root);
     STAGE = document.getElementById('stage');
     css(STAGE, { width: data.w + 'px', height: data.h + 'px' });
     STAGE.className = (ST.port ? 'port' : 'land') + (ST.brandLogo ? ' has-logo' : '');
@@ -707,6 +732,11 @@
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
     if (ST.scene3d && window.W3D && window.THREE) { STAGE.classList.add('mode3d'); window.W3D.init(STAGE, ST); }
+    const fotos = [...new Set((ST.segments || []).map(s => s.params && s.params._photo).filter(Boolean))];
+    if (fotos.length) {
+      STAGE.classList.add('mode-photo');
+      await Promise.all(fotos.map(u => { const im = new Image(); im.src = u; return im.decode().catch(() => null); }));
+    }
     SCN = el('div', '', STAGE); css(SCN, { position: 'absolute', inset: '0' });
     ST.segments.forEach(makeSeg);
     buildHud(STAGE);
@@ -751,7 +781,7 @@
     ST = { w: data.w, h: data.h, theme: Object.assign({ accent: '#ff4f12', accent2: '#d4ff3a' }, data.theme || {}), segments: [], duration: 1 };
     const port = data.h > data.w;
     const root = document.documentElement;
-    root.style.setProperty('--acc', ST.theme.accent); root.style.setProperty('--acc2', ST.theme.accent2);
+    applyTheme(root);
     STAGE = document.getElementById('stage');
     css(STAGE, { width: data.w + 'px', height: data.h + 'px' });
     STAGE.className = port ? 'port' : 'land';
@@ -762,10 +792,10 @@
     const icX = port ? (W - icS) / 2 : W - M - icS - 30, icY = port ? 210 : (H - icS) / 2;
     const rw = el('div', 'abs', STAGE); css(rw, { left: (icX + icS / 2 - 1300) + 'px', top: (icY + icS / 2 - 1300) + 'px', width: '2600px', height: '2600px' });
     const rays = el('div', 'rays', rw); css(rays, { left: '0', top: '0', margin: '0', transform: 'rotate(8deg)', opacity: 1.6 });
-    const glow = el('div', 'abs', STAGE); css(glow, { left: (icX - icS * 0.4) + 'px', top: (icY - icS * 0.4) + 'px', width: icS * 1.8 + 'px', height: icS * 1.8 + 'px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,79,18,.55), transparent 60%)' });
+    const glow = el('div', 'abs', STAGE); css(glow, { left: (icX - icS * 0.4) + 'px', top: (icY - icS * 0.4) + 'px', width: icS * 1.8 + 'px', height: icS * 1.8 + 'px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(var(--acc-rgb),.55), transparent 60%)' });
     const icw = el('div', 'abs', STAGE); css(icw, { left: icX + 'px', top: icY + 'px', width: icS + 'px', height: icS + 'px', transform: 'rotate(-6deg)' });
     const tile = el('div', 'tile', icw, window.iconSVG(data.icon || 'ia', 2.6));
-    css(tile.querySelector('svg'), { filter: 'drop-shadow(0 0 26px rgba(255,79,18,.8))' });
+    css(tile.querySelector('svg'), { filter: 'drop-shadow(0 0 26px rgba(var(--acc-rgb),.8))' });
     const txW = port ? W - 2 * M : icX - M - 40;
     const col = el('div', 'abs', STAGE); css(col, { left: M + 'px', width: txW + 'px', display: 'flex', flexDirection: 'column', gap: port ? '22px' : '14px', alignItems: port ? 'center' : 'flex-start' });
     const lines = (data.lines || []).slice(0, 2);
