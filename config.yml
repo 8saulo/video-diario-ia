@@ -53,6 +53,7 @@ narracao:
   edge_velocidade: "+10%"
   pronuncia:                        # só muda o que a voz fala; a legenda mantém o termo original
     GPON: Gêpon
+    ONU: Ó-Ene-U                    # letra por letra
 
 # ---------------- VISUAL ----------------
 visual:
