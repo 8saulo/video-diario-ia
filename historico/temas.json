@@ -36,5 +36,12 @@
     "slug": "data_centers_e_a_conta_de_luz",
     "paleta": "azul",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-10",
+    "tema": "Consumo de energia da IA",
+    "slug": "consumo_de_energia_da_ia",
+    "paleta": "laranja",
+    "referencia": ""
   }
 ]
