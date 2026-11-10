@@ -2,7 +2,7 @@ name: Vídeo diário
 
 on:
   schedule:
-    # Todo dia às 06:17 de Brasília (09:17 UTC). O cron do GitHub é sempre em UTC (Brasília = UTC−3).
+    # Todo dia às 02:00 de Brasília (05:00 UTC). O cron do GitHub é sempre em UTC (Brasília = UTC−3).
     # Para mudar o horário, edite a linha abaixo.
     - cron: "00 5 * * *"
   workflow_dispatch:
@@ -39,8 +39,14 @@ on:
         type: string
         default: ""
 
+      refazer:
+        description: "Refazer um vídeo anterior: número da execução (ex.: 11). Reaproveita roteiro e fatos; refaz narração e render"
+        type: string
+        default: ""
+
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: video-diario
@@ -74,6 +80,17 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
+      - name: Baixar o vídeo a refazer
+        if: ${{ inputs.refazer != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ inputs.refazer }}
+        run: |
+          id=$(gh run list --workflow video-diario.yml --limit 300 --json number,databaseId -q ".[] | select(.number == $N) | .databaseId")
+          test -n "$id" || { echo "execução #$N não encontrada"; exit 1; }
+          gh run download "$id" -n "video-$N" -D refazer
+          ls refazer
+
       - name: Gerar vídeo
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -88,9 +105,11 @@ jobs:
           IN_NARRACAO: ${{ inputs.narracao }}
           IN_VOZ: ${{ inputs.voz }}
           IN_BUSCAS: ${{ inputs.buscas }}
+          IN_REFAZER: ${{ inputs.refazer != '' && 'refazer' || '' }}
         run: |
           python -m videobot run --modo "$IN_MODO" --tema "$IN_TEMA" --formato "$IN_FORMATO" \
-            --duracao "$IN_DURACAO" --narracao "$IN_NARRACAO" --voz "$IN_VOZ" --buscas "$IN_BUSCAS"
+            --duracao "$IN_DURACAO" --narracao "$IN_NARRACAO" --voz "$IN_VOZ" --buscas "$IN_BUSCAS" \
+            --refazer "$IN_REFAZER"
 
       - name: Guardar arquivos da execução
         if: always()

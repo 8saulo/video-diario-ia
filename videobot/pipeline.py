@@ -56,12 +56,41 @@ def escolher_paleta(cfg: dict, hist: list, data: dt.date) -> str:
     return nome
 
 
-def executar(cfg: dict, modo: str = "completo") -> dict:
+def _paleta_do_slug(cfg: dict, slug: str) -> None:
+    """Para refazer: usa a mesma paleta que o vídeo original teve (pelo histórico)."""
+    usada = next((h.get("paleta") for h in reversed(historico()) if h.get("slug") == slug and h.get("paleta")), None)
+    if usada and usada in (cfg["visual"].get("paletas") or {}):
+        cfg["visual"]["paleta"] = usada
+
+
+def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     data_hoje = hoje()
+    orig = None
+    if refazer:
+        orig = Path(refazer)
+        if not (orig / "roteiro.json").exists():
+            achados = sorted(orig.rglob("roteiro.json"))
+            if not achados:
+                falhar(f"Refazer: não achei roteiro.json em {orig}.")
+            orig = achados[0].parent
+        try:
+            data_hoje = dt.date.fromisoformat(orig.name[:10])  # mesma data = mesma tag de Release
+        except ValueError:
+            pass
+        roteiro0 = ler_json(orig / "roteiro.json", {})
+        _paleta_do_slug(cfg, roteiro0.get("slug") or slugify(roteiro0.get("tema", "video")))
     paleta = escolher_paleta(cfg, historico(), data_hoje)
     curto = cfg["formato"] == "curto"
     pesquisa = fatos = None
-    if modo == "demo":
+    if orig:
+        roteiro = roteiro0
+        pesquisa = ler_json(orig / "pesquisa.json", None)
+        fatos = ler_json(orig / "fatos.json", None)
+        cfg["formato"] = roteiro.get("formato", cfg["formato"])
+        curto = cfg["formato"] == "curto"
+        nota(f"Refazendo o vídeo de {data_hoje.isoformat()} ('{roteiro.get('tema', '')}') com o roteiro, os fatos e a "
+             "pesquisa originais; só a narração, a animação e o render foram gerados de novo.")
+    elif modo == "demo":
         roteiro = json.loads((RAIZ / "exemplos" / "demo.json").read_text(encoding="utf-8"))
         roteiro["formato"] = cfg["formato"]
         nota("Modo demo: roteiro fixo de exemplo (sem pesquisa e sem LLM), só para testar motor, voz e render.")
@@ -136,7 +165,7 @@ def executar(cfg: dict, modo: str = "completo") -> dict:
         if p.is_file() and p.suffix in (".wav", ".json", ".txt"):
             p.unlink()
     shutil.rmtree(pasta / "audio", ignore_errors=True)
-    if modo != "demo":
+    if modo != "demo" and not orig:
         registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug, "paleta": paleta,
                         "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],

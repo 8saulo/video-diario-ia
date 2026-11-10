@@ -25,6 +25,7 @@ def main(argv=None):
     r.add_argument("--narracao", choices=["", "auto", "gemini", "edge"], default="")
     r.add_argument("--voz", default="", help="voz do Gemini (ex.: Charon, Kore) ou do edge (ex.: pt-BR-FranciscaNeural)")
     r.add_argument("--buscas", default="", help="buscas extras em inglês separadas por ;")
+    r.add_argument("--refazer", default="", help="pasta de um vídeo anterior (com roteiro.json): refaz narração e render")
     u = sub.add_parser("ui", help="abre a interface local no navegador")
     u.add_argument("--porta", type=int, default=8765)
     u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
@@ -58,7 +59,7 @@ def main(argv=None):
         cfg["tema"]["buscas_extras"] = list(cfg["tema"].get("buscas_extras") or []) + [b.strip() for b in a.buscas.split(";") if b.strip()]
 
     from .pipeline import executar
-    executar(cfg, a.modo)
+    executar(cfg, a.modo, a.refazer.strip())
 
 
 if __name__ == "__main__":
