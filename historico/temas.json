@@ -29,5 +29,12 @@
     "slug": "lancamento_do_claude_2_0_da_anthropic",
     "paleta": "roxo",
     "referencia": "https://www.youtube.com/watch?v=yMnFHFf43Qg"
+  },
+  {
+    "data": "2026-11-10",
+    "tema": "Data centers e a conta de luz",
+    "slug": "data_centers_e_a_conta_de_luz",
+    "paleta": "azul",
+    "referencia": ""
   }
 ]
