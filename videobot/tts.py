@@ -155,7 +155,8 @@ def transcrever(wav: Path, modelo: str = "small") -> list[dict] | None:
 
 
 def alinhar(palavras: list[str], asr: list[dict] | None, dur: float):
-    """Devolve (inicio, fim) de cada palavra do roteiro usando o ASR; interpola o que não casou."""
+    """Devolve (inicio, fim) de cada palavra do roteiro usando o ASR; interpola o que não casou.
+    Também devolve quantas casaram e quais (lista de bool por palavra)."""
     n = len(palavras)
     chaves = ["".join(tokens(p)) for p in palavras]
     tempos: list[list[float] | None] = [None] * n
@@ -168,6 +169,7 @@ def alinhar(palavras: list[str], asr: list[dict] | None, dur: float):
                 if chaves[a + k]:
                     tempos[a + k] = [asr[b + k]["s"], asr[b + k]["e"]]
                     casadas += 1
+    achou = [t is not None for t in tempos]
     # interpolação por número de caracteres entre âncoras
     pesos = [max(1, len(p)) for p in palavras]
     anc = [(-1, 0.0)] + [(i, tempos[i][0]) for i in range(n) if tempos[i]] + [(n, dur)]
@@ -182,7 +184,7 @@ def alinhar(palavras: list[str], asr: list[dict] | None, dur: float):
             d = span * pesos[i] / tot
             tempos[i] = [acc, acc + d * 0.92]
             acc += d
-    return tempos, casadas
+    return tempos, casadas, achou
 
 
 # ---------------------------------------------------------------- pronúncia
@@ -274,6 +276,7 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
     ext = "wav" if usado["provedor"] == "gemini" else "mp3"
     cenas = {}
     total_asr, total_rot = 0, 0
+    mudas = []  # cenas em que o Whisper quase não achou as palavras do roteiro
     for i, tr in enumerate(trechos):
         norm = aud / f"trecho_{i}.wav"
         normalizar_wav(aud / f"raw_{i}.{ext}", norm)
@@ -284,7 +287,7 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         if asr:
             total_asr += len(asr)
             total_rot += len(todas)
-        tempos, casadas = alinhar([falado(w, pron) for w in todas], asr, dur)
+        tempos, casadas, achou = alinhar([falado(w, pron) for w in todas], asr, dur)
         if asr:
             log(f"trecho {i}: {dur:.1f}s, {casadas}/{len(todas)} palavras casadas com o ASR")
         k = 0
@@ -292,6 +295,10 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         for ws in palavras_cena:
             lim.append((k, k + len(ws) - 1))
             k += len(ws)
+        if asr:
+            for sc, (a, b) in zip(tr, lim):
+                if sum(achou[a:b + 1]) < 0.15 * (b - a + 1):
+                    mudas.append(sc["id"])
         # pontos de corte entre cenas: no trecho mais silencioso perto da pausa entre as frases
         cortes = [0.0]
         if len(tr) > 1:
@@ -315,4 +322,14 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         nota(f"Narração: o Gemini falou {total_asr} palavras para {total_rot} do roteiro (leu algo a mais). Refiz no edge-tts.")
         ncfg2 = dict(ncfg, provedor="edge")
         return narrar(roteiro, dict(cfg, narracao=ncfg2), pasta)
+    # o Gemini às vezes devolve o áudio no tamanho certo mas para de falar no meio (o resto é silêncio ou chiado):
+    # o ritmo pela duração passa, então confere cena a cena se o Whisper achou as palavras do roteiro
+    if usado["provedor"] == "gemini" and mudas:
+        nota(f"Narração: o áudio do Gemini não tem fala em {len(mudas)} cena(s) ({', '.join(mudas[:5])}); "
+             "parou de falar no meio. Refiz no edge-tts.")
+        ncfg2 = dict(ncfg, provedor="edge")
+        return narrar(roteiro, dict(cfg, narracao=ncfg2), pasta)
+    if mudas:
+        nota(f"CRIVO NARRAÇÃO: quase nenhuma palavra do roteiro foi ouvida em {', '.join(mudas)}; "
+             "confira a narração antes de publicar.")
     return {"cenas": cenas, "voz": usado}
