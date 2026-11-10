@@ -4,6 +4,8 @@ Regras:
 - Nunca mistura vozes: se qualquer trecho falhar no Gemini, refaz TUDO no edge-tts.
 - Nenhuma instrução de estilo vai no texto (o modelo pode lê-la em voz alta).
 - Menos requisições possível: um pedido por capítulo (longo) ou um só (curto).
+- Se o Gemini parar de falar no meio (o resto vem mudo ou com chiado), refaz no Gemini com um
+  pedido por cena; se ainda falhar, refaz tudo no edge-tts.
 - A chave vai no cabeçalho x-goog-api-key, nunca na URL, e nunca é impressa.
 """
 from __future__ import annotations
@@ -218,8 +220,42 @@ def _no_silencio(rms, passo: float, alvo: float, lo: float, hi: float) -> float:
     return float((a + int(np.argmin(custo))) * passo)
 
 
+def buracos_de_fala(wav: Path, max_pausa: float = 2.5) -> list[tuple[float, float]]:
+    """Trechos sem voz mais longos que max_pausa (inclui o fim do áudio).
+
+    O Gemini às vezes para de falar no meio e devolve o resto em silêncio ou chiado. O Whisper pode
+    "ouvir" palavras repetidas do roteiro nesse chiado, então a conferência aqui é pela energia da voz.
+    """
+    import numpy as np
+    rms, passo = _rms_frames(wav, 0.02)
+    if len(rms) < 10:
+        return []
+    db = 20 * np.log10(rms + 1e-9)
+    ref = float(np.percentile(db, 95))
+    alto = db > max(ref - 28, -50)
+    # fala sobe e desce a cada sílaba; chiado ou zumbido fica quase parado. Janela de 0,6 s:
+    # é voz se tem som acima do limiar e variação de pelo menos 8 dB entre os quadros.
+    jan = 30
+    voz = np.zeros(len(db), bool)
+    for k in range(0, max(1, len(db) - jan + 1), 5):
+        w = db[k:k + jan]
+        if alto[k:k + jan].any() and np.percentile(w, 90) - np.percentile(w, 10) >= 8:
+            voz[k:k + jan] = True
+    out, ini = [], None
+    for k, v in enumerate(list(voz) + [True]):
+        if not v and ini is None:
+            ini = k
+        elif v and ini is not None:
+            if (k - ini) * passo > max_pausa:
+                out.append((ini * passo, min(k, len(voz)) * passo))
+            ini = None
+    return out
+
+
 # ---------------------------------------------------------------- orquestração
-def _trechos(roteiro: dict) -> list[list[dict]]:
+def _trechos(roteiro: dict, por_cena: bool = False) -> list[list[dict]]:
+    if por_cena:
+        return [[sc] for ch in roteiro["chapters"] for sc in ch["scenes"]]
     if roteiro["formato"] == "curto":
         return [[sc for ch in roteiro["chapters"] for sc in ch["scenes"]]]
     return [ch["scenes"] for ch in roteiro["chapters"]]
@@ -231,7 +267,8 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
     aud = pasta / "audio"
     aud.mkdir(parents=True, exist_ok=True)
     pron = ncfg.get("pronuncia") or {}
-    trechos = _trechos(roteiro)
+    por_cena = bool(ncfg.get("_por_cena"))
+    trechos = _trechos(roteiro, por_cena)
     textos = [falado(" ".join(sc["text"] for sc in tr), pron) for tr in trechos]
     provedor = ncfg.get("provedor", "auto")
     usado = None
@@ -281,6 +318,21 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
         norm = aud / f"trecho_{i}.wav"
         normalizar_wav(aud / f"raw_{i}.{ext}", norm)
         dur = duracao(norm)
+        buracos = buracos_de_fala(norm)
+        n_pal = sum(len(sc["text"].split()) for sc in tr)
+        if not buracos and len(tr) > 1 and n_pal / max(dur, 0.1) > 4.6:
+            buracos = [(dur, dur)]  # a fala acabou cedo e o resto era silêncio (já cortado)
+            log(f"  trecho {i}: só {dur:.1f}s de fala para {n_pal} palavras")
+        if buracos:
+            b0, b1 = buracos[0]
+            log(f"  trecho {i}: sem voz de {b0:.1f}s a {b1:.1f}s (de {dur:.1f}s)")
+            if usado["provedor"] == "gemini":
+                if not por_cena:
+                    nota(f"Narração: o Gemini parou de falar em {b0:.1f}s (de {dur:.1f}s); refiz no Gemini com um pedido por cena.")
+                    return narrar(roteiro, dict(cfg, narracao=dict(ncfg, _por_cena=True)), pasta)
+                nota(f"Narração: o Gemini deixou {b1 - b0:.1f}s sem voz mesmo com um pedido por cena; refiz tudo no edge-tts.")
+                return narrar(roteiro, dict(cfg, narracao=dict(ncfg, provedor="edge")), pasta)
+            mudas.extend(sc["id"] for sc in tr)
         palavras_cena = [sc["text"].split() for sc in tr]
         todas = [w for ws in palavras_cena for w in ws]
         asr = transcrever(norm, cfg.get("whisper_modelo", "small"))
