@@ -4,7 +4,7 @@ on:
   schedule:
     # Todo dia às 06:17 de Brasília (09:17 UTC). O cron do GitHub é sempre em UTC (Brasília = UTC−3).
     # Para mudar o horário, edite a linha abaixo.
-    - cron: "17 9 * * *"
+    - cron: "00 5 * * *"
   workflow_dispatch:
     inputs:
       modo:
