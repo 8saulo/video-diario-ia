@@ -43,5 +43,12 @@
     "slug": "consumo_de_energia_da_ia",
     "paleta": "laranja",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-10",
+    "tema": "Modelos de IA abertos vs fechados – impacto econômico, inovação e segurança",
+    "slug": "modelos_de_ia_abertos_vs_fechados_impact",
+    "paleta": "roxo",
+    "referencia": ""
   }
 ]
