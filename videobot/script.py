@@ -6,6 +6,7 @@ import re
 
 from .facts import valores
 from .llm import gerar_json
+from .objetos3d import prompt_catalogo
 from .util import log, nota, slugify
 
 TEMPLATES = """CATÁLOGO DE CENAS (campo "template" + "params"). Use variedade; nunca 3 iguais seguidas.
@@ -69,6 +70,8 @@ REGRAS DO ROTEIRO
 
 {TEMPLATES}
 
+{prompt_catalogo()}
+
 PUBLICAÇÃO
 - youtube.titulo: até 70 caracteres, palavra-chave no começo, número ou pergunta, no máximo 1 emoji{', terminando com #shorts' if curto else ''}. 3 alternativos para A/B.
 - youtube.abertura: 2 linhas com gancho e palavra-chave. topicos: 4 a 6 linhas começando com emoji. cta: pergunta de comentário. aviso: '' ou aviso de finanças/IA.
@@ -79,7 +82,7 @@ PUBLICAÇÃO
 - thumb: {{"lines": [{{"text": "ATÉ 2 PALAVRAS"}}, {{"text": "ATÉ 2 PALAVRAS", "hl": true}}], "number": "um número dos fatos, com algarismos", "numberLabel": "até 4 palavras", "icon": ICONE}} — no máximo 4 palavras grandes no total.
 
 Responda SOMENTE com JSON:
-{{"tema": "...", "chapters": [{{"title": "...", "scenes": [{{"id": "slug_unico", "text": "narração", "template": "...", "params": {{...}}, "fact_ids": [1,2]}}]}}],
+{{"tema": "...", "chapters": [{{"title": "...", "scenes": [{{"id": "slug_unico", "text": "narração", "template": "...", "params": {{...}}, "objetos3d": ["id do catálogo 3D", "..."], "fact_ids": [1,2]}}]}}],
  "thumb": {{...}}, "publicacao": {{"youtube": {{...}}, "tiktok": {{...}}}}}}"""
     if erros:
         p += "\n\nSEU ROTEIRO ANTERIOR TEVE ESTES PROBLEMAS. Corrija todos e devolva o JSON completo:\n- " + "\n- ".join(erros[:40])
@@ -156,10 +159,13 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
         if pal > 4:
             err.append(f"a thumb tem {pal} palavras grandes; máximo 4")
     yt = (r.get("publicacao") or {}).get("youtube") or {}
-    if not yt.get("titulo"):
+    titulo = yt.get("titulo")
+    if isinstance(titulo, list):  # alguns modelos mandam várias opções; a 1ª vira o título (publish.normalizar_publicacao)
+        titulo = str(titulo[0]) if titulo else ""
+    if not titulo:
         err.append("faltou publicacao.youtube.titulo")
-    elif len(yt["titulo"]) > 70:
-        err.append(f"título com {len(yt['titulo'])} caracteres; máximo 70")
+    elif len(titulo) > 70:
+        err.append(f"título com {len(titulo)} caracteres; máximo 70")
     if not (r.get("publicacao") or {}).get("tiktok"):
         err.append("faltou publicacao.tiktok")
     return err

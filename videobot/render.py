@@ -34,6 +34,10 @@ def _logo(v: dict) -> dict:
 
 def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     longo = roteiro["formato"] == "longo"
+    cena3d = roteiro.get("cena3d") or cfg["visual"].get("cena3d") or ""
+    if cena3d and cena3d != "gpon":  # 3D temático: objetos de cada cena (params._3d)
+        from .objetos3d import para_cenas
+        para_cenas(roteiro)
     W, H = (1920, 1080) if longo else (1080, 1920)
     segs, caps = [], []
     t = 0.0
@@ -65,9 +69,9 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
         a["end"] = min(a["end"], b["start"])
     v = cfg["visual"]
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
-            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": roteiro.get("cena3d") or v.get("cena3d") or "",
+            "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": cena3d,
             "scale3d": float(v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
-            "theme": {"accent": v.get("acento", "#ff4f12"), "accent2": v.get("acento2", "#d4ff3a")}}
+            "theme": _tema(v)}
 
 
 # ---------------------------------------------------------------- navegador
@@ -137,6 +141,13 @@ def folha(thumbs, out: Path, cols: int):
     sheet.save(out)
 
 
+def _tema(v: dict) -> dict:
+    t = {"accent": v.get("acento") or "#ff4f12", "accent2": v.get("acento2") or "#d4ff3a"}
+    if v.get("acento_suave"):
+        t["accentSoft"] = v["acento_suave"]
+    return t
+
+
 # ---------------------------------------------------------------- render completo
 def _worker(args):
     data_path, f0, f1, out = args
@@ -149,9 +160,12 @@ def _worker(args):
         enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "image2pipe", "-framerate", str(fps), "-c:v", "mjpeg", "-i", "-",
                                 "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(fps),
                                 "-g", str(fps * 2), "-x264-params", "keyint=" + str(fps * 2), str(out)], stdin=subprocess.PIPE)
+        passo = max(1, (f1 - f0) // 20)
         for f in range(f0, f1):
             pg.evaluate("t => window.renderAt(t)", f / fps)
             enc.stdin.write(_shot(cdp))
+            if (f - f0 + 1) % passo == 0 or f == f1 - 1:
+                print(f"  render {Path(out).stem}: {f - f0 + 1}/{f1 - f0} quadros", flush=True)
         enc.stdin.close()
         enc.wait()
         if enc.returncode:
@@ -227,7 +241,7 @@ def thumbs(info: dict, cfg: dict, pasta: Path, curto: bool) -> list[Path]:
     for nome, w, h in alvos:
         pw, br, pg = _abrir(w, h)
         try:
-            dd = dict(info, w=w, h=h, theme={"accent": v.get("acento"), "accent2": v.get("acento2")})
+            dd = dict(info, w=w, h=h, theme=_tema(v))
             res = pg.evaluate("d => window.bootThumb(d)", dd)
             png = pg.screenshot(type="png")
         finally:

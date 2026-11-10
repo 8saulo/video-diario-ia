@@ -3,6 +3,7 @@
   python -m videobot run                         # usa config.yml
   python -m videobot run --modo demo             # testa motor/voz/render sem pesquisa nem LLM
   python -m videobot run --tema "chips de IA" --formato curto --duracao 60 --narracao gemini --voz Kore
+  python -m videobot ui                          # interface local no navegador
 """
 from __future__ import annotations
 
@@ -24,7 +25,15 @@ def main(argv=None):
     r.add_argument("--narracao", choices=["", "auto", "gemini", "edge"], default="")
     r.add_argument("--voz", default="", help="voz do Gemini (ex.: Charon, Kore) ou do edge (ex.: pt-BR-FranciscaNeural)")
     r.add_argument("--buscas", default="", help="buscas extras em inglês separadas por ;")
+    u = sub.add_parser("ui", help="abre a interface local no navegador")
+    u.add_argument("--porta", type=int, default=8765)
+    u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
     a = ap.parse_args(argv)
+
+    if a.cmd == "ui":
+        from .interface import servir
+        servir(a.porta, not a.sem_navegador)
+        return
 
     from pathlib import Path
     cfg = carregar_config(Path(a.config) if a.config else None)

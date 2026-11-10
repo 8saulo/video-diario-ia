@@ -3,3 +3,4 @@ __pycache__/
 saida/
 engine/vendor/
 .venv/
+config.local.yml

@@ -25,6 +25,11 @@ def log(*a):
     print(f"[{time.time() - _T0:7.1f}s]", *a, flush=True)
 
 
+def etapa(chave_: str, titulo: str):
+    """Marca o início de uma etapa (a interface local usa esta linha para o passo a passo)."""
+    log(f"== ETAPA {chave_}: {titulo}")
+
+
 def nota(txt: str):
     """Registra uma troca/limitação para o relatório final."""
     log("NOTA:", txt)
@@ -71,8 +76,13 @@ def deep_merge(a: dict, b: dict) -> dict:
     return out
 
 
+CONFIG_LOCAL = RAIZ / "config.local.yml"  # ajustes salvos pela interface local (fora do git)
+
+
 def carregar_config(path: Path | None = None, extra: dict | None = None) -> dict:
     cfg = yaml.safe_load((path or RAIZ / "config.yml").read_text(encoding="utf-8"))
+    if path is None and CONFIG_LOCAL.exists():
+        cfg = deep_merge(cfg, yaml.safe_load(CONFIG_LOCAL.read_text(encoding="utf-8")) or {})
     return deep_merge(cfg, extra or {})
 
 
