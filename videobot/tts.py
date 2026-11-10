@@ -365,9 +365,15 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
             c0, c1 = cortes[j], max(cortes[j + 1], cortes[j] + 0.1)
             wav = aud / f"cena_{sc['id']}.wav"
             fo = max(0.0, c1 - c0 - 0.012)
-            run(["ffmpeg", "-v", "error", "-y", "-i", norm, "-ss", f"{c0:.3f}", "-to", f"{c1:.3f}",
-                 "-af", f"afade=t=in:d=0.008,afade=t=out:st={fo:.3f}:d=0.012",
+            # recorta no filtro e zera o relógio antes dos fades: com -ss depois do -i, o afade de saída
+            # usava o tempo do trecho inteiro e emudecia toda cena que começa depois de "fo" segundos
+            run(["ffmpeg", "-v", "error", "-y", "-i", norm,
+                 "-af", f"atrim=start={c0:.3f}:end={c1:.3f},asetpts=PTS-STARTPTS,"
+                        f"afade=t=in:d=0.008,afade=t=out:st={fo:.3f}:d=0.012",
                  "-ar", "44100", "-ac", "1", "-sample_fmt", "s16", wav])
+            rms_c, _ = _rms_frames(wav)
+            if len(rms_c) and float(rms_c.max()) < 10 ** (-45 / 20):
+                raise RuntimeError(f"a cena {sc['id']} ficou muda depois do corte ({c0:.2f}s a {c1:.2f}s do trecho {i})")
             words = [{"w": todas[q], "s": max(0.0, tempos[q][0] - c0), "e": max(0.0, tempos[q][1] - c0)} for q in range(a, b + 1)]
             cenas[sc["id"]] = {"wav": str(wav), "dur": duracao(wav), "words": words}
     if usado["provedor"] == "gemini" and total_rot and total_asr / total_rot > 1.3:
