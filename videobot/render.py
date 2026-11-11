@@ -78,8 +78,21 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
 def _abrir(w, h):
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
-    br = pw.chromium.launch(args=["--font-render-hinting=none", "--disable-lcd-text", "--force-color-profile=srgb",
-                                  "--hide-scrollbars", "--disable-gpu"])
+    args = ["--font-render-hinting=none", "--disable-lcd-text", "--force-color-profile=srgb", "--hide-scrollbars", "--disable-gpu"]
+    for tentativa in range(3):
+        try:
+            br = pw.chromium.launch(args=args)
+            break
+        except Exception as e:
+            # o executável às vezes some ou fica bloqueado (antivírus, atualização): reinstala e tenta de novo
+            if tentativa == 2:
+                pw.stop()
+                raise
+            log(f"  o Chromium não abriu ({str(e).splitlines()[0][:120]}); reinstalando e tentando de novo")
+            import sys
+            import time
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False)
+            time.sleep(10)
     pg = br.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
     pg.goto((ENGINE / "index.html").as_uri())
     pg.wait_for_function("window.boot && window.gsap")

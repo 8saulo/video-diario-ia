@@ -1,10 +1,13 @@
 name: Vídeo diário
+run-name: "${{ inputs.refazer && format('Refazer #{0}', inputs.refazer) || 'Vídeo diário' }}"
 
 on:
   schedule:
-    # Todo dia às 02:00 de Brasília (05:00 UTC). O cron do GitHub é sempre em UTC (Brasília = UTC−3).
+    # Todo dia às 01:47 de Brasília (04:47 UTC). O cron do GitHub é sempre em UTC (Brasília = UTC−3).
+    # O GitHub não garante o horário (já atrasou 7–10 h); minuto "quebrado" costuma atrasar menos que o :00.
+    # O PC (rodar_diario.ps1) dispara esta rotina às 05:00 UTC; se ela já rodou no dia, o agendado é pulado.
     # Para mudar o horário, edite a linha abaixo.
-    - cron: "00 5 * * *"
+    - cron: "47 4 * * *"
   workflow_dispatch:
     inputs:
       modo:
@@ -38,7 +41,6 @@ on:
         description: "Buscas extras em inglês, separadas por ;"
         type: string
         default: ""
-
       refazer:
         description: "Refazer um vídeo anterior: número da execução (ex.: 11). Reaproveita roteiro e fatos; refaz narração e render"
         type: string
@@ -53,7 +55,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checar:
+    # o agendado só roda se ainda não houve vídeo do dia (ex.: disparado pelo PC às 05:00 UTC)
+    runs-on: ubuntu-latest
+    outputs:
+      pular: ${{ steps.c.outputs.pular }}
+    steps:
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "pular=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          hoje=$(TZ=America/Sao_Paulo date +%F)
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow video-diario.yml --limit 40                 --json databaseId,displayTitle,createdAt,status,conclusion                 -q "[.[] | select(.databaseId != $GITHUB_RUN_ID)
+                         | select((.displayTitle | startswith(\"Refazer\")) | not)
+                         | select((.createdAt | fromdate - 10800 | strftime(\"%Y-%m-%d\")) == \"$hoje\")
+                         | select(.status != \"completed\" or .conclusion == \"success\")] | length")
+          echo "execuções do dia $hoje já feitas ou em andamento: $n"
+          if [ "$n" -gt 0 ]; then echo "pular=1" >> "$GITHUB_OUTPUT"; else echo "pular=0" >> "$GITHUB_OUTPUT"; fi
+
   video:
+    needs: checar
+    if: needs.checar.outputs.pular != '1'
     runs-on: ubuntu-24.04   # fixo: o Playwright fixado suporta 24.04
     timeout-minutes: 240
     steps:

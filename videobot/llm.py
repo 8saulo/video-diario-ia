@@ -128,6 +128,11 @@ def _openai(prov: str, modelo: str, msgs: list, temperatura: float, max_tokens: 
     if prov == "openrouter":
         hd.update({"HTTP-Referer": "https://github.com/8saulo/video-diario-ia", "X-Title": "video-diario-ia"})
     body = {"model": modelo, "messages": msgs, "temperature": temperatura, "max_tokens": max_tokens}
+    # modelos que "pensam" antes de responder podem gastar todo o max_tokens pensando e devolver a resposta vazia
+    if prov == "openrouter":
+        body["reasoning"] = {"effort": "low", "exclude": True}
+    elif prov == "groq" and "gpt-oss" in modelo:
+        body["reasoning_effort"] = "low"
     try:
         r = requests.post(PROVEDORES[prov]["base"] + "/chat/completions", headers=hd, json=body, timeout=float(os.environ.get("VIDEOBOT_TIMEOUT_LLM", 150)))
     except requests.RequestException as e:
@@ -141,9 +146,13 @@ def _openai(prov: str, modelo: str, msgs: list, temperatura: float, max_tokens: 
         return r.status_code, "", _espera(r), msg[:200]
     try:
         js = r.json()
-        txt = js["choices"][0]["message"].get("content") or ""
+        ch = js["choices"][0]
+        txt = ch["message"].get("content") or ""
     except Exception:
         return 200, "", 0.0, "resposta vazia"
+    if not _limpar(txt):
+        motivo = "gastou o limite pensando" if ch.get("finish_reason") == "length" else f"fim: {ch.get('finish_reason')}"
+        return 200, "", 0.0, f"resposta vazia ({motivo})"
     return 200, _limpar(txt), 0.0, ""
 
 
@@ -172,21 +181,48 @@ def gerar(prompt: str, cfg: dict, temperatura: float = 0.6, sistema: str = "", m
         raise RuntimeError("nenhum provedor de texto com chave configurada (" +
                            ", ".join(PROVEDORES[p]["env"] for p in ordem(cfg)) + ")")
     msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
-    erros = []
-    for prov in provs:
+    rodadas = int(lcfg.get("rodadas", 3))
+    todos = []
+    for rodada in range(rodadas):
+        txt, modelo, erros, so_cota = _rodada(prov_lista=provs, cfg=cfg, lcfg=lcfg, prompt=prompt, sistema=sistema, msgs=msgs,
+                                             temperatura=temperatura, max_tokens=max_tokens, espera_max=espera_max)
+        if txt:
+            return txt, modelo
+        todos += erros
+        if rodada + 1 < rodadas and so_cota:
+            # todos recusaram por limite por minuto ou sobrecarga: espera o limite zerar e tenta a lista de novo
+            log(f"  nenhum modelo respondeu (limite por minuto/sobrecarga); nova rodada em 60s ({rodada + 2}/{rodadas})")
+            time.sleep(60)
+            continue
+        break
+    raise RuntimeError("nenhum modelo de texto respondeu: " + "; ".join(todos[-5:]))
+
+
+def _cota_do_dia(msg: str) -> bool:
+    return bool(re.search(r"per[- ]day|daily|per day|quota|tokens per day|TPD|RPD", msg or "", re.I))
+
+
+def _rodada(prov_lista, cfg, lcfg, prompt, sistema, msgs, temperatura, max_tokens, espera_max):
+    erros, so_cota = [], True
+    for prov in prov_lista:
         for m in _ordenar(prov, cfg)[: int(lcfg.get("modelos_por_provedor", 4))]:
             st, txt, espera, msg = _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max)
             if st == 200 and txt:
-                return txt, f"{prov}/{m}"
+                return txt, f"{prov}/{m}", erros, False
             erros.append(f"{prov}/{m}: HTTP {st}{' ' + msg[:70] if msg else ''}")
-            # 413 = pedido grande demais para ESTE pedido; o modelo ainda pode servir para pedidos menores
-            if st in (400, 404) or (st == 429 and (espera == 0 or espera > espera_max)):
+            grande = st == 413 or (st == 400 and re.search(r"reduce the length|context|too long|too large", msg or "", re.I))
+            passageiro = (st == 429 and not (espera > espera_max or _cota_do_dia(msg))) or st in (0, 500, 502, 503, 504)                 or (st == 200 and "pensando" in (msg or "")) or grande
+            if not passageiro:
+                so_cota = False
+            # 413/400 de tamanho = pedido grande demais para ESTE pedido; o modelo ainda serve para pedidos menores.
+            # 429 sem tempo de espera só tira o modelo da execução se for a cota do dia (sobrecarga é passageira).
+            if (st in (400, 404) and not grande) or (st == 429 and (espera > espera_max or _cota_do_dia(msg))):
                 with _lock:
                     _fora.add(f"{prov}/{m}")
             if st == 401 or (st == 403 and prov != "openrouter"):
                 nota(f"{PROVEDORES[prov]['titulo']}: a chave foi recusada (HTTP {st}). Confira {PROVEDORES[prov]['env']}.")
                 break  # chave recusada: não adianta tentar outros modelos do mesmo provedor
-    raise RuntimeError("nenhum modelo de texto respondeu: " + "; ".join(erros[-5:]))
+    return "", "", erros, so_cota
 
 
 def _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max):

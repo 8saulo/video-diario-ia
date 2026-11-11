@@ -36,6 +36,22 @@ try {
     $git = & git pull --ff-only 2>&1 | Out-String
     Log ("git pull: " + $git.Trim())
 
+    # o agendamento do GitHub atrasa horas: o PC dispara a rotina de la na hora certa,
+    # se ainda nao houve video do dia (concluido com sucesso ou em andamento) no GitHub
+    try {
+        $runs = & gh run list --workflow video-diario.yml --limit 40 --json displayTitle,createdAt,status,conclusion | ConvertFrom-Json
+        $feitos = @($runs | Where-Object {
+            -not $_.displayTitle.StartsWith("Refazer") -and
+            ([DateTime]$_.createdAt).ToLocalTime().ToString("yyyy-MM-dd") -eq $hoje -and
+            ($_.status -ne "completed" -or $_.conclusion -eq "success") })
+        if ($feitos.Count -eq 0) {
+            & gh workflow run video-diario.yml --ref main 2>&1 | Out-Null
+            Log "GitHub: rotina disparada"
+        } else {
+            Log "GitHub: ja ha video do dia ($($feitos.Count)); nao disparei"
+        }
+    } catch { Log "GitHub: nao consegui disparar ($($_.Exception.Message))" }
+
     $py = Join-Path $raiz ".venv\Scripts\python.exe"
     $env:PYTHONIOENCODING = "utf-8"
     & $py -u -m videobot run 2>&1 | ForEach-Object { "$_" } | Out-File -Append -Encoding utf8 $log

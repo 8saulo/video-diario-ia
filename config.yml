@@ -109,9 +109,10 @@ llm:
     modelos:                        # só é usado para texto se "gemini" estiver na ordem acima
       - gemini-3.8-flash
       - flash
-  modelos_por_provedor: 4           # quantos modelos de cada provedor tentar antes de passar ao próximo
+  modelos_por_provedor: 6           # quantos modelos de cada provedor tentar antes de passar ao próximo
   max_tokens: 8000                  # tamanho máximo da resposta
   espera_max_s: 65                  # se a cota pede para esperar mais que isso, pula o modelo
+  rodadas: 3                        # se todos recusarem por limite por minuto, espera 60s e tenta a lista de novo
   min_fontes: 3                     # CRIVO 3: fontes confiáveis distintas, conferidas por download
 
 # ---------------- BUSCA NA WEB (fontes dos fatos) ----------------
