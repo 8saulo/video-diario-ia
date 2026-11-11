@@ -10,7 +10,7 @@ Gera **todo dia, sozinho, no GitHub Actions** um vídeo em português sobre IA e
 6. **Anima** em código no estilo "estúdio escuro": cenas HTML + GSAP renderizadas quadro a quadro no Chromium, a 30 fps.
    - Tipos de cena: número gigante, comparação, lista, barras, citação, linha do tempo, KPIs, chat de IA, ícones, pergunta, medidor, fluxo e CTA.
    - Legendas karaokê, cartelas de capítulo, fonte no rodapé e barra de progresso.
-   - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica.
+   - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica. Acabamento de produto: reflexos de estúdio (mapa de ambiente), materiais com verniz, cantos arredondados, sombra de contato, entrada com impulso e câmera em movimento; o robô é um modelo pronto e animado (RobotExpressive, CC0).
 7. **Confere** o resultado:
    - prévia de layout (CRIVO 5);
    - ffprobe, folha de quadros e volume entre −18 e −14 dB, com loudnorm a −14 LUFS (CRIVO 6);

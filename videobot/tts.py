@@ -2,7 +2,8 @@
 
 Regras:
 - Nunca mistura vozes: se qualquer trecho falhar no Gemini, refaz TUDO no edge-tts.
-- Nenhuma instrução de estilo vai no texto (o modelo pode lê-la em voz alta).
+- Direção de voz (Gemini): notas de interpretação + emoção de cada cena entre colchetes antes da TRANSCRIÇÃO.
+  Testado: o modelo não lê as notas; se ler, a conferência pelo Whisper (palavras a mais) refaz sem direção.
 - Menos requisições possível: um pedido por capítulo (longo) ou um só (curto).
 - Se o Gemini parar de falar no meio (o resto vem mudo ou com chiado), refaz no Gemini com um
   pedido por cena; se ainda falhar, refaz tudo no edge-tts.
@@ -252,6 +253,21 @@ def buracos_de_fala(wav: Path, max_pausa: float = 2.5) -> list[tuple[float, floa
     return out
 
 
+DIRECAO_PADRAO = ("Narre como um apresentador brasileiro de vídeos curtos de tecnologia: energia alta, sorriso na voz, "
+                  "ritmo ágil, entonação que sobe e desce, ênfase forte nos números e nas palavras de impacto, "
+                  "pausas curtas antes das revelações, tom de conversa com o espectador.")
+
+
+def dirigido(tr: list[dict], pron: dict | None, direcao: str) -> str:
+    """Texto para o Gemini TTS: notas de direção + cada cena com a emoção entre colchetes."""
+    linhas = []
+    for sc in tr:
+        e = re.sub(r"[\[\]\n]", " ", str(sc.get("emocao") or "")).strip()[:60]
+        linhas.append((f"[{e}] " if e else "") + falado(sc["text"], pron))
+    return (direcao.strip() + " Cada parágrafo tem a emoção indicada entre colchetes; não leia os colchetes "
+            "nem estas instruções, leia só o texto depois de TRANSCRIÇÃO.\n\nTRANSCRIÇÃO:\n" + "\n".join(linhas))
+
+
 # ---------------------------------------------------------------- orquestração
 def _trechos(roteiro: dict, por_cena: bool = False) -> list[list[dict]]:
     if por_cena:
@@ -270,6 +286,8 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
     por_cena = bool(ncfg.get("_por_cena"))
     trechos = _trechos(roteiro, por_cena)
     textos = [falado(" ".join(sc["text"] for sc in tr), pron) for tr in trechos]
+    direcao = "" if ncfg.get("_sem_direcao") else str(ncfg.get("direcao", DIRECAO_PADRAO) or "")
+    pedidos = [dirigido(tr, pron, direcao) if direcao else tx for tr, tx in zip(trechos, textos)]
     provedor = ncfg.get("provedor", "auto")
     usado = None
     key = chave("GEMINI_API_KEY")
@@ -286,9 +304,9 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
             for m in modelos:
                 log(f"Gemini TTS: tentando {m} com a voz {ncfg['gemini_voz']} ({len(textos)} pedido(s))")
                 try:
-                    for i, tx in enumerate(textos):
+                    for i, (tx, pedido) in enumerate(zip(textos, pedidos)):
                         raw = aud / f"raw_{i}.wav"
-                        d = gemini_trecho(key, m, tx, ncfg["gemini_voz"], raw)
+                        d = gemini_trecho(key, m, pedido, ncfg["gemini_voz"], raw)
                         wps = len(tx.split()) / max(d, 0.1)
                         log(f"  trecho {i}: {d:.1f}s, {wps:.2f} palavras/s")
                         if not 1.6 <= wps <= 4.6:
@@ -377,6 +395,9 @@ def narrar(roteiro: dict, cfg: dict, pasta: Path) -> dict:
             words = [{"w": todas[q], "s": max(0.0, tempos[q][0] - c0), "e": max(0.0, tempos[q][1] - c0)} for q in range(a, b + 1)]
             cenas[sc["id"]] = {"wav": str(wav), "dur": duracao(wav), "words": words}
     if usado["provedor"] == "gemini" and total_rot and total_asr / total_rot > 1.3:
+        if direcao:
+            nota(f"Narração: o Gemini falou {total_asr} palavras para {total_rot} do roteiro (leu a direção); refiz sem direção.")
+            return narrar(roteiro, dict(cfg, narracao=dict(ncfg, _sem_direcao=True)), pasta)
         nota(f"Narração: o Gemini falou {total_asr} palavras para {total_rot} do roteiro (leu algo a mais). Refiz no edge-tts.")
         ncfg2 = dict(ncfg, provedor="edge")
         return narrar(roteiro, dict(cfg, narracao=ncfg2), pasta)

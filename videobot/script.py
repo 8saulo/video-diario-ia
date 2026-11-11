@@ -62,7 +62,10 @@ FATOS VERIFICADOS (use SOMENTE estes números; cite os ids em fact_ids):
 
 REGRAS DO ROTEIRO
 - {regras_formato}
-- Narração em PT-BR natural, frases curtas, tom curioso e levemente irônico. Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito"); nada de algarismos na narração. Escreva "IA", nunca "I.A.".
+- Narração em PT-BR falado, como um criador de shorts conversando com o espectador ("você"): frases curtas (até 12 palavras),
+  ritmo de corte rápido, contraste e surpresa ("parece muito? espera."), perguntas retóricas, uma revelação por cena,
+  verbos fortes, nada de linguagem de relatório. Tom curioso, empolgado e levemente irônico. Use "!" e "?" para guiar a entonação
+  e reticências ("...") para uma pausa dramática antes de um número ou revelação (no máximo 1 por cena). Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito"); nada de algarismos na narração. Escreva "IA", nunca "I.A.".
 - Toda afirmação com número precisa vir de um fato da lista (fact_ids). Sem fato, sem número. Não invente nada.
 - Inclua o contraponto (o outro lado). {'O tema é de finanças: inclua o aviso "não é recomendação de investimento".' if fatos.get('financas') else ''}
 - Não diga que conteúdo sintético é real. Interfaces de chat são ilustrativas.
@@ -71,6 +74,10 @@ REGRAS DO ROTEIRO
 {TEMPLATES}
 
 {prompt_catalogo()}
+
+DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras, para o narrador): escolha a emoção que a frase pede e VARIE entre cenas.
+Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme", "irônico, sorrindo", "urgente, acelerando",
+"surpreso", "caloroso, convidativo" (bom para o CTA). O gancho é sempre de alta energia.
 
 PUBLICAÇÃO
 - youtube.titulo: até 70 caracteres, palavra-chave no começo, número ou pergunta, no máximo 1 emoji{', terminando com #shorts' if curto else ''}. 3 alternativos para A/B.
@@ -82,7 +89,7 @@ PUBLICAÇÃO
 - thumb: {{"lines": [{{"text": "ATÉ 2 PALAVRAS"}}, {{"text": "ATÉ 2 PALAVRAS", "hl": true}}], "number": "um número dos fatos, com algarismos", "numberLabel": "até 4 palavras", "icon": ICONE}} — no máximo 4 palavras grandes no total.
 
 Responda SOMENTE com JSON:
-{{"tema": "...", "chapters": [{{"title": "...", "scenes": [{{"id": "slug_unico", "text": "narração", "template": "...", "params": {{...}}, "objetos3d": ["id do catálogo 3D", "..."], "fact_ids": [1,2]}}]}}],
+{{"tema": "...", "chapters": [{{"title": "...", "scenes": [{{"id": "slug_unico", "text": "narração", "template": "...", "params": {{...}}, "objetos3d": ["id do catálogo 3D", "..."], "emocao": "direção de voz da cena, 2 a 5 palavras", "fact_ids": [1,2]}}]}}],
  "thumb": {{...}}, "publicacao": {{"youtube": {{...}}, "tiktok": {{...}}}}}}"""
     if erros:
         p += "\n\nSEU ROTEIRO ANTERIOR TEVE ESTES PROBLEMAS. Corrija todos e devolva o JSON completo:\n- " + "\n- ".join(erros[:40])

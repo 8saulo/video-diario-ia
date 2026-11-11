@@ -100,8 +100,65 @@ def garantir_three():
     return alvo
 
 
+THREE_JSM = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+EXTRAS_3D = ("utils/BufferGeometryUtils.js", "utils/SkeletonUtils.js", "loaders/GLTFLoader.js",
+             "environments/RoomEnvironment.js", "geometries/RoundedBoxGeometry.js")
+# modelos 3D prontos (CC0) embutidos como base64: o motor abre em file://, onde fetch de arquivo é bloqueado
+MODELOS_3D = {
+    "robo": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
+}
+
+
+def modulo_para_script(src: str) -> str:
+    """Converte um módulo ES dos exemplos do Three.js em script comum que usa o THREE global.
+
+    import {A, B} from 'three'        -> const {A, B} = THREE;
+    import {x} from '../utils/Y.js'    -> const {x} = THREEX;
+    export function f / export {A, B}  -> registra em window.THREEX
+    """
+    def nomes(lista: str) -> str:
+        return ", ".join(n.strip().replace(" as ", ": ") for n in lista.split(",") if n.strip())
+
+    src = re.sub(r"import\s*\{([^}]*)\}\s*from\s*'three';", lambda m: f"const {{ {nomes(m.group(1))} }} = THREE;", src)
+    src = re.sub(r"import\s*\{([^}]*)\}\s*from\s*'[^']+';", lambda m: f"const {{ {nomes(m.group(1))} }} = window.THREEX;", src)
+    exportados = re.findall(r"^export\s+(?:function|class|const)\s+(\w+)", src, re.M)
+    src = re.sub(r"^export\s+(function|class|const)\s", r"\1 ", src, flags=re.M)
+    for m in re.finditer(r"^export\s*\{([^}]*)\};?", src, re.M):
+        exportados += [n.strip().split(" as ")[-1] for n in m.group(1).split(",") if n.strip()]
+    src = re.sub(r"^export\s*\{[^}]*\};?", "", src, flags=re.M)
+    if re.search(r"^\s*(import|export)\s", src, re.M):
+        raise ValueError("módulo com import/export que o conversor não entende")
+    return ("(function () {\n'use strict';\nwindow.THREEX = window.THREEX || {};\n" + src
+            + f"\nObject.assign(window.THREEX, {{ {', '.join(dict.fromkeys(exportados))} }});\n}})();\n")
+
+
+def garantir_extras3d():
+    """vendor/three-extras.js (GLTFLoader, RoomEnvironment...) e vendor/modelos3d.js (GLBs em base64)."""
+    import base64
+    vend = ENGINE / "vendor"
+    vend.mkdir(parents=True, exist_ok=True)
+    ext = vend / "three-extras.js"
+    if not (ext.exists() and ext.stat().st_size > 50_000 and "RoundedBoxGeometry" in ext.read_text(encoding="utf-8")):
+        log("baixando extras do Three.js 0.160.0 (GLTFLoader, RoomEnvironment; licença MIT)")
+        partes = []
+        for arq in EXTRAS_3D:
+            with urllib.request.urlopen(THREE_JSM + arq, timeout=60) as r:
+                partes.append(f"// {arq}\n" + modulo_para_script(r.read().decode("utf-8")))
+        ext.write_text("\n".join(partes), encoding="utf-8")
+    mod = vend / "modelos3d.js"
+    if not (mod.exists() and mod.stat().st_size > 100_000):
+        log("baixando modelos 3D (RobotExpressive, CC0)")
+        js = ["window.MODELOS3D = {};"]
+        for nome, url in MODELOS_3D.items():
+            with urllib.request.urlopen(url, timeout=60) as r:
+                js.append(f"window.MODELOS3D[{nome!r}] = '{base64.b64encode(r.read()).decode()}';")
+        mod.write_text("\n".join(js), encoding="utf-8")
+    return ext, mod
+
+
 def garantir_gsap():
     garantir_three()
+    garantir_extras3d()
     alvo = ENGINE / "vendor" / "gsap.min.js"
     if alvo.exists() and alvo.stat().st_size > 10_000:
         return alvo

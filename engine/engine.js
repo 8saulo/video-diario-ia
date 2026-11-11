@@ -733,7 +733,7 @@
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('700 60px Figtree'); await document.fonts.load('500 60px Figtree');
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
-    if (ST.scene3d && modulo3d() && window.THREE) { STAGE.classList.add('mode3d'); modulo3d().init(STAGE, ST); }
+    if (ST.scene3d && modulo3d() && window.THREE) { STAGE.classList.add('mode3d'); await modulo3d().init(STAGE, ST); }
     const fotos = [...new Set((ST.segments || []).map(s => s.params && s.params._photo).filter(Boolean))];
     if (fotos.length) {
       STAGE.classList.add('mode-photo');

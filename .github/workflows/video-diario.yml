@@ -114,6 +114,11 @@ jobs:
           gh run download "$id" -n "video-$N" -D refazer
           ls refazer
 
+      - name: Testes de regressão
+        run: |
+          pip install pytest==8.3.5
+          python -m pytest -q -m "not lento"
+
       - name: Gerar vídeo
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
