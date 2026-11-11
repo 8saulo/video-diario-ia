@@ -58,3 +58,24 @@ def test_motor_3d_carrega_robo_pronto_e_lupa_sem_erro_js(cfg):
     finally:
         br.close(); pw.stop()
     assert not erros, erros
+
+
+def test_tags_em_texto_viram_lista():
+    """Run #18: o modelo mandou as tags como um texto só e o pacote ficou com 1 tag."""
+    from videobot.publish import _lista
+    assert _lista("IA, OpenAI, Sam Altman") == ["IA", "OpenAI", "Sam Altman"]
+    assert _lista("#ia #tecnologia #openai") == ["#ia", "#tecnologia", "#openai"]
+    assert _lista(["a", "b"]) == ["a", "b"] and _lista("") == []
+
+
+def test_roteiro_curto_pede_palavras_por_cena(cfg):
+    """Run #18: com 'frases curtas' o roteiro saiu com 136 palavras (meta 157-197)."""
+    fatos = {"tema": "x", "angulo": "", "fatos": []}
+    p = script._prompt({"titulo": ""}, fatos, cfg, dt.date(2026, 11, 11), script._alvos(cfg))
+    assert "Cada cena tem cerca de" in p and "NÃO significam roteiro curto" in p
+
+
+def test_catalogo_3d_avisa_que_icone_nao_vale():
+    """Run #18: a IA usou nomes de ícone (lock, warning) como objetos 3D."""
+    from videobot.objetos3d import prompt_catalogo
+    assert "SOMENTE os ids" in prompt_catalogo()

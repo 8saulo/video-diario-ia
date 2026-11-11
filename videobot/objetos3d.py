@@ -54,6 +54,7 @@ CAMERAS = ("orbita", "aproxima", "sobe", "lateral")
 def prompt_catalogo() -> str:
     itens = "; ".join(f"{k} ({d})" for k, (d, _) in CATALOGO.items())
     return ("CATÁLOGO 3D (campo \"objetos3d\" em cada cena: 1 a 3 ids, o 1º é o principal; escolha o que ilustra AQUELA cena, "
+            "use SOMENTE os ids abaixo (os nomes de ICONE não valem aqui), "
             "ligado ao tema; varie o principal entre cenas seguidas): " + itens)
 
 

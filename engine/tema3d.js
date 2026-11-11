@@ -171,7 +171,7 @@
     }
     g.add(racks, fitas);
     g.add(mesh(RB(8.4, 0.02, 0.18), bas(ACC), 0, 0.02, 0));
-    return { g, size: 7, lift: 0, upd(t) { fitas.material.color.copy(ACC2).multiplyScalar(0.6 + 0.4 * Math.sin(t * 4)); } };
+    return { g, size: 5.2, lift: 0, upd(t) { fitas.material.color.copy(ACC2).multiplyScalar(0.6 + 0.4 * Math.sin(t * 4)); } };
   };
 
   KIT.robo_simples = () => {
@@ -293,7 +293,7 @@
     }
     g.add(predios);
     const topo = glow(ACC, 1.2); topo.position.set(0, 7.2, 0); g.add(topo);
-    return { g, size: 7, upd(t) { topo.material.opacity = 0.5 + 0.5 * Math.sin(t * 3); } };
+    return { g, size: 5.2, upd(t) { topo.material.opacity = 0.5 + 0.5 * Math.sin(t * 3); } };
   };
 
   function fumaca(g, n, x, y, z, cor, alt, rnd) {
@@ -536,7 +536,7 @@
   function montarGrupo(seg, idx) {
     const p = seg.params || {}, cfg = p._3d || {}, objs = (cfg.objetos && cfg.objetos.length ? cfg.objetos : ['rede_neural']).slice(0, 3);
     const holder = new THREE.Group(), upds = [], vals = valoresDaCena(p);
-    const lados = PORT ? [[-2.9, -2.8], [2.9, -2.8]] : [[-4.6, -2.6], [4.6, -2.6]];
+    const lados = PORT ? [[-2.3, -2.6], [2.3, -2.6]] : [[-4.6, -2.6], [4.6, -2.6]];
     let alt = 4;
     objs.forEach((nome, i) => {
       const o = construir(nome, i === 0 ? 4.4 : 2.3, 1000 + idx * 17 + i, i === 0 ? vals : null, i === 0);
@@ -635,7 +635,7 @@
     }
     await prepararModelos();
     C = new THREE.PerspectiveCamera(PORT ? 48 : 36, W / H, 0.1, 200);
-    if (PORT) C.setViewOffset(W, H, 0, 0, W, H);   // objeto entre os cartões (em cima) e a legenda (embaixo)
+    if (PORT) C.setViewOffset(W, H, 0, -H * 0.02, W, H);   // objeto entre os cartões (em cima) e a legenda (embaixo)
     else C.setViewOffset(W, H, -W * 0.25, 0, W, H);       // objeto à direita: os cartões ficam à esquerda
 
     const chao = mesh(new THREE.CircleGeometry(70, 64), std(0x0a0d13, { roughness: 0.95 })); chao.rotation.x = -Math.PI / 2; S.add(chao);

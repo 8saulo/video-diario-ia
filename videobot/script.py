@@ -48,7 +48,7 @@ def _prompt(cand, fatos, cfg, hoje, alvos, erros=None, anterior=None):
                    for f in fatos["fatos"])
     regras_formato = (
         f"CURTO (9:16): UM capítulo só, {alvos['cenas'][0]} a {alvos['cenas'][1]} cenas, {alvos['palavras'][0]} a {alvos['palavras'][1]} palavras no total "
-        f"(~{int(alvos['seg'])} s). Cena 1 = gancho de até 3 s (pergunta ou número chocante). Última cena = CTA pedindo comentário BINÁRIO (template cta com options)."
+        f"(~{int(alvos['seg'])} s). Cada cena tem cerca de {round(sum(alvos['palavras']) / 2 / sum(alvos['cenas']) * 2)} palavras de narração (2 ou 3 frases curtas): frases curtas NÃO significam roteiro curto; conte as palavras e respeite o total. Cena 1 = gancho de até 3 s (pergunta ou número chocante). Última cena = CTA pedindo comentário BINÁRIO (template cta com options)."
         if curto else
         f"LONGO (16:9): {alvos['caps'][0]} a {alvos['caps'][1]} capítulos com títulos curtos (o 1º é a intro, sem cartela), {alvos['palavras'][0]} a {alvos['palavras'][1]} palavras "
         f"no total (~{alvos['seg'] / 60:.0f} min). Gancho nos primeiros 15 s. Termine cada capítulo com um 'loop aberto' que puxa o próximo. "

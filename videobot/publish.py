@@ -76,7 +76,12 @@ def _texto(v) -> str:
 def _lista(v) -> list:
     if v is None or v == "":
         return []
-    return [str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)]
+    if isinstance(v, (list, tuple)):
+        return [str(x) for x in v]
+    # alguns modelos mandam a lista como texto: "IA, OpenAI, ..." ou "#ia #tecnologia"
+    s = str(v)
+    partes = s.split(",") if "," in s else (s.split() if s.count("#") > 1 else [s])
+    return [p.strip() for p in partes if p.strip()]
 
 
 def _sim_nao(v, padrao_resp: str, padrao_motivo: str) -> dict:
