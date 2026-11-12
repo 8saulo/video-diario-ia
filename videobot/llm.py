@@ -288,7 +288,9 @@ def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int
             except Exception as e:
                 erros.append(f"{m}: JSON inválido ({str(e)[:40]})")
                 continue
-        erros.append(f"{m}: HTTP {st} {msg[:60]}")
+        erros.append(f"{m}: HTTP {st} {msg[:90]}")
+        if st == 429 and _cota_do_dia(msg):
+            break  # a cota diária grátis é da conta inteira: os outros modelos de visão também vão recusar
     raise RuntimeError("nenhum modelo de visão respondeu: " + "; ".join(erros[-3:]))
 
 

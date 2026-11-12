@@ -285,6 +285,92 @@ def mosaico(ims: list) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()
 
 
+LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def mosaico_lote(linhas: list[list], cel: int = 260) -> str:
+    """Uma linha por cena (letra A, B, C...) e os candidatos dela numerados (A0, A1...): uma imagem para o vídeo todo."""
+    import base64
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+    cols = max(len(l) for l in linhas)
+    folha = Image.new("RGB", (cols * cel, len(linhas) * cel), (20, 20, 20))
+    try:
+        fonte = ImageFont.truetype("arial.ttf", 40)
+    except Exception:
+        fonte = ImageFont.load_default()
+    d = ImageDraw.Draw(folha)
+    for r, ims in enumerate(linhas):
+        for c, im in enumerate(ims):
+            x, y = c * cel, r * cel
+            if im is not None:
+                im = im.copy(); im.thumbnail((cel - 6, cel - 6))
+                folha.paste(im, (x + (cel - im.width) // 2, y + (cel - im.height) // 2))
+            d.rectangle([x, y, x + 84, y + 50], fill=(255, 210, 0))
+            d.text((x + 8, y + 4), f"{LETRAS[r]}{c}", fill=(0, 0, 0), font=fonte)
+    b = io.BytesIO(); folha.save(b, "JPEG", quality=78)
+    return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()
+
+
+def _prompt_lote(cenas: list[dict], vis: dict) -> str:
+    linhas = "\n".join(f'Linha {LETRAS[i]}: "{sc["text"]}" | candidatos: '
+                        + "; ".join(f'{LETRAS[i]}{k} ({c["tipo"]}) {c["titulo"][:50]}' for k, c in enumerate(vis[sc["id"]]))
+                        for i, sc in enumerate(cenas))
+    return f"""A imagem anexa é um mosaico: cada LINHA é uma cena de um vídeo (A, B, C...) e cada quadro tem um código no canto
+(quadrado amarelo, ex.: B2 = cena B, candidato 2). Frases e títulos:
+{linhas}
+
+Para CADA linha, escolha o candidato que MOSTRA o assunto da frase daquela linha:
+- se a frase cita algo específico (pessoa, empresa, produto, lugar), o quadro tem que mostrar esse algo;
+- se a frase fala de algo geral (trabalhadores, escritório, fábrica, robôs, data center, dinheiro), uma foto/vídeo real e atual desse assunto serve.
+Recuse: sem relação com a frase, diagrama, gráfico, mapa, documento, texto, logotipo pequeno, arte abstrata, foto antiga em preto e branco
+quando a frase fala do presente, imagem borrada ou feia. Prefira a mais bonita e nítida entre as que servem. Se nenhum servir, -1.
+Responda SOMENTE com JSON: {{"A": número ou -1, "B": número ou -1, ...}}"""
+
+
+def escolher_lote(cenas: list[dict], por_cena: dict, cfg: dict) -> dict:
+    """Uma chamada de visão para o vídeo todo (os modelos grátis têm limite por minuto e por dia).
+    Até 8 cenas por mosaico. Sem visão disponível, nenhuma cena ganha mídia (ou decide pelo título, se configurado)."""
+    import time
+    from .llm import gerar_visao_json
+    out = {}
+    usar_visao = (cfg.get("midia") or {}).get("visao", True)
+    for ini in range(0, len(cenas), 8):
+        bloco = cenas[ini:ini + 8]
+        vis, ims = {}, []
+        for sc in bloco:
+            cs = [c for c in por_cena[sc["id"]] if c.get("thumb")][:5]
+            mini = [miniatura(c["thumb"], 260) for c in cs] if usar_visao else []
+            par = [(c, m) for c, m in zip(cs, mini) if m is not None]
+            vis[sc["id"]] = [c for c, _ in par]
+            ims.append([m for _, m in par] or [None])
+        feito = False
+        if usar_visao and any(vis.values()):
+            for tentativa in range(3):
+                try:
+                    esc, modelo = gerar_visao_json(_prompt_lote(bloco, vis), [mosaico_lote(ims)], cfg, max_tokens=500)
+                    for i, sc in enumerate(bloco):
+                        try:
+                            k = int(esc.get(LETRAS[i], -1))
+                        except (TypeError, ValueError):
+                            k = -1
+                        out[sc["id"]] = por_cena[sc["id"]].index(vis[sc["id"]][k]) if 0 <= k < len(vis[sc["id"]]) else -1
+                    log(f"  mídia: visão ({modelo.split('/')[-1]}) escolheu para {len(bloco)} cena(s) de uma vez")
+                    feito = True
+                    break
+                except Exception as e:
+                    log(f"  mídia: visão indisponível ({str(e)[:80]})")
+                    if "per-day" in str(e) or "per day" in str(e):
+                        nota("Mídia: a cota diária grátis dos modelos de visão (OpenRouter, 50 pedidos/dia) acabou; cenas sem foto/vídeo hoje.")
+                        break
+                    if "429" in str(e) and tentativa < 2:
+                        time.sleep(30 * (tentativa + 1))  # limite por minuto dos modelos grátis
+        if not feito:
+            for sc in bloco:  # sem visão: por padrão, nenhuma mídia (não dá para garantir relevância sem ver)
+                out[sc["id"]] = escolher(sc, por_cena[sc["id"]], dict(cfg, midia=dict(cfg.get("midia") or {}, visao=False)))
+    return out
+
+
 def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
     """Escolhe olhando as imagens (modelo de visão); sem visão disponível, decide pelo título/descrição."""
     from .llm import gerar_json, gerar_visao_json
@@ -338,17 +424,19 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
     dest = pasta / "midia"
     dest.mkdir(parents=True, exist_ok=True)
     creditos, max_cenas = [], int(mcfg.get("max_cenas", 99))
+    por_cena = {}
     for sc in alvo:
-        if len(creditos) >= max_cenas:
-            break
         p = por_id.get(sc["id"]) or {}
         buscas = [str(b) for b in (p.get("buscas") or []) if str(b).strip()]
-        if not buscas:
+        if buscas:
+            cands = candidatos(buscas, "video" if p.get("tipo") == "video" else "foto")
+            if cands:
+                por_cena[sc["id"]] = cands
+    escolhas = escolher_lote([sc for sc in alvo if sc["id"] in por_cena], por_cena, cfg)
+    for sc in alvo:
+        if len(creditos) >= max_cenas or sc["id"] not in por_cena:
             continue
-        cands = candidatos(buscas, "video" if p.get("tipo") == "video" else "foto")
-        if not cands:
-            continue
-        k = escolher(sc, cands, cfg)
+        cands, k = por_cena[sc["id"]], escolhas.get(sc["id"], -1)
         if not 0 <= k < len(cands):
             log(f"  mídia [{sc['id']}]: nenhum candidato mostra o assunto da frase; cena sem mídia")
             continue

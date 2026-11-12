@@ -135,3 +135,36 @@ def test_motor_mostra_video_quadro_a_quadro_e_desliga_3d(tmp_path, cfg):
     finally:
         br.close(); pw.stop()
     assert not erros, erros
+
+
+def test_visao_em_lote_escolhe_todas_as_cenas_numa_chamada(monkeypatch, cfg):
+    """Run #20: uma chamada de visão por cena estourou o limite grátis (429); agora é uma por vídeo."""
+    from videobot import llm
+    from PIL import Image
+    monkeypatch.setattr(midia, "miniatura", lambda url, lado=400: Image.new("RGB", (60, 40)))
+    chamadas = []
+
+    def visao(prompt, imagens, cfg, max_tokens=600):
+        chamadas.append(len(imagens))
+        return {"A": 1, "B": -1, "C": 0}, "openrouter/falso"
+    monkeypatch.setattr(llm, "gerar_visao_json", visao)
+    cand = lambda n: [{"tipo": "foto", "titulo": f"t{i}", "url": f"u{i}", "thumb": f"t{i}"} for i in range(n)]
+    cenas = [{"id": i, "text": f"frase {i}"} for i in "abc"]
+    esc = midia.escolher_lote(cenas, {"a": cand(3), "b": cand(2), "c": cand(4)}, cfg)
+    assert esc == {"a": 1, "b": -1, "c": 0}
+    assert chamadas == [1], "deveria ser UMA chamada com UMA imagem (mosaico)"
+
+
+def test_cota_diaria_de_visao_nao_fica_esperando(monkeypatch, cfg):
+    from videobot import llm
+    from PIL import Image
+    monkeypatch.setattr(midia, "miniatura", lambda url, lado=400: Image.new("RGB", (60, 40)))
+    esperas = []
+    import time
+    monkeypatch.setattr(time, "sleep", lambda s: esperas.append(s))
+
+    def visao(*a, **k):
+        raise RuntimeError("nenhum modelo de visão respondeu: x: HTTP 429 Rate limit exceeded: free-models-per-day")
+    monkeypatch.setattr(llm, "gerar_visao_json", visao)
+    esc = midia.escolher_lote([{"id": "a", "text": "x"}], {"a": [{"tipo": "foto", "titulo": "t", "url": "u", "thumb": "t"}]}, cfg)
+    assert esc == {"a": -1} and not esperas
