@@ -34,7 +34,7 @@ TIPOS_ARQUIVO = {".mp4": "video/mp4", ".jpg": "image/jpeg", ".jpeg": "image/jpeg
 
 
 # ---------------------------------------------------------------- chaves
-CHAVES = ("GROQ_API_KEY", "OPENROUTER_API_KEY", "TAVILY_API_KEY", "GEMINI_API_KEY", "YOUTUBE_API_KEY")
+CHAVES = ("GROQ_API_KEY", "OPENROUTER_API_KEY", "TAVILY_API_KEY", "GEMINI_API_KEY", "YOUTUBE_API_KEY", "PIXABAY_API_KEY")
 CHAVES_TEXTO = ("GROQ_API_KEY", "OPENROUTER_API_KEY")
 
 

@@ -617,13 +617,23 @@
     HUD.lastCap = -2; HUD.lastWord = -2; HUD.lastChip = null; HUD.lastSrc = null;
   }
   let SEGS_N = 0;
+  function quadro(v, k) { return v.dir + 'q' + String(k + 1).padStart(4, '0') + '.jpg'; }
+  // vídeo de fundo: troca o quadro e espera decodificar (o render quadro a quadro aguarda a promessa)
+  function quadroVideo(seg, lt) {
+    const v = seg.vid, k = Math.max(0, Math.min(v.n - 1, Math.floor(lt * v.fps)));
+    if (k === v.k) return null;
+    v.k = k; v.img.src = quadro(v, k);
+    return v.img.decode().catch(() => null);
+  }
   function makeSeg(seg) {
     const root = el('div', 'seg', SCN);
     const P = seg.params || {};
     let photoImg = null, photo = null;
-    if (P._photo) {  // foto de fundo da cena (licença livre; crédito em P._credit)
+    if (P._photo || P._video) {  // foto ou vídeo de fundo da cena (licença livre; crédito em P._credit)
       photo = el('div', 'photo', root);
-      photoImg = el('img', '', photo); photoImg.src = P._photo; photoImg.alt = '';
+      photoImg = el('img', '', photo); photoImg.alt = '';
+      if (P._video) { seg.vid = { img: photoImg, dir: P._video.dir, n: P._video.n, fps: P._video.fps || 30, k: -1 }; photoImg.src = quadro(seg.vid, 0); }
+      else photoImg.src = P._photo;
       el('div', 'tint', photo);
     }
     const cam = el('div', 'cam', root);
@@ -636,9 +646,9 @@
     try { fn(c, seg.kind === 'chapter' ? seg : (seg.params || {})); }
     catch (err) { box.innerHTML = ''; c.counters = []; T.headline(c, { text: (seg.params && (seg.params.text || seg.params.title)) || seg.text || '' }); seg.error = String(err); }
     tl.fromTo(cam, { scale: 1 }, { scale: seg.kind === 'chapter' ? 1.06 : 1.04, duration: seg.dur, ease: 'none' }, 0);
-    if (photoImg) {  // Ken Burns: zoom e deslize lentos, direção alternada por cena
-      const dir = (SEGS_N++ % 2) ? 1 : -1;
-      tl.fromTo(photoImg, { scale: 1.06, xPercent: -1.6 * dir }, { scale: 1.16, xPercent: 1.6 * dir, duration: seg.dur, ease: 'none' }, 0);
+    if (photoImg) {  // Ken Burns: zoom e deslize lentos (vídeo: mais sutil), direção alternada por cena
+      const dir = (SEGS_N++ % 2) ? 1 : -1, v = P._video ? 0.4 : 1;
+      tl.fromTo(photoImg, { scale: 1 + 0.06 * v, xPercent: -1.6 * dir * v }, { scale: 1 + 0.16 * v, xPercent: 1.6 * dir * v, duration: seg.dur, ease: 'none' }, 0);
       tl.fromTo(photo, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: 'power1.out' }, 0);
     }
     if (seg.dur > 1.2) tl.fromTo(box, { autoAlpha: 1, y: 0, filter: 'blur(0px)' }, { autoAlpha: 0, y: -26, filter: 'blur(8px)', duration: 0.26, ease: 'power2.in', immediateRender: false }, seg.dur - 0.26);
@@ -667,7 +677,8 @@
     if (chip !== HUD.lastChip) { HUD.chipT.textContent = chip; HUD.chip.style.visibility = chip ? 'visible' : 'hidden'; HUD.lastChip = chip; }
     const src = seg && seg.source ? 'Fonte: ' + seg.source : '';
     if (src !== HUD.lastSrc) { HUD.src.textContent = src; HUD.lastSrc = src; }
-    const cr = seg && seg.params && seg.params._credit ? 'Foto: ' + seg.params._credit : '';
+    const c0 = seg && seg.params && seg.params._credit ? String(seg.params._credit) : '';
+    const cr = !c0 || /^(Foto|Vídeo):/.test(c0) ? c0 : 'Foto: ' + c0;
     if (HUD.credit && cr !== HUD.lastCr) { HUD.credit.textContent = cr; HUD.lastCr = cr; }
     // legendas
     const caps = ST.captions || [];
@@ -695,16 +706,23 @@
   window.renderAt = function (t) {
     updateBg(t);
     const segs = ST.segments;
-    let active = null;
+    let active = null, espera = null;
     for (const s of segs) {
       const on = t >= s.start && (t < s.start + s.dur || (s === segs[segs.length - 1] && t <= s.start + s.dur + 1));
-      if (on) { active = s; const lt = Math.min(t - s.start, s.dur); s.tl.seek(lt, false); updateCounters(s, lt); }
+      if (on) { active = s; const lt = Math.min(t - s.start, s.dur); s.tl.seek(lt, false); updateCounters(s, lt); if (s.vid) espera = quadroVideo(s, lt); }
       if (on !== s.vis) { s.el.style.visibility = on ? 'visible' : 'hidden'; s.vis = on; }
     }
     updateHud(t, active);
     moveLogo(t);
-    const m3 = modulo3d(); if (m3 && m3.on) m3.render(t, active, active ? segs.indexOf(active) : 0);
-    return true;
+    const m3 = modulo3d();
+    if (m3 && m3.on) {
+      // foto/vídeo cobrem a tela: sem desenhar o 3D (é o que mais pesa no render em CPU)
+      const coberto = !!(active && active.params && (active.params._photo || active.params._video));
+      const cv = document.getElementById('gl3d');
+      if (cv && cv.style.visibility !== (coberto ? 'hidden' : 'visible')) cv.style.visibility = coberto ? 'hidden' : 'visible';
+      if (!coberto) m3.render(t, active, active ? segs.indexOf(active) : 0);
+    }
+    return espera ? espera.then(() => true) : true;
   };
 
   /* Marca d'água que troca de canto ao longo do vídeo (com fade), longe da legenda e dos botões do app. */

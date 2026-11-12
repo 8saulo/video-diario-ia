@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   const W3T = { on: false };
-  let R, S, C, W, H, PORT, ACC, ACC2, GLOW, DUST, SOMBRA;
+  let R, S, C, W, H, PORT, ACC, ACC2, GLOW, DUST, SOMBRA, FX;
   const MODELOS = {};  // gltf já interpretados (preparados no init)
   const GRUPOS = [];  // por segmento: { holder, upds: [fn], cam, vals }
 
@@ -534,7 +534,7 @@
   }
 
   function montarGrupo(seg, idx) {
-    const p = seg.params || {}, cfg = p._3d || {}, objs = (cfg.objetos && cfg.objetos.length ? cfg.objetos : ['rede_neural']).slice(0, 3);
+    const p = seg.params || {}, cfg = p._3d || {}, objs = (cfg.objetos || []).slice(0, 3);  // vazio = cena sem objeto (nada sem ligação com a fala)
     const holder = new THREE.Group(), upds = [], vals = valoresDaCena(p);
     const lados = PORT ? [[-2.3, -2.6], [2.3, -2.6]] : [[-4.6, -2.6], [4.6, -2.6]];
     let alt = 4;
@@ -624,9 +624,14 @@
     SOMBRA = canvasTex(128, 128, (c, w, h) => { const r = c.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(0,0,0,.75)'); r.addColorStop(0.5, 'rgba(0,0,0,.35)'); r.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = r; c.fillRect(0, 0, w, h); });
 
     R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
-    R.setPixelRatio(data.scale3d || 0.75); R.setSize(W, H);
+    // o 3D só é desenhado na faixa onde aparece (no vertical, entre os cartões e a legenda; no horizontal,
+    // à direita). O resto da tela fica sob o degradê escuro: menos pixels = render bem mais rápido em CPU.
+    FX = PORT ? { x: 0, y: Math.round(H * 0.15), w: W, h: Math.round(H * 0.66) } : { x: Math.round(W * 0.3), y: 0, w: W - Math.round(W * 0.3), h: H };
+    R.setPixelRatio(data.scale3d || 0.75); R.setSize(FX.w, FX.h, false);
     R.outputColorSpace = THREE.SRGBColorSpace; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.25;
     const cv = R.domElement; cv.id = 'gl3d'; stage.appendChild(cv);
+    for (const [k, v] of [['left', FX.x], ['top', FX.y], ['width', FX.w], ['height', FX.h]]) cv.style.setProperty(k, v + 'px', 'important');
+    stage.classList.add('faixa3d');
     S = new THREE.Scene(); S.background = new THREE.Color(0x06080d); S.fog = new THREE.Fog(0x06080d, 16, 48);
     if (window.THREEX && THREEX.RoomEnvironment) {  // reflexos de estúdio em metal, vidro e verniz
       const pm = new THREE.PMREMGenerator(R);
@@ -635,8 +640,9 @@
     }
     await prepararModelos();
     C = new THREE.PerspectiveCamera(PORT ? 48 : 36, W / H, 0.1, 200);
-    if (PORT) C.setViewOffset(W, H, 0, -H * 0.02, W, H);   // objeto entre os cartões (em cima) e a legenda (embaixo)
-    else C.setViewOffset(W, H, -W * 0.25, 0, W, H);       // objeto à direita: os cartões ficam à esquerda
+    // mesmo enquadramento de antes (objeto entre os cartões e a legenda / à direita), recortado na faixa
+    if (PORT) C.setViewOffset(W, H, 0, -H * 0.02 + FX.y, W, FX.h);
+    else C.setViewOffset(W, H, -W * 0.25 + FX.x, 0, FX.w, H);
 
     const chao = mesh(new THREE.CircleGeometry(70, 64), std(0x0a0d13, { roughness: 0.95 })); chao.rotation.x = -Math.PI / 2; S.add(chao);
     const grade = new THREE.GridHelper(90, 60, ACC, 0x1a2030); grade.material.transparent = true; grade.material.opacity = 0.22; grade.position.y = 0.01; S.add(grade);

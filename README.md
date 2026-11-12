@@ -11,6 +11,8 @@ Gera **todo dia, sozinho, no GitHub Actions** um vídeo em português sobre IA e
    - Tipos de cena: número gigante, comparação, lista, barras, citação, linha do tempo, KPIs, chat de IA, ícones, pergunta, medidor, fluxo e CTA.
    - Legendas karaokê, cartelas de capítulo, fonte no rodapé e barra de progresso.
    - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica. Acabamento de produto: reflexos de estúdio (mapa de ambiente), materiais com verniz, cantos arredondados, sombra de contato, entrada com impulso e câmera em movimento; o robô é um modelo pronto e animado (RobotExpressive, CC0).
+   - **Fotos e vídeos reais por cena** (`midia:` no config): a IA escreve buscas ligadas à fala de cada cena, busca na Wikimedia Commons, no Openverse e, com `PIXABAY_API_KEY`, no Pixabay; um modelo grátis que enxerga imagem (OpenRouter) olha um mosaico dos candidatos e escolhe o que mostra o assunto da frase, ou nenhum. Só licenças com uso comercial e edição (CC0, domínio público, CC BY, CC BY-SA, Pixabay), com crédito na tela e na descrição. Vídeos viram quadros e tocam no render quadro a quadro.
+   - **Objetos 3D só ligados à fala da cena**: uma revisão dedicada da IA escolhe do catálogo só o que a frase cita (ou nenhum); sem revisão, valem palavras-chave da própria cena. Cenas com foto/vídeo não desenham o 3D, e o 3D é desenhado só na faixa onde aparece (render bem mais rápido em CPU).
 7. **Confere** o resultado:
    - prévia de layout (CRIVO 5);
    - ffprobe, folha de quadros e volume entre −18 e −14 dB, com loudnorm a −14 LUFS (CRIVO 6);
@@ -29,6 +31,7 @@ No GitHub, abra **Settings → Secrets and variables → Actions → New reposit
 |---|---|---|---|
 | `GROQ_API_KEY` | Pelo menos **uma** das duas de texto | Triagem, extração de fatos e roteiro (1ª opção) | [console.groq.com/keys](https://console.groq.com/keys) |
 | `OPENROUTER_API_KEY` | ↑ | Texto (2ª opção, quando o Groq esgota; só modelos `:free`) | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `PIXABAY_API_KEY` | Opcional | Fotos e vídeos atuais para assuntos genéricos (escritório, fábrica, trânsito). Sem ela, a mídia vem só da Wikimedia Commons e do Openverse | [pixabay.com/api/docs](https://pixabay.com/api/docs/) |
 | `TAVILY_API_KEY` | **Recomendada** | Busca de fontes e notícias na web. Sem ela, sobra a Wikipedia (sem notícias recentes) | [tavily.com](https://tavily.com) |
 | `GEMINI_API_KEY` | Não | Só a narração (Gemini TTS). Sem ela, a voz sai no edge-tts | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `YOUTUBE_API_KEY` | Não, mas recomendada | Pesquisa no YouTube mais confiável. Sem ela, o script lê as páginas públicas | Google Cloud Console → ative "YouTube Data API v3" → Credenciais → Chave de API |

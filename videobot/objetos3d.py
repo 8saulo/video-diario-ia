@@ -21,13 +21,13 @@ CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
     "servidor": ("rack de servidor com luzes", ("servidor", "server", "rack", "hardware", "computacao")),
     "datacenter": ("corredor de data center", ("data center", "datacenter", "centro de dados", "nuvem de dados", "hyperscale")),
     "robo": ("robô humanoide", ("robo", "robot", "humanoide", "automacao", "optimus", "android")),
-    "rede_neural": ("rede neural com pulsos de dados", ("ia", "inteligencia artificial", "modelo", "llm", "gpt", "claude", "gemini", "neural", "treino", "treinamento", "aprendizado", "algoritmo", "agente")),
+    "rede_neural": ("rede neural com pulsos de dados", ("llm", "gpt", "chatgpt", "claude", "gemini", "neural", "treino", "treinamento", "aprendizado de maquina", "algoritmo", "modelo de ia", "modelos de ia", "agente")),
     "nuvem": ("nuvem de computação", ("nuvem", "cloud", "aws", "azure", "online", "software")),
     "celular": ("smartphone com tela acesa", ("celular", "smartphone", "iphone", "android", "app", "aplicativo", "telefone")),
     "notebook": ("notebook aberto", ("notebook", "laptop", "computador", "pc", "programador", "codigo", "programacao")),
-    "moedas": ("pilha de moedas caindo", ("dinheiro", "us$", "r$", "dolar", "dolares", "bilhao", "bilhoes", "trilhao", "trilhoes", "milhoes", "receita", "lucro", "custo", "preco", "valor", "investimento", "investidor")),
+    "moedas": ("pilha de moedas caindo", ("dinheiro", "us$", "r$", "dolar", "dolares", "reais", "euro", "receita", "lucro", "custo", "preco", "investimento", "investir", "investidor", "faturamento", "salario")),
     "grafico_alta": ("gráfico de barras subindo com seta", ("cresce", "crescimento", "alta", "subiu", "aumento", "dobrou", "recorde", "valoriza", "avaliacao", "ipo", "acoes", "mercado")),
-    "grafico_queda": ("gráfico de barras caindo com seta", ("queda", "caiu", "prejuizo", "perda", "despenca", "crise", "bolha", "recua", "deficit")),
+    "grafico_queda": ("gráfico de barras caindo com seta", ("queda", "caiu", "cairam", "caem", "cair", "prejuizo", "perda", "despenca", "crise", "bolha", "recua", "deficit", "reduz", "encolhe")),
     "cidade": ("cidade/arranha-céus à noite", ("cidade", "predio", "urbano", "empresa", "empresas", "big tech", "sede", "metropole")),
     "fabrica": ("fábrica com chaminés", ("fabrica", "industria", "producao", "manufatura", "emissao", "poluicao", "carbono")),
     "usina": ("usina com torre de resfriamento", ("usina", "nuclear", "reator", "energia", "eletricidade", "rede eletrica", "gigawatt", "megawatt", "watt", "consumo")),
@@ -78,25 +78,75 @@ def _pontua(txt: str) -> list[tuple[int, str]]:
 
 
 def escolher(sc: dict, tema: str, anterior: str = "") -> list[str]:
-    """Objetos da cena: os que o roteirista marcou (válidos) ou os que batem com o texto da cena e do tema."""
-    marcados = [str(x).strip().lower() for x in (sc.get("objetos3d") or []) if str(x).strip().lower() in CATALOGO]
-    if marcados:
-        return list(dict.fromkeys(marcados))[:3]
-    cena = _pontua(_texto_cena(sc))
-    do_tema = _pontua(sem_acento(tema.lower()))
-    ids = [k for _, k in cena] + [k for _, k in do_tema if k not in [c for _, c in cena]]
+    """Objetos da cena, OBRIGATORIAMENTE ligados à fala dela.
+
+    Só entra objeto cujas palavras-chave aparecem na narração ou na tela da cena: o que o roteirista
+    marcou passa por esse filtro; sem marcação válida, vale o que a própria cena cita. O tema do
+    vídeo não basta (era assim que um foguete aparecia em "36 milhões de empregos perdidos").
+    Sem nenhum objeto ligado à fala, a cena fica sem objeto (lista vazia)."""
+    ligados = [k for _, k in _pontua(_texto_cena(sc))]
+    marcados = [str(x).strip().lower() for x in (sc.get("objetos3d") or [])]
+    ids = [m for m in dict.fromkeys(marcados) if m in CATALOGO and m in ligados]
+    ids += [k for k in ligados if k not in ids]
     if len(ids) > 1 and ids[0] == anterior:  # evita o mesmo objeto principal em cenas seguidas
         ids = ids[1:] + ids[:1]
-    return (ids or ["rede_neural"])[:3]
+    return ids[:3]
+
+
+def _prompt_revisao(cenas: list[dict]) -> str:
+    itens = "; ".join(f"{k} ({d})" for k, (d, _) in CATALOGO.items())
+    linhas = "\n".join(f'- [{sc["id"]}] {sc["text"]}' for sc in cenas)
+    return f"""Você é diretor de arte. Para cada cena, escolha de 0 a 2 objetos 3D do catálogo que mostram LITERALMENTE algo
+que a frase daquela cena cita (o objeto, o lugar, a ação ou o dado dela). É OBRIGATÓRIO que o objeto tenha ligação direta com a
+frase; ligação só com o tema geral do vídeo não serve. Na dúvida, não ponha objeto (lista vazia).
+Exemplos: "a OpenAI vai gastar 1 trilhão em data centers" -> ["datacenter", "moedas"]; "36 milhões de empregos perdidos" ->
+["pessoas", "grafico_queda"]; "o estudo de Harvard mostrou" -> ["documento"]; "você concorda?" -> [].
+
+CATÁLOGO: {itens}
+
+CENAS:
+{linhas}
+
+Responda SOMENTE com JSON: {{"cenas": [{{"id": "...", "objetos": ["id do catálogo"]}}]}}"""
+
+
+def revisar(roteiro: dict, cfg: dict) -> int:
+    """Revisão dedicada (uma chamada à IA): objetos ligados à fala de cada cena, ou nenhum.
+    Cenas com foto/vídeo ficam de fora (a mídia cobre o 3D). Devolve quantas cenas foram revisadas."""
+    from .llm import gerar_json
+    cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])
+             if not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video"))]
+    if not cenas:
+        return 0
+    try:
+        r, _, _ = gerar_json(_prompt_revisao(cenas), cfg, temperatura=0.1, max_tokens=2500)
+    except Exception:
+        return 0
+    por_id = {str(c.get("id")): c for c in (r.get("cenas") or []) if isinstance(c, dict)}
+    n = 0
+    for sc in cenas:
+        c = por_id.get(sc["id"])
+        if c is None:
+            continue
+        sc["objetos_revisados"] = [str(o).strip().lower() for o in (c.get("objetos") or []) if str(o).strip().lower() in CATALOGO][:2]
+        n += 1
+    return n
 
 
 def para_cenas(roteiro: dict) -> None:
-    """Grava em cada cena params._3d = {objetos, camera} (usado pelo engine/tema3d.js)."""
+    """Grava em cada cena params._3d = {objetos, camera} (usado pelo engine/tema3d.js).
+    Usa a revisão dedicada quando existe; senão, só objetos cujas palavras aparecem na própria cena."""
     tema = roteiro.get("tema", "")
     anterior, i = "", 0
     for ch in roteiro.get("chapters", []):
         for sc in ch.get("scenes", []):
-            objs = escolher(sc, tema, anterior)
+            prm = sc.get("params") or {}
+            if prm.get("_photo") or prm.get("_video"):
+                objs = []  # foto/vídeo cobrem a tela
+            elif "objetos_revisados" in sc:
+                objs = list(sc["objetos_revisados"])
+            else:
+                objs = escolher(sc, tema, anterior)
             cam = sc.get("camera3d") if sc.get("camera3d") in CAMERAS else CAMERAS[i % len(CAMERAS)]
             sc.setdefault("params", {})["_3d"] = {"objetos": objs, "camera": cam}
-            anterior, i = objs[0], i + 1
+            anterior, i = (objs[0] if objs else ""), i + 1

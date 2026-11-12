@@ -82,6 +82,9 @@ html, body { background: #000; overflow: hidden; }
 .land.has-logo #brand { display: none; }
 /* ---------- modo 3D ---------- */
 #gl3d { position: absolute; left: 0; top: 0; width: 100% !important; height: 100% !important; }
+.port.faixa3d #gl3d { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 88%, transparent 100%); }
+.land.faixa3d #gl3d { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12%); }
+.mode3d { background: #06080d; }
 #shade3d { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(5,7,13,.88) 0%, rgba(5,7,13,.62) 30%, rgba(5,7,13,.08) 47%, rgba(5,7,13,0) 58%, rgba(5,7,13,.25) 68%, rgba(5,7,13,.8) 86%, rgba(5,7,13,.92) 100%); }
 .land #shade3d { background: linear-gradient(90deg, rgba(5,7,13,.85) 0%, rgba(5,7,13,.5) 40%, rgba(5,7,13,0) 62%), linear-gradient(180deg, transparent 70%, rgba(5,7,13,.85) 100%); }
@@ -90,10 +93,10 @@ html, body { background: #000; overflow: hidden; }
 .land.mode-photo .box { right: 900px; }
 /* ---------- fotos ---------- */
 .photo { position: absolute; inset: 0; overflow: hidden; }
-.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.85) contrast(1.06) brightness(.82); }
-.photo .tint { position: absolute; inset: 0; background: var(--acc); mix-blend-mode: color; opacity: .22; }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; filter: saturate(1.05) contrast(1.06) brightness(.97); }
+.photo .tint { position: absolute; inset: 0; background: var(--acc); mix-blend-mode: soft-light; opacity: .18; }
 .photo::after { content: ''; position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(3,7,2,.92) 0%, rgba(3,7,2,.7) 30%, rgba(3,7,2,.12) 46%, rgba(3,7,2,0) 56%, rgba(3,7,2,.3) 66%, rgba(3,7,2,.85) 82%, rgba(3,7,2,.95) 100%); }
+  background: linear-gradient(180deg, rgba(3,7,2,.85) 0%, rgba(3,7,2,.55) 26%, rgba(3,7,2,.05) 42%, rgba(3,7,2,0) 60%, rgba(3,7,2,.25) 68%, rgba(3,7,2,.8) 84%, rgba(3,7,2,.92) 100%); }
 .land .photo::after { background: linear-gradient(90deg, rgba(3,7,2,.9) 0%, rgba(3,7,2,.55) 42%, rgba(3,7,2,.05) 65%), linear-gradient(180deg, transparent 70%, rgba(3,7,2,.85) 100%); }
 .mode-photo .card { background: linear-gradient(180deg, rgba(16,22,14,.88), rgba(10,14,9,.88)); }
 #credit { position: absolute; font-weight: 600; color: var(--fog-400); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

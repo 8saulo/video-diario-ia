@@ -138,6 +138,18 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     # 4. narração
     etapa("narracao", "Narração e alinhamento das palavras")
     narr = tts.narrar(roteiro, cfg, pasta)
+    # fotos e vídeos reais (licença livre) ligados à fala de cada cena; depois, objetos 3D só onde não há mídia
+    etapa("midia", "Fotos e vídeos de licença livre")
+    from . import midia, objetos3d
+    from .render import CAUDA
+    longo = roteiro["formato"] == "longo"
+    durs = {sid: c["dur"] + CAUDA for sid, c in narr["cenas"].items()}
+    creditos = midia.aplicar(roteiro, cfg, pasta, durs, 1920 if longo else 1080, 1080 if longo else 1920,
+                             int(cfg["visual"].get("fps", 30)))
+    if creditos:
+        roteiro["creditos_fotos"] = creditos
+    if (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon"):
+        objetos3d.revisar(roteiro, cfg)
     # 5. animação
     etapa("cenas", "Montagem das cenas e prévia de layout")
     data = render.montar_timeline(roteiro, narr, cfg)

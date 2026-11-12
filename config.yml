@@ -109,6 +109,11 @@ llm:
       - gemma-4
       - gpt-oss
       - deepseek
+  visao:
+    modelos:                        # modelos grátis do OpenRouter que enxergam imagem (escolha de fotos/vídeos)
+      - gemma-4-31b
+      - nemotron-3.5-super-vl
+      - gemma-4-26b
   gemini:
     modelos:                        # só é usado para texto se "gemini" estiver na ordem acima
       - gemini-3.8-flash
@@ -135,3 +140,9 @@ busca:
 entrega:
   release: true                     # publica um Release no GitHub com vídeo, thumbs e textos
   limite_previa_mb: 30              # prévia que abre no celular
+
+midia:                              # fotos e vídeos reais por cena (Wikimedia Commons + Openverse; sem chave)
+  ativo: true                       # só licenças que permitem uso comercial e edição (CC0, domínio público, CC BY, CC BY-SA)
+  max_cenas: 99                     # limite de cenas com mídia por vídeo; sem candidato ligado à fala, a cena fica sem mídia
+  visao: true                       # a IA olha as miniaturas antes de escolher (modelos grátis do OpenRouter; llm.visao.modelos)
+  escolha_sem_ver: false            # sem modelo de visão: false = cena sem mídia (garante relevância); true = decide pelo título

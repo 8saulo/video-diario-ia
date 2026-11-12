@@ -249,6 +249,49 @@ def _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max)
     return st, txt, espera, msg
 
 
+_visao_cache: list[str] = []
+
+
+def _modelos_visao() -> list[str]:
+    """Modelos grátis do OpenRouter que aceitam imagem (a lista de texto exclui os de visão de propósito)."""
+    if not _visao_cache:
+        try:
+            r = requests.get(PROVEDORES["openrouter"]["base"] + "/models", timeout=30,
+                             headers={"Authorization": f"Bearer {chave(PROVEDORES['openrouter']['env'])}"})
+            for m in r.json().get("data", []):
+                ent = (m.get("architecture") or {}).get("input_modalities") or []
+                if m.get("id", "").endswith(":free") and "image" in ent:
+                    _visao_cache.append(m["id"])
+        except Exception as e:
+            log(f"  não consegui listar os modelos de visão ({str(e)[:80]})")
+    return list(_visao_cache)
+
+
+def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int = 600):
+    """Pergunta a um modelo grátis que enxerga imagem (OpenRouter) olhando as imagens (URLs). Devolve (obj, modelo).
+    Usa llm.visao.modelos (trechos do nome) em ordem; levanta RuntimeError se nenhum responder."""
+    vcfg = (cfg.get("llm") or {}).get("visao") or {}
+    if not chave(PROVEDORES["openrouter"]["env"]):
+        raise RuntimeError("sem OPENROUTER_API_KEY para os modelos de visão")
+    prefs = list(vcfg.get("modelos") or ["gemma-4-31b", "nemotron-3.5-super-vl", "gemma-4-26b"])
+    nomes = _modelos_visao()
+    modelos = [n for p in prefs for n in nomes if p in n and f"openrouter/{n}" not in _fora]
+    conteudo = [{"type": "text", "text": prompt}] + [{"type": "image_url", "image_url": {"url": u}} for u in imagens]
+    msgs = [{"role": "user", "content": conteudo}]
+    erros = []
+    modelos += [n for n in nomes if n not in modelos and f"openrouter/{n}" not in _fora]  # depois, os outros de visão
+    for m in list(dict.fromkeys(modelos))[:5]:
+        st, txt, espera, msg = _tentar("openrouter", m, prompt, "", msgs, 0.1, max_tokens, float((cfg.get("llm") or {}).get("espera_max_s", 65)))
+        if st == 200 and txt:
+            try:
+                return extrair_json(txt), f"openrouter/{m}"
+            except Exception as e:
+                erros.append(f"{m}: JSON inválido ({str(e)[:40]})")
+                continue
+        erros.append(f"{m}: HTTP {st} {msg[:60]}")
+    raise RuntimeError("nenhum modelo de visão respondeu: " + "; ".join(erros[-3:]))
+
+
 def extrair_json(txt: str):
     t = _limpar(txt)
     m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)

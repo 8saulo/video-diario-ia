@@ -138,14 +138,14 @@ def escrever(roteiro, data, pesquisa, fatos, voz, conf, medidas, issues, pasta: 
     desc += [t for t in yt.get("topicos", [])]
     desc += ["", yt.get("cta", "").strip(), ""]
     aviso = (yt.get("aviso") or "").strip()
-    desc.append(((aviso + " ") if aviso else "") + ("Animação em código com fotos de licença livre" if roteiro.get("creditos_fotos") else "Animação feita 100% em código") + " e narração com voz sintética.")
+    desc.append(((aviso + " ") if aviso else "") + ("Animação em código com fotos e vídeos de licença livre" if roteiro.get("creditos_fotos") else "Animação feita 100% em código") + " e narração com voz sintética.")
     if caps:
         desc += ["", "CAPÍTULOS"] + [f"{a} {b}" for a, b in caps]
     if fontes:
         desc += ["", "FONTES"] + [f"{n} ({d}): {u}" for n, u, d in fontes]
     fotos = roteiro.get("creditos_fotos") or []
     if fotos:
-        desc += ["", "FOTOS (Wikimedia Commons)"] + [f"{f['credito']}: {f['pagina']}" for f in fotos]
+        desc += ["", "FOTOS E VÍDEOS (licenças livres)"] + [f"{f['credito']}: {f['pagina']}" for f in fotos]
     desc += ["", " ".join(yt.get("hashtags", [])[:5])]
     descricao = "\n".join(desc).strip()
     corte = corte_tiktok(data, roteiro) if not curto else None

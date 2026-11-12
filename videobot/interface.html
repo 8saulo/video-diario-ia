@@ -483,7 +483,7 @@ $("#b-parar").onclick = async () => { if (confirm("Parar a geração agora? O qu
 /* ---------------- execução: passo a passo + terminal ---------------- */
 const ETAPAS = [
   ["pesquisa", "Pesquisa de tema no YouTube"], ["fatos", "Checagem de fatos nas fontes"], ["roteiro", "Roteiro"],
-  ["narracao", "Narração e alinhamento das palavras"], ["cenas", "Montagem das cenas e prévia de layout"],
+  ["narracao", "Narração e alinhamento das palavras"], ["midia", "Fotos e vídeos de licença livre"], ["cenas", "Montagem das cenas e prévia de layout"],
   ["audio", "Trilha, efeitos e mixagem"], ["render", "Render quadro a quadro"], ["conferencia", "Conferência do arquivo e prévia leve"],
   ["thumbs", "Thumbnails"], ["pacote", "Pacote de publicação"],
 ];
@@ -594,7 +594,7 @@ async function carregarConfig(redesenha = true) {
   atualizaListasDatalist();
   S.ambiente = await api("/api/ambiente");
   $("#badges").innerHTML = `
-    ${[["GROQ_API_KEY", "Groq"], ["OPENROUTER_API_KEY", "OpenRouter"], ["TAVILY_API_KEY", "Tavily"], ["GEMINI_API_KEY", "Gemini (voz)"], ["YOUTUBE_API_KEY", "YouTube"]]
+    ${[["GROQ_API_KEY", "Groq"], ["OPENROUTER_API_KEY", "OpenRouter"], ["TAVILY_API_KEY", "Tavily"], ["GEMINI_API_KEY", "Gemini (voz)"], ["YOUTUBE_API_KEY", "YouTube"], ["PIXABAY_API_KEY", "Pixabay (fotos e vídeos)"]]
       .map(([k, t]) => `<span class="badge ${S.ambiente.chaves[k] ? "ok" : ""}" title="${k}">${S.ambiente.chaves[k] ? "✓" : "–"} ${t}</span>`).join("")}
     <span class="badge">Python ${esc(S.ambiente.python)}</span>`;
   if (!S.ambiente.texto) S.modo = "demo";
