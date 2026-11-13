@@ -112,8 +112,9 @@ llm:
       - deepseek
   visao:
     modelos:                        # modelos grátis do OpenRouter que enxergam imagem (escolha de fotos/vídeos)
+      - nemotron-3.5-super-vl       # o que mais respondeu nos testes
+      - particle-1
       - gemma-4-31b
-      - nemotron-3.5-super-vl
       - gemma-4-26b
   gemini:
     modelos:                        # só é usado para texto se "gemini" estiver na ordem acima
@@ -147,3 +148,4 @@ midia:                              # fotos e vídeos reais por cena (Wikimedia 
   max_cenas: 99                     # limite de cenas com mídia por vídeo; sem candidato ligado à fala, a cena fica sem mídia
   visao: true                       # a IA olha as miniaturas antes de escolher (modelos grátis do OpenRouter; llm.visao.modelos)
   escolha_sem_ver: false            # sem modelo de visão: false = cena sem mídia (garante relevância); true = decide pelo título
+  pixabay_sem_visao: true           # sem visão, ainda escolhe entre os do Pixabay pelas tags (que descrevem a imagem)

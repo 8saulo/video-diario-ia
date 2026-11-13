@@ -145,6 +145,53 @@ def _erros_capitulo(cenas: list, fatos: dict, cfg: dict, hoje, palavras: int) ->
     return err
 
 
+def prompt_embalagem(r: dict, fatos: dict) -> str:
+    caps = "\n".join(f'{i + 1}. {c["title"]}: {c["scenes"][0]["text"][:140]}' for i, c in enumerate(r.get("chapters", [])) if c.get("scenes"))
+    nums = "; ".join(f'[{f["id"]}] {f["afirmacao"][:110]}' for f in fatos.get("fatos", [])[:14])
+    return f"""Você é especialista em embalagem de vídeos do YouTube (título + thumbnail), focado em CTR alto sem enganar.
+Vídeo longo pronto sobre "{r.get('tema', '')}". Promessa: {r.get('promessa', '')}
+Capítulos e como cada um começa:
+{caps}
+Fatos (use só estes números): {nums}
+
+Crie:
+- titulo: até 60 caracteres, palavra-chave no começo, lacuna de curiosidade com número ou contraste; promessa que o vídeo cumpre.
+- alternativos: 3 títulos bem diferentes entre si (ângulos: número chocante, pergunta, consequência para o espectador).
+- thumb: 2 a 4 palavras GRANDES que COMPLEMENTAM o título (não repetem), emoção/tensão sem sensacionalismo falso;
+  um número forte dos fatos (com algarismos) e um rótulo de até 4 palavras que diga a unidade/contexto do número.
+- thumb_foto: busca EM INGLÊS (2 a 4 palavras) de uma foto real VISUALMENTE FORTE e reconhecível para a thumb: o rosto da pessoa
+  central, o produto, a fachada/logo da empresa, ou a cena concreta mais impactante (ex.: "Sam Altman", "Nvidia H100 GPU",
+  "power plant cooling towers"). Evite ambientes genéricos e escuros (ex.: "data center interior").
+
+Revise o português (concordância: "SUA conta", não "SEU conta"; acentos) antes de responder.
+Responda SOMENTE com JSON:
+{{"titulo": "...", "alternativos": ["...", "...", "..."],
+ "thumb": {{"lines": [{{"text": "ATÉ 2 PALAVRAS"}}, {{"text": "ATÉ 2 PALAVRAS", "hl": true}}], "number": "...", "numberLabel": "...", "icon": "ia"}},
+ "thumb_foto": "..."}}"""
+
+
+def embalar(r: dict, fatos: dict, cfg: dict) -> dict:
+    """Título, alternativos e thumb do longo, feitos com o roteiro já escrito (run #23 saiu sem título)."""
+    try:
+        e, _, m = gerar_json(prompt_embalagem(r, fatos), cfg, temperatura=0.8, max_tokens=1500)
+    except Exception as ex:
+        nota(f"Embalagem do longo falhou ({str(ex)[:90]}); mantive título e thumb da estrutura.")
+        return r
+    pub = r.setdefault("publicacao", {}) if isinstance(r.get("publicacao"), dict) else r.setdefault("publicacao", {})
+    yt = pub.setdefault("youtube", {}) if isinstance(pub.get("youtube"), dict) else pub.setdefault("youtube", {})
+    tit = str(e.get("titulo") or "").strip()
+    if tit and len(tit) <= 70:
+        yt["titulo"] = tit
+        yt["alternativos"] = [str(a).strip() for a in (e.get("alternativos") or []) if str(a).strip() and len(str(a)) <= 70][:3]
+    th = e.get("thumb")
+    if isinstance(th, dict) and th.get("lines"):
+        r["thumb"] = th
+    if str(e.get("thumb_foto") or "").strip():
+        r["thumb_foto"] = str(e["thumb_foto"]).strip()
+    log(f"  embalagem ({m}): título '{yt.get('titulo', '')}' | thumb: {' '.join(l.get('text', '') for l in (r.get('thumb') or {}).get('lines', []))}")
+    return r
+
+
 def escrever_longo(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     from .script import _alvos, _sanear, validar
     alvos = _alvos(cfg)
@@ -192,6 +239,7 @@ def escrever_longo(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     r = {"tema": est.get("tema") or fatos["tema"], "chapters": chapters, "thumb": est.get("thumb") or {},
          "thumb_foto": str(est.get("thumb_foto") or "").strip(), "promessa": est.get("promessa", ""),
          "publicacao": est.get("publicacao") or {}}
+    r = embalar(r, fatos, cfg)
     erros = validar(r, fatos, cfg, hoje)
     if erros:
         nota("Roteiro longo: pendências: " + "; ".join(erros[:6]))

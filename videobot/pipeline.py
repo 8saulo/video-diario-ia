@@ -88,6 +88,10 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         fatos = ler_json(orig / "fatos.json", None)
         cfg["formato"] = roteiro.get("formato", cfg["formato"])
         curto = cfg["formato"] == "curto"
+        tit = (((roteiro.get("publicacao") or {}).get("youtube") or {}).get("titulo"))
+        if not curto and fatos and not tit:
+            from .script_longo import embalar
+            roteiro = embalar(roteiro, fatos, cfg)
         nota(f"Refazendo o vídeo de {data_hoje.isoformat()} ('{roteiro.get('tema', '')}') com o roteiro, os fatos e a "
              "pesquisa originais; só a narração, a animação e o render foram gerados de novo.")
     elif modo == "demo":

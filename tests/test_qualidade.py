@@ -122,3 +122,45 @@ def test_thumb_com_foto_sai_em_1920_e_abaixo_de_2mb(tmp_path, cfg):
     hq, pq = render.thumbs(info, cfg, tmp_path, False)
     assert Image.open(hq).size == (1920, 1080) and hq.stat().st_size < 2_000_000
     assert Image.open(pq).size == (1280, 720)
+
+
+def test_publicacao_com_chaves_achatadas_vira_normal():
+    """Run #23: o modelo devolveu {"youtube": {"youtube.abertura": ...}} e o vídeo saiu sem título nem abertura."""
+    from videobot.publish import normalizar_publicacao
+    r = {"tema": "t", "chapters": [{"scenes": [{"text": "oi"}]}]}
+    p = normalizar_publicacao({"youtube": {"youtube.abertura": "A", "titulo": "T"}, "youtube.tags": "a, b"}, r)
+    assert (p["youtube"]["abertura"], p["youtube"]["titulo"], p["youtube"]["tags"]) == ("A", "T", ["a", "b"])
+
+
+def test_embalagem_do_longo_preenche_titulo_alternativos_e_thumb(monkeypatch, cfg):
+    from videobot import script_longo
+    monkeypatch.setattr(script_longo, "gerar_json", lambda *a, **k: ({
+        "titulo": "Data centers já gastam 415 TWh", "alternativos": ["A", "B", "C" * 80],
+        "thumb": {"lines": [{"text": "SUA CONTA"}, {"text": "SOBE", "hl": True}], "number": "415"},
+        "thumb_foto": "power plant cooling towers"}, {}, "m"))
+    r = script_longo.embalar({"tema": "t", "chapters": [{"title": "c", "scenes": [{"text": "x"}]}], "publicacao": {}}, {"fatos": []}, cfg)
+    yt = r["publicacao"]["youtube"]
+    assert yt["titulo"] == "Data centers já gastam 415 TWh" and yt["alternativos"] == ["A", "B"]
+    assert r["thumb"]["lines"][0]["text"] == "SUA CONTA" and r["thumb_foto"] == "power plant cooling towers"
+
+
+def test_visao_tenta_cada_modelo_uma_vez(monkeypatch, cfg):
+    """Run #23: 3 tentativas x 5 modelos x esperas = 35 min presos na mídia."""
+    from videobot import llm
+    monkeypatch.setattr(llm, "chave", lambda n: "x")
+    monkeypatch.setattr(llm, "_modelos_visao", lambda: ["a:free", "b:free", "c:free"])
+    chamadas = []
+    monkeypatch.setattr(llm, "_openai", lambda prov, m, *a: chamadas.append(m) or (429, "", 0.0, "Provider returned error"))
+    with pytest.raises(RuntimeError):
+        llm.gerar_visao_json("p", ["data:image/jpeg;base64,x"], dict(cfg, llm=dict(cfg["llm"], visao={"modelos": ["a", "b", "c"]})))
+    assert chamadas == ["a:free", "b:free", "c:free"]
+
+
+def test_sem_visao_escolhe_so_entre_pixabay_pelas_tags(monkeypatch, cfg):
+    from videobot import llm, midia
+    vistos = []
+    monkeypatch.setattr(llm, "gerar_json", lambda p, *a, **k: vistos.append(p) or ({"escolha": 0}, {}, "m"))
+    cands = [{"fonte": "Wikimedia Commons", "tipo": "foto", "titulo": "x", "descricao": "", "categorias": [], "url": "u1"},
+             {"fonte": "Pixabay", "tipo": "foto", "titulo": "factory, robot", "descricao": "", "categorias": ["factory"], "url": "u2"}]
+    k = midia.escolher({"id": "s", "text": "robôs na fábrica"}, cands, dict(cfg, midia=dict(cfg["midia"], visao=False)))
+    assert k == 1 and "Commons" not in vistos[0] and "factory, robot" in vistos[0]

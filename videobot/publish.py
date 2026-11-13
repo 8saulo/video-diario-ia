@@ -94,7 +94,17 @@ def normalizar_publicacao(pub: dict, roteiro: dict) -> dict:
     """Os modelos às vezes devolvem campos no formato errado (ex.: 3 títulos dentro de 'titulo').
     Aqui cada campo vira o tipo esperado: o 1º título é o principal e os outros vão para 'alternativos'."""
     base = _pub_padrao(roteiro)
-    pub = pub if isinstance(pub, dict) else {}
+    pub = dict(pub) if isinstance(pub, dict) else {}
+    # run #23: o modelo devolveu {"youtube": {"youtube.abertura": ...}}; desfaz o prefixo "youtube."/"tiktok."
+    for rede in ("youtube", "tiktok"):
+        d = pub.get(rede)
+        if isinstance(d, dict):
+            pub[rede] = {(k.split(".", 1)[1] if k.startswith(rede + ".") else k): v for k, v in d.items()}
+    for k in list(pub):
+        if "." in k and k.split(".", 1)[0] in ("youtube", "tiktok"):
+            rede, campo = k.split(".", 1)
+            pub.setdefault(rede, {}) if isinstance(pub.get(rede), dict) else pub.__setitem__(rede, {})
+            pub[rede].setdefault(campo, pub.pop(k))
     yt = dict(base["youtube"], **(pub.get("youtube") if isinstance(pub.get("youtube"), dict) else {}))
     tk = dict(base["tiktok"], **(pub.get("tiktok") if isinstance(pub.get("tiktok"), dict) else {}))
     titulos = _lista(yt.get("titulo")) or [base["youtube"]["titulo"]]

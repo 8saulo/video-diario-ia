@@ -867,6 +867,14 @@
     css(im, { width: '100%', height: '100%', objectFit: 'cover', objectPosition: data.focus || '50% 30%',
               filter: 'contrast(1.14) saturate(1.22) brightness(1.04)', transform: 'scale(1.04)' });
     try { await im.decode(); } catch (e) { return { issues: [{ tipo: 'foto_nao_carregou' }], mainFont: 0, mainFontAt25: 0 }; }
+    // foto escura (run #23: sala de servidores quase preta): clareia até ficar legível em miniatura
+    try {
+      const cv = document.createElement('canvas'); cv.width = 32; cv.height = 18; const g = cv.getContext('2d');
+      g.drawImage(im, 0, 0, 32, 18); const px = g.getImageData(0, 0, 32, 18).data; let s = 0;
+      for (let i = 0; i < px.length; i += 4) s += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+      const lum = s / (px.length / 4);
+      if (lum < 105) im.style.filter = 'contrast(1.12) saturate(1.25) brightness(' + Math.min(1.7, 105 / Math.max(lum, 30)).toFixed(2) + ')';
+    } catch (e) { /* imagem de outra origem: segue sem medir */ }
     // foto em pé (pessoa): ancora no alto para não cortar a cabeça
     if (!data.focus && im.naturalHeight > im.naturalWidth * 0.8) im.style.objectPosition = '50% 6%';
     const tint = el('div', 'abs', fw); css(tint, { inset: '0', background: 'radial-gradient(ellipse at 70% 40%, transparent 35%, rgba(var(--acc-rgb),.28) 100%)', mixBlendMode: 'soft-light' });

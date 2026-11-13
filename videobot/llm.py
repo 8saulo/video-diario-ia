@@ -281,7 +281,7 @@ def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int
     erros = []
     modelos += [n for n in nomes if n not in modelos and f"openrouter/{n}" not in _fora]  # depois, os outros de visão
     for m in list(dict.fromkeys(modelos))[:5]:
-        st, txt, espera, msg = _tentar("openrouter", m, prompt, "", msgs, 0.1, max_tokens, float((cfg.get("llm") or {}).get("espera_max_s", 65)))
+        st, txt, espera, msg = _openai("openrouter", m, msgs, 0.1, max_tokens)  # 1 tentativa: se um recusa, vai para o próximo
         if st == 200 and txt:
             try:
                 return extrair_json(txt), f"openrouter/{m}"

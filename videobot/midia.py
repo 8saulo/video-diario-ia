@@ -360,6 +360,8 @@ def escolher_lote(cenas: list[dict], por_cena: dict, cfg: dict) -> dict:
                     break
                 except Exception as e:
                     log(f"  mídia: visão indisponível ({str(e)[:80]})")
+                    if tentativa >= 1:
+                        break  # não fica preso: segue para a escolha pelas tags do Pixabay
                     if "per-day" in str(e) or "per day" in str(e):
                         nota("Mídia: a cota diária grátis dos modelos de visão (OpenRouter, 50 pedidos/dia) acabou; cenas sem foto/vídeo hoje.")
                         break
@@ -395,7 +397,16 @@ def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
                 if tentativa == 0 and "429" in str(e):
                     time.sleep(25)  # limite por minuto dos modelos grátis: espera e tenta de novo
     if not (cfg.get("midia") or {}).get("escolha_sem_ver", False):
-        return -1  # sem olhar a imagem não dá para garantir que ela mostra o assunto da frase: cena sem mídia
+        # sem olhar a imagem, só o Pixabay: as tags dele descrevem o conteúdo (Commons/Openverse não garantem)
+        px = [c for c in cands if c.get("fonte") == "Pixabay"]
+        if not px or not (cfg.get("midia") or {}).get("pixabay_sem_visao", True):
+            return -1
+        try:
+            esc, _, _ = gerar_json(_prompt_escolha(sc, px), cfg, temperatura=0.1, max_tokens=400)
+            k = int(esc.get("escolha", -1))
+            return cands.index(px[k]) if 0 <= k < len(px) else -1
+        except Exception:
+            return -1
     try:
         esc, _, _ = gerar_json(_prompt_escolha(sc, cands), cfg, temperatura=0.1, max_tokens=400)
         return int(esc.get("escolha", -1))
@@ -414,8 +425,8 @@ def foto_thumb(roteiro: dict, cfg: dict, pasta: Path, creditos: list[dict]) -> d
         cands = [c for c in candidatos([q], "foto") if (c.get("w") or 0) >= 1000 and (c.get("w") or 0) >= (c.get("h") or 0) * 0.9]
         if cands:
             sc = {"id": "thumb", "text": f'FOTO DE CAPA (thumbnail do YouTube) do vídeo "{titulo}". Precisa mostrar {q} em destaque, '
-                                        "nítido, boa luz, de preferência rosto com expressão ou o produto bem visível; nada de foto pequena, "
-                                        "escura, de longe ou com texto por cima."}
+                                        "nítido, BEM ILUMINADO e colorido, de preferência rosto com expressão ou o produto bem visível; "
+                                        "nada de foto pequena, escura, de longe, ambiente vazio ou com texto por cima."}
             k = escolher_lote([sc], {"thumb": cands}, cfg).get("thumb", -1)
             if 0 <= k < len(cands):
                 c = cands[k]
