@@ -196,9 +196,14 @@ def _sanear(r: dict, fatos: dict, cfg, hoje):
 
 def escrever(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     alvos = _alvos(cfg)
-    r, _, modelo = gerar_json(_prompt(cand, fatos, cfg, hoje, alvos), cfg, temperatura=0.7)
-    erros = validar(r, fatos, cfg, hoje)
-    for rodada in range(2):
+    if cfg["formato"] == "longo":  # longo: em etapas (estrutura + um pedido por capítulo); o curto segue igual
+        from .script_longo import escrever_longo
+        r = escrever_longo(cand, fatos, cfg, hoje)
+        modelo, erros = r.pop("_modelo", ""), []
+    else:
+        r, _, modelo = gerar_json(_prompt(cand, fatos, cfg, hoje, alvos), cfg, temperatura=0.7)
+        erros = validar(r, fatos, cfg, hoje)
+    for rodada in range(2 if cfg["formato"] != "longo" else 0):
         if not erros:
             break
         log(f"roteiro: {len(erros)} problema(s); pedindo correção ({rodada + 1}/2)")

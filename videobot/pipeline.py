@@ -146,6 +146,11 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     durs = {sid: c["dur"] + CAUDA for sid, c in narr["cenas"].items()}
     creditos = midia.aplicar(roteiro, cfg, pasta, durs, 1920 if longo else 1080, 1080 if longo else 1920,
                              int(cfg["visual"].get("fps", 30)))
+    if longo and roteiro.get("thumb"):  # longo: thumb com foto real do assunto central
+        capa = midia.foto_thumb(roteiro, cfg, pasta, creditos)
+        if capa:
+            roteiro["thumb"]["photo"] = capa["photo"]
+            creditos = creditos + [{"cena": "thumb", "titulo": "foto da capa", "credito": capa["credito"], "pagina": capa["pagina"]}]
     if creditos:
         roteiro["creditos_fotos"] = creditos
     if (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon"):

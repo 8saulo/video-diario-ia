@@ -403,6 +403,41 @@ def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
         return -1
 
 
+def foto_thumb(roteiro: dict, cfg: dict, pasta: Path, creditos: list[dict]) -> dict | None:
+    """Foto da thumb do longo: o assunto central (roteiro['thumb_foto']), horizontal e grande, escolhida pela visão.
+    Sem visão: a maior foto já escolhida (com visão) para as cenas. Devolve {photo, credito, pagina} ou None."""
+    q = str(roteiro.get("thumb_foto") or "").strip()
+    titulo = ((roteiro.get("publicacao") or {}).get("youtube") or {}).get("titulo") or roteiro.get("tema", "")
+    if isinstance(titulo, list):
+        titulo = titulo[0] if titulo else ""
+    if q:
+        cands = [c for c in candidatos([q], "foto") if (c.get("w") or 0) >= 1000 and (c.get("w") or 0) >= (c.get("h") or 0) * 0.9]
+        if cands:
+            sc = {"id": "thumb", "text": f'FOTO DE CAPA (thumbnail do YouTube) do vídeo "{titulo}". Precisa mostrar {q} em destaque, '
+                                        "nítido, boa luz, de preferência rosto com expressão ou o produto bem visível; nada de foto pequena, "
+                                        "escura, de longe ou com texto por cima."}
+            k = escolher_lote([sc], {"thumb": cands}, cfg).get("thumb", -1)
+            if 0 <= k < len(cands):
+                c = cands[k]
+                try:
+                    ext = Path(c["url"].split("?")[0]).suffix.lower() or ".jpg"
+                    arq = _baixar(c["url"], pasta / "midia" / f"_thumb{ext}")
+                    log(f"  thumb: foto '{c['titulo'][:60]}' ({c['licenca']})")
+                    return {"photo": arq.resolve().as_uri(), "credito": credito(c).replace("Foto:", "Foto da capa:"), "pagina": c["pagina"]}
+                except Exception as e:
+                    log(f"  thumb: não consegui baixar a foto ({str(e)[:80]})")
+    fotos = []
+    for ch in roteiro.get("chapters", []):
+        for sc in ch.get("scenes", []):
+            prm = sc.get("params") or {}
+            if prm.get("_photo"):
+                fotos.append(prm)
+    if fotos:
+        prm = fotos[0]
+        return {"photo": prm["_photo"], "credito": str(prm.get("_credit", "")).replace("Foto:", "Foto da capa:"), "pagina": ""}
+    return None
+
+
 # ---------------------------------------------------------------- orquestração
 def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: int, h: int, fps: int) -> list[dict]:
     """Escolhe e baixa mídia para as cenas; grava params._photo / params._video / params._credit.
@@ -454,6 +489,8 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
                 arq.unlink(missing_ok=True)
             else:
                 prm["_photo"] = arq.resolve().as_uri()
+                if (c.get("h") or 0) > (c.get("w") or 1) * 0.9:
+                    prm["_focus"] = "50% 12%"  # foto em pé (geralmente pessoa): não corta a cabeça
             prm["_credit"] = credito(c)
             creditos.append({"cena": sc["id"], "credito": credito(c), **{k2: c[k2] for k2 in ("tipo", "titulo", "autor", "licenca", "fonte", "pagina")}})
             log(f"  mídia [{sc['id']}]: {c['tipo']} '{c['titulo'][:60]}' ({c['licenca']})")

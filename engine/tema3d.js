@@ -642,7 +642,7 @@
     C = new THREE.PerspectiveCamera(PORT ? 48 : 36, W / H, 0.1, 200);
     // mesmo enquadramento de antes (objeto entre os cartões e a legenda / à direita), recortado na faixa
     if (PORT) C.setViewOffset(W, H, 0, -H * 0.02 + FX.y, W, FX.h);
-    else C.setViewOffset(W, H, -W * 0.25 + FX.x, 0, FX.w, H);
+    else C.setViewOffset(W, H, -W * 0.29 + FX.x, 0, FX.w, H);
 
     const chao = mesh(new THREE.CircleGeometry(70, 64), std(0x0a0d13, { roughness: 0.95 })); chao.rotation.x = -Math.PI / 2; S.add(chao);
     const grade = new THREE.GridHelper(90, 60, ACC, 0x1a2030); grade.material.transparent = true; grade.material.opacity = 0.22; grade.position.y = 0.01; S.add(grade);

@@ -70,12 +70,12 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     v = cfg["visual"]
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
             "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": cena3d,
-            "scale3d": float(v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
+            "scale3d": float(v.get("escala3d_longo", v.get("escala3d", 0.75)) if longo else v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
             "theme": _tema(v)}
 
 
 # ---------------------------------------------------------------- navegador
-def _abrir(w, h):
+def _abrir(w, h, escala: float = 1):
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
     args = ["--font-render-hinting=none", "--disable-lcd-text", "--force-color-profile=srgb", "--hide-scrollbars", "--disable-gpu"]
@@ -93,7 +93,7 @@ def _abrir(w, h):
             import time
             subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False)
             time.sleep(10)
-    pg = br.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
+    pg = br.new_page(viewport={"width": w, "height": h}, device_scale_factor=escala)
     pg.goto((ENGINE / "index.html").as_uri())
     pg.wait_for_function("window.boot && window.gsap")
     return pw, br, pg
@@ -246,7 +246,41 @@ def previa_leve(video: Path, pasta: Path, limite_mb: float) -> Path | None:
 
 
 # ---------------------------------------------------------------- thumbnails (CRIVO 7)
+def thumb_foto(info: dict, cfg: dict, pasta: Path) -> list[Path]:
+    """Thumb do longo com foto real: desenhada a 1280x720 e capturada em 1,5x (1920x1080, nítida), mais a versão 1280x720.
+    O YouTube aceita até 2 MB: a qualidade do JPEG baixa até caber."""
+    import io
+    garantir_gsap()
+    pw, br, pg = _abrir(1280, 720, escala=1.5)
+    try:
+        res = pg.evaluate("d => window.bootThumbFoto(d)", dict(info, w=1280, h=720, theme=_tema(cfg["visual"])))
+        png = pg.screenshot(type="png")
+    finally:
+        br.close(); pw.stop()
+    if any(i.get("tipo") == "foto_nao_carregou" for i in res["issues"]):
+        raise RuntimeError("a foto da thumb não carregou")
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    hq = pasta / "thumb_1920x1080.jpg"
+    for q in (95, 92, 88, 84, 80):
+        im.save(hq, quality=q, optimize=True, subsampling=0 if q >= 92 else 2)
+        if hq.stat().st_size < 1_900_000:
+            break
+    pq = pasta / "thumb_1280x720.jpg"
+    im.resize((1280, 720), Image.LANCZOS).save(pq, quality=93, optimize=True)
+    im.resize((320, 180), Image.LANCZOS).save(pasta / "_25pct_thumb_1280x720.png")
+    if res["issues"]:
+        nota(f"CRIVO 7 (thumb com foto): {res['issues']}")
+    if res["mainFontAt25"] < 18:
+        nota(f"CRIVO 7 (thumb com foto): a palavra principal fica com {res['mainFontAt25']:.0f}px a 25% (pode ficar pequena).")
+    return [hq, pq]
+
+
 def thumbs(info: dict, cfg: dict, pasta: Path, curto: bool) -> list[Path]:
+    if not curto and info.get("photo"):  # longo com foto real escolhida: thumb de alta qualidade
+        try:
+            return thumb_foto(info, cfg, pasta)
+        except Exception as e:
+            nota(f"Thumb com foto falhou ({str(e)[:90]}); usei a thumb gráfica.")
     garantir_gsap()
     v = cfg["visual"]
     alvos = [("thumb_1280x720.jpg", 1280, 720)] + ([("capa_1080x1920.jpg", 1080, 1920)] if curto else [])

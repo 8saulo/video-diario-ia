@@ -85,6 +85,7 @@ visual:
   marca_troca_s: 9                  # a logo troca de canto a cada N segundos
   cena3d: "tema"                    # "tema" = objetos 3D em código escolhidos para cada cena (foguete, chip, moedas...); "gpon" = cena fixa de fibra óptica; vazio = fundo 2D
   escala3d: 0.75                    # resolução interna do 3D (menor = render mais rápido)
+  escala3d_longo: 1.0               # vídeo longo (16:9): 3D em resolução cheia (mais nítido; o render demora mais)
   legendas: true
   musica: true                      # trilha gerada em código, baixinha por baixo da voz
   efeitos: true                     # whoosh/pop gerados em código

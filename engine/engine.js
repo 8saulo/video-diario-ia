@@ -633,7 +633,7 @@
       photo = el('div', 'photo', root);
       photoImg = el('img', '', photo); photoImg.alt = '';
       if (P._video) { seg.vid = { img: photoImg, dir: P._video.dir, n: P._video.n, fps: P._video.fps || 30, k: -1 }; photoImg.src = quadro(seg.vid, 0); }
-      else photoImg.src = P._photo;
+      else { photoImg.src = P._photo; if (P._focus) photoImg.style.objectPosition = P._focus; }
       el('div', 'tint', photo);
     }
     const cam = el('div', 'cam', root);
@@ -845,6 +845,69 @@
       if (r.left < M - 1 || r.top < M - 1 || r.right > W - M + 1 || r.bottom > H - M + 1) issues.push({ tipo: 'fora_da_margem', txt: e.textContent });
       const ov = Math.max(0, Math.min(r.right, ir.right) - Math.max(r.left, ir.left)) * Math.max(0, Math.min(r.bottom, ir.bottom) - Math.max(r.top, ir.top));
       if (ov > 400) issues.push({ tipo: 'texto_atras_do_icone', txt: e.textContent });
+    });
+    const main = lineEls[0] ? parseFloat(lineEls[0].style.fontSize) : 0;
+    return { issues, mainFont: main, mainFontAt25: main * 0.25 };
+  };
+
+  /* Thumb do vídeo longo: foto real do assunto em tela cheia, texto enorme à esquerda, número com brilho e seta.
+     Pensada para ler em miniatura (25%): 2 a 4 palavras, contraste alto, um ponto focal. */
+  window.bootThumbFoto = async function (data) {
+    ST = { w: data.w, h: data.h, theme: Object.assign({ accent: '#ff4f12', accent2: '#d4ff3a' }, data.theme || {}), segments: [], duration: 1 };
+    const root = document.documentElement;
+    applyTheme(root);
+    STAGE = document.getElementById('stage');
+    const W = data.w, H = data.h, M = Math.round(H * 0.06);
+    css(STAGE, { width: W + 'px', height: H + 'px', background: '#05070d', overflow: 'hidden' });
+    STAGE.className = 'land thumbfoto';
+    await document.fonts.load('900 60px Figtree'); await document.fonts.load('60px Anton'); await document.fonts.ready;
+    // foto: ocupa a direita (o assunto fica fora da área do texto), graduada com contraste e cor
+    const fw = el('div', 'abs', STAGE); css(fw, { left: Math.round(W * 0.34) + 'px', top: '0', width: Math.round(W * 0.66) + 'px', height: H + 'px', overflow: 'hidden' });
+    const im = el('img', '', fw); im.src = data.photo; im.alt = '';
+    css(im, { width: '100%', height: '100%', objectFit: 'cover', objectPosition: data.focus || '50% 30%',
+              filter: 'contrast(1.14) saturate(1.22) brightness(1.04)', transform: 'scale(1.04)' });
+    try { await im.decode(); } catch (e) { return { issues: [{ tipo: 'foto_nao_carregou' }], mainFont: 0, mainFontAt25: 0 }; }
+    // foto em pé (pessoa): ancora no alto para não cortar a cabeça
+    if (!data.focus && im.naturalHeight > im.naturalWidth * 0.8) im.style.objectPosition = '50% 6%';
+    const tint = el('div', 'abs', fw); css(tint, { inset: '0', background: 'radial-gradient(ellipse at 70% 40%, transparent 35%, rgba(var(--acc-rgb),.28) 100%)', mixBlendMode: 'soft-light' });
+    // degradê: texto sobre fundo escuro sólido, foto entrando suave
+    const fade = el('div', 'abs', STAGE); css(fade, { inset: '0', background: 'linear-gradient(90deg, #05070d 0%, #05070d 33%, rgba(5,7,13,.86) 42%, rgba(5,7,13,.25) 56%, rgba(5,7,13,0) 66%), linear-gradient(0deg, rgba(5,7,13,.55) 0%, rgba(5,7,13,0) 30%)' });
+    const glow = el('div', 'abs', STAGE); css(glow, { left: Math.round(-W * 0.12) + 'px', top: Math.round(H * 0.15) + 'px', width: Math.round(W * 0.55) + 'px', height: Math.round(H * 0.9) + 'px', background: 'radial-gradient(circle, rgba(var(--acc-rgb),.30), transparent 62%)' });
+    const barra = el('div', 'abs', STAGE); css(barra, { left: '0', top: '0', width: Math.round(H * 0.018) + 'px', height: H + 'px', background: 'var(--acc)' });
+    // texto
+    const txW = Math.round(W * 0.44);
+    const col = el('div', 'abs', STAGE); css(col, { left: M + 'px', width: txW + 'px', display: 'flex', flexDirection: 'column', gap: Math.round(H * 0.018) + 'px', alignItems: 'flex-start' });
+    const lineEls = (data.lines || []).slice(0, 2).map(ln => {
+      const d = el('div', 'thumbtxt chk', col);
+      if (ln.hl) { d.innerHTML = '<span class="thumbhl">' + esc(String(ln.text).toUpperCase()) + '</span>'; css(d, { transform: 'rotate(-2deg)', transformOrigin: 'left center', marginLeft: Math.round(H * 0.012) + 'px' }); }
+      else d.textContent = String(ln.text).toUpperCase();
+      css(d, { textShadow: '0 6px 0 rgba(0,0,0,.55), 0 0 30px rgba(0,0,0,.6)' });
+      fit(d, Math.round(H * 0.2), 40, txW, Math.round(H * 0.23));
+      css(d, { width: 'auto' });
+      return d;
+    });
+    if (data.number) {
+      const nb = el('div', 'num chk', col); nb.textContent = data.number;
+      css(nb, { color: 'var(--acc2)', textShadow: '0 0 46px rgba(var(--acc2-rgb, 212,255,58),.55), 0 8px 0 rgba(0,0,0,.5)', marginTop: Math.round(H * 0.01) + 'px' });
+      fit(nb, Math.round(H * 0.3), 60, txW, Math.round(H * 0.31));
+    }
+    if (data.numberLabel) {
+      const lb = el('div', 'chk', col); lb.textContent = data.numberLabel;
+      css(lb, { fontWeight: 800, fontSize: Math.round(H * 0.052) + 'px', color: '#e6e8ee', whiteSpace: 'nowrap', textShadow: '0 3px 0 rgba(0,0,0,.6)' });
+      fit(lb, Math.round(H * 0.052), 20, txW, Math.round(H * 0.08));
+    }
+    const ch = col.getBoundingClientRect().height;
+    css(col, { top: Math.max(M, (H - ch) / 2) + 'px' });
+    // seta saindo do texto para o assunto da foto
+    const sv = el('div', 'abs', STAGE); css(sv, { left: Math.round(W * 0.47) + 'px', top: Math.round(H * 0.30) + 'px', width: Math.round(W * 0.14) + 'px', height: Math.round(H * 0.2) + 'px' });
+    sv.innerHTML = '<svg viewBox="0 0 200 120" width="100%" height="100%" style="overflow:visible;filter:drop-shadow(0 4px 0 rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(var(--acc-rgb),.7))">'
+      + '<path d="M8 100 C 60 110, 120 80, 170 26" fill="none" stroke="var(--acc)" stroke-width="16" stroke-linecap="round"/>'
+      + '<path d="M128 22 L 182 14 L 172 68" fill="none" stroke="var(--acc)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // auditoria CRIVO 7
+    const issues = [];
+    STAGE.querySelectorAll('.chk').forEach(e => {
+      const r = e.getBoundingClientRect();
+      if (r.left < M - 1 || r.top < M - 1 || r.right > W - M + 1 || r.bottom > H - M + 1) issues.push({ tipo: 'fora_da_margem', txt: e.textContent });
     });
     const main = lineEls[0] ? parseFloat(lineEls[0].style.fontSize) : 0;
     return { issues, mainFont: main, mainFontAt25: main * 0.25 };
