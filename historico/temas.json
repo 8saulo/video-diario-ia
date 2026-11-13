@@ -85,5 +85,12 @@
     "slug": "data_centers_e_o_consumo_de_energia",
     "paleta": "laranja",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-13",
+    "tema": "Data centers e o custo de energia",
+    "slug": "data_centers_e_o_custo_de_energia",
+    "paleta": "roxo",
+    "referencia": ""
   }
 ]
