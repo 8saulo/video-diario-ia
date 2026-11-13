@@ -168,3 +168,24 @@ def test_cota_diaria_de_visao_nao_fica_esperando(monkeypatch, cfg):
     monkeypatch.setattr(llm, "gerar_visao_json", visao)
     esc = midia.escolher_lote([{"id": "a", "text": "x"}], {"a": [{"tipo": "foto", "titulo": "t", "url": "u", "thumb": "t"}]}, cfg)
     assert esc == {"a": -1} and not esperas
+
+
+def test_mesma_midia_nao_se_repete_entre_cenas(monkeypatch, tmp_path, cfg):
+    """Run #25: a mesma foto de sala de servidores apareceu em ~12 cenas."""
+    from videobot import llm
+    cand = {"fonte": "Pixabay", "tipo": "foto", "titulo": "server room", "url": "https://x/mesma.jpg", "thumb": "t",
+            "autor": "a", "licenca": "Licença Pixabay", "pagina": "p", "w": 1600, "h": 900}
+    monkeypatch.setattr(llm, "gerar_json", lambda *a, **k: ({"cenas": [{"id": i, "buscas": ["server"], "tipo": "foto"} for i in "abc"]}, {}, "m"))
+    monkeypatch.setattr(midia, "candidatos", lambda b, p: [dict(cand)])
+    monkeypatch.setattr(midia, "escolher_lote", lambda cenas, por, cfg: {sc["id"]: 0 for sc in cenas})
+    monkeypatch.setattr(midia, "_baixar", lambda url, dst, limite_mb=80: (dst.write_bytes(b"x"), dst)[1])
+    rot = {"tema": "t", "chapters": [{"scenes": [{"id": i, "text": "servidores", "template": "headline", "params": {}} for i in "abc"]}]}
+    cred = midia.aplicar(rot, cfg, tmp_path, {"a": 3, "b": 3, "c": 3}, 1080, 1920, 30)
+    assert len(cred) == 1, "a mesma foto só pode entrar uma vez"
+
+
+def test_embalagem_aceita_titulo_em_formatos_variados():
+    from videobot.script_longo import _achatar_embalagem
+    assert _achatar_embalagem({"youtube": {"título": "T1"}})["titulo"] == "T1"
+    e = _achatar_embalagem({"title": ["T1", "T2", "T3"]})
+    assert e["titulo"] == "T1" and e["alternativos"] == ["T2", "T3"]

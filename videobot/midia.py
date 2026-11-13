@@ -146,7 +146,7 @@ def candidatos(buscas: list[str], prefere: str) -> list[dict]:
     foto atual; a IA de visão só vê os primeiros candidatos."""
     vistos, listas = set(), []
     for q in buscas[:2]:
-        fontes = ([("pxv", lambda: pixabay(q, "video", 6)), ("video", lambda: commons(q, "video", 6))] if prefere == "video" else [])
+        fontes = [("pxv", lambda: pixabay(q, "video", 6))] + ([("video", lambda: commons(q, "video", 6))] if prefere == "video" else [])
         fontes += [("pxf", lambda: pixabay(q, "foto", 6)), ("foto", lambda: commons(q, "foto", 6)), ("ov", lambda: openverse(q, 6))]
         for _, busca in fontes:  # cada banco por conta própria: um fora do ar não derruba os outros
             try:
@@ -471,22 +471,31 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
     dest.mkdir(parents=True, exist_ok=True)
     creditos, max_cenas = [], int(mcfg.get("max_cenas", 99))
     por_cena = {}
+    ja_ofertados: dict[str, int] = {}
     for sc in alvo:
         p = por_id.get(sc["id"]) or {}
         buscas = [str(b) for b in (p.get("buscas") or []) if str(b).strip()]
         if buscas:
             cands = candidatos(buscas, "video" if p.get("tipo") == "video" else "foto")
+            # o que já apareceu muito para outras cenas vai para o fim da fila (variedade entre cenas)
+            cands.sort(key=lambda c: ja_ofertados.get(c["url"], 0))
+            for c in cands[:5]:
+                ja_ofertados[c["url"]] = ja_ofertados.get(c["url"], 0) + 1
             if cands:
                 por_cena[sc["id"]] = cands
     escolhas = escolher_lote([sc for sc in alvo if sc["id"] in por_cena], por_cena, cfg)
+    usados: set[str] = set()
     for sc in alvo:
         if len(creditos) >= max_cenas or sc["id"] not in por_cena:
             continue
         cands, k = por_cena[sc["id"]], escolhas.get(sc["id"], -1)
+        if 0 <= k < len(cands) and cands[k]["url"] in usados:
+            k = -1  # run #25: a mesma foto de sala de servidores em 12 cenas; repetida não entra
         if not 0 <= k < len(cands):
-            log(f"  mídia [{sc['id']}]: nenhum candidato mostra o assunto da frase; cena sem mídia")
+            log(f"  mídia [{sc['id']}]: nenhum candidato mostra o assunto da frase (ou já foi usado); cena sem mídia")
             continue
         c = cands[k]
+        usados.add(c["url"])
         try:
             ext = Path(c["url"].split("?")[0]).suffix.lower() or (".webm" if c["tipo"] == "video" else ".jpg")
             arq = _baixar(c["url"], dest / f"{sc['id']}{ext}")

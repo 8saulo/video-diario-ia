@@ -170,13 +170,37 @@ Responda SOMENTE com JSON:
  "thumb_foto": "..."}}"""
 
 
+def _achatar_embalagem(e) -> dict:
+    """Aceita as variações que os modelos devolvem: "título"/"title", tudo dentro de "youtube", título como lista."""
+    if not isinstance(e, dict):
+        return {}
+    e = dict(e)
+    for k in ("youtube", "publicacao"):
+        if isinstance(e.get(k), dict):
+            for k2, v in e[k].items():
+                e.setdefault(k2, v)
+    for de, para in (("título", "titulo"), ("title", "titulo"), ("titulos_alternativos", "alternativos"), ("alternatives", "alternativos")):
+        if de in e and para not in e:
+            e[para] = e[de]
+    if isinstance(e.get("titulo"), list):
+        lst = [str(x) for x in e["titulo"] if str(x).strip()]
+        e["titulo"] = lst[0] if lst else ""
+        e.setdefault("alternativos", lst[1:])
+    return e
+
+
 def embalar(r: dict, fatos: dict, cfg: dict) -> dict:
     """Título, alternativos e thumb do longo, feitos com o roteiro já escrito (run #23 saiu sem título)."""
-    try:
-        e, _, m = gerar_json(prompt_embalagem(r, fatos), cfg, temperatura=0.8, max_tokens=1500)
-    except Exception as ex:
-        nota(f"Embalagem do longo falhou ({str(ex)[:90]}); mantive título e thumb da estrutura.")
-        return r
+    e, m = {}, ""
+    for _ in range(2):  # run #25: veio sem título; tenta de novo antes de desistir
+        try:
+            e, _, m = gerar_json(prompt_embalagem(r, fatos), cfg, temperatura=0.8, max_tokens=1500)
+        except Exception as ex:
+            nota(f"Embalagem do longo falhou ({str(ex)[:90]}); mantive título e thumb da estrutura.")
+            return r
+        e = _achatar_embalagem(e)
+        if str(e.get("titulo") or "").strip():
+            break
     pub = r.setdefault("publicacao", {}) if isinstance(r.get("publicacao"), dict) else r.setdefault("publicacao", {})
     yt = pub.setdefault("youtube", {}) if isinstance(pub.get("youtube"), dict) else pub.setdefault("youtube", {})
     tit = str(e.get("titulo") or "").strip()
