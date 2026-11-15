@@ -99,5 +99,12 @@
     "slug": "robos_humanoides_promessa_e_realidade",
     "paleta": "azul",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-15",
+    "tema": "Consumo energético da IA",
+    "slug": "consumo_energetico_da_ia",
+    "paleta": "laranja",
+    "referencia": ""
   }
 ]
