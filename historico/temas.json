@@ -120,5 +120,12 @@
     "slug": "chips_de_ia_por_que_a_nvidia_vale_tanto",
     "paleta": "azul",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-18",
+    "tema": "Consumo energético da IA",
+    "slug": "consumo_energetico_da_ia",
+    "paleta": "laranja",
+    "referencia": ""
   }
 ]
