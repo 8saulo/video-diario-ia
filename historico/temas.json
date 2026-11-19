@@ -127,5 +127,12 @@
     "slug": "consumo_energetico_da_ia",
     "paleta": "laranja",
     "referencia": ""
+  },
+  {
+    "data": "2026-11-19",
+    "tema": "IA e empregos: o que os dados mostram",
+    "slug": "ia_e_empregos_o_que_os_dados_mostram",
+    "paleta": "roxo",
+    "referencia": ""
   }
 ]
