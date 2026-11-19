@@ -42,3 +42,47 @@ def test_chromium_que_nao_abre_e_reinstalado(monkeypatch):
     render._abrir(100, 100)
     assert len(tentativas) == 2
     assert instalou and "install" in instalou[0]
+
+
+class _ChegouNoRoteiro(Exception):
+    pass
+
+
+def _preparar_pipeline(monkeypatch):
+    from videobot import facts, llm, research, script
+    monkeypatch.setattr(llm, "disponiveis", lambda cfg: ["groq"])
+    monkeypatch.setattr(research, "pesquisar", lambda cfg, hist, data: {"ranking": [{"tema": "FTTH", "titulo": ""}]})
+    monkeypatch.setattr(facts, "coletar", lambda cand, cfg: {"ok": False, "motivo": "só 1 fonte", "fatos": [], "cortados": []})
+
+    def roteiro(*a, **k):
+        raise _ChegouNoRoteiro()
+    monkeypatch.setattr(script, "escrever", roteiro)
+    monkeypatch.setattr(pipeline, "historico", lambda: [])
+
+
+def test_sem_crivo_segue_mesmo_sem_fatos_suficientes(monkeypatch, cfg):
+    """Lote FTTH de 13/11/2026: o usuário pediu para a checagem de fatos não bloquear (só nessa execução)."""
+    _preparar_pipeline(monkeypatch)
+    with pytest.raises(_ChegouNoRoteiro):
+        pipeline.executar(dict(cfg, _sem_crivo=True))
+
+
+def test_sem_a_flag_a_checagem_continua_bloqueando(monkeypatch, cfg):
+    _preparar_pipeline(monkeypatch)
+    with pytest.raises(SystemExit):
+        pipeline.executar(cfg)
+
+
+def test_chave_salva_com_setx_e_lida_do_registro(monkeypatch):
+    """Lote FTTH: o processo foi aberto antes do setx e não via PIXABAY_API_KEY (0 fotos no vídeo 1)."""
+    from videobot import util
+    monkeypatch.delenv("CHAVE_TESTE_X", raising=False)
+    monkeypatch.setattr(util.sys, "platform", "win32")
+
+    class K:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    fake = types.SimpleNamespace(HKEY_CURRENT_USER=0, OpenKey=lambda *a: K(), QueryValueEx=lambda k, n: ("segredo", 1))
+    monkeypatch.setitem(sys.modules, "winreg", fake)
+    assert util.chave("CHAVE_TESTE_X") == "segredo"
+    monkeypatch.delenv("CHAVE_TESTE_X", raising=False)

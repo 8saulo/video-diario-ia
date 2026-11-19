@@ -636,6 +636,7 @@
       else { photoImg.src = P._photo; if (P._focus) photoImg.style.objectPosition = P._focus; }
       el('div', 'tint', photo);
     }
+    const qd = P._quadro && window.QUADRO ? window.QUADRO.montar(root, seg, ST) : null;  // quadro de dossiê (engine/quadro.js)
     const cam = el('div', 'cam', root);
     const box = el('div', 'box', cam);
     root.style.visibility = 'visible';
@@ -651,6 +652,7 @@
       tl.fromTo(photoImg, { scale: 1 + 0.06 * v, xPercent: -1.6 * dir * v }, { scale: 1 + 0.16 * v, xPercent: 1.6 * dir * v, duration: seg.dur, ease: 'none' }, 0);
       tl.fromTo(photo, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: 'power1.out' }, 0);
     }
+    if (qd) qd.animar(tl, seg.dur);
     if (seg.dur > 1.2) tl.fromTo(box, { autoAlpha: 1, y: 0, filter: 'blur(0px)' }, { autoAlpha: 0, y: -26, filter: 'blur(8px)', duration: 0.26, ease: 'power2.in', immediateRender: false }, seg.dur - 0.26);
     tl.seek(0, false);
     root.style.visibility = 'hidden';
@@ -717,7 +719,7 @@
     const m3 = modulo3d();
     if (m3 && m3.on) {
       // foto/vídeo cobrem a tela: sem desenhar o 3D (é o que mais pesa no render em CPU)
-      const coberto = !!(active && active.params && (active.params._photo || active.params._video));
+      const coberto = !!(active && active.params && (active.params._photo || active.params._video || active.params._quadro));
       const cv = document.getElementById('gl3d');
       if (cv && cv.style.visibility !== (coberto ? 'hidden' : 'visible')) cv.style.visibility = coberto ? 'hidden' : 'visible';
       if (!coberto) m3.render(t, active, active ? segs.indexOf(active) : 0);
@@ -752,6 +754,7 @@
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
     if (ST.scene3d && modulo3d() && window.THREE) { STAGE.classList.add('mode3d'); await modulo3d().init(STAGE, ST); }
+    if ((ST.segments || []).some(s => s.params && s.params._quadro)) STAGE.classList.add('mode-quadro');
     const fotos = [...new Set((ST.segments || []).map(s => s.params && s.params._photo).filter(Boolean))];
     if (fotos.length) {
       STAGE.classList.add('mode-photo');

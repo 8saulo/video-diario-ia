@@ -26,6 +26,7 @@ def main(argv=None):
     r.add_argument("--voz", default="", help="voz do Gemini (ex.: Charon, Kore) ou do edge (ex.: pt-BR-FranciscaNeural)")
     r.add_argument("--buscas", default="", help="buscas extras em inglês separadas por ;")
     r.add_argument("--refazer", default="", help="pasta de um vídeo anterior (com roteiro.json): refaz narração e render")
+    r.add_argument("--sem-crivo", action="store_true", help="a checagem de fatos não bloqueia o vídeo (só nesta execução)")
     u = sub.add_parser("ui", help="abre a interface local no navegador")
     u.add_argument("--porta", type=int, default=8765)
     u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
@@ -58,6 +59,8 @@ def main(argv=None):
     if a.buscas.strip():
         cfg["tema"]["buscas_extras"] = list(cfg["tema"].get("buscas_extras") or []) + [b.strip() for b in a.buscas.split(";") if b.strip()]
 
+    if a.sem_crivo:
+        cfg["_sem_crivo"] = True
     from .pipeline import executar
     executar(cfg, a.modo, a.refazer.strip())
 

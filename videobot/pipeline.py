@@ -121,6 +121,12 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
             if fatos["ok"]:
                 escolhido = cand
                 break
+            if cfg.get("_sem_crivo"):  # lote pedido pelo usuário: a checagem não bloqueia (usa só os fatos confirmados)
+                fatos.setdefault("tema", cand.get("tema", "")); fatos.setdefault("angulo", ""); fatos.setdefault("fatos", [])
+                nota(f"CRIVO 2/3 ignorado nesta execução (--sem-crivo): '{cand['tema']}' seguiu com {len(fatos['fatos'])} fato(s) "
+                     f"confirmado(s) ({fatos.get('motivo', '')}).")
+                escolhido = cand
+                break
             nota(f"CRIVO 2/3: '{cand['tema']}' não teve fontes verificáveis suficientes ({fatos['motivo']}); passei para o próximo.")
         if not escolhido:
             falhar("Nenhum tema do dia passou na checagem de fatos (CRIVOs 2 e 3). Nada foi publicado.")
@@ -148,13 +154,18 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     from .render import CAUDA
     longo = roteiro["formato"] == "longo"
     durs = {sid: c["dur"] + CAUDA for sid, c in narr["cenas"].items()}
-    creditos = midia.aplicar(roteiro, cfg, pasta, durs, 1920 if longo else 1080, 1080 if longo else 1920,
-                             int(cfg["visual"].get("fps", 30)))
+    quadro = bool(cfg["visual"].get("quadro", True))
+    # com o quadro de dossiê, foto/vídeo viram recortes (polaroide 4:3); sem ele, ocupam a tela inteira
+    mw, mh = (800, 600) if quadro else ((1920, 1080) if longo else (1080, 1920))
+    creditos = midia.aplicar(roteiro, cfg, pasta, durs, mw, mh, int(cfg["visual"].get("fps", 30)))
     if longo and roteiro.get("thumb"):  # longo: thumb com foto real do assunto central
         capa = midia.foto_thumb(roteiro, cfg, pasta, creditos)
         if capa:
             roteiro["thumb"]["photo"] = capa["photo"]
             creditos = creditos + [{"cena": "thumb", "titulo": "foto da capa", "credito": capa["credito"], "pagina": capa["pagina"]}]
+    if quadro:  # pessoas (foto da Wikipedia), logos das marcas, recortes de jornal, post-its e carimbos por cena
+        from . import elementos
+        creditos = creditos + elementos.montar(roteiro, cfg, pasta)
     if creditos:
         roteiro["creditos_fotos"] = creditos
     if (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon"):
@@ -177,6 +188,10 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     prev = render.previa_leve(video, pasta, float(cfg["entrega"].get("limite_previa_mb", 30)))
     # 6. thumbs
     etapa("thumbs", "Thumbnails")
+    if not (roteiro.get("thumb") or {}).get("lines"):  # lote FTTH (vídeo 4): o roteiro veio sem thumb e o vídeo inteiro se perdeu
+        palavras = (roteiro.get("tema") or "vídeo").upper().split()
+        roteiro["thumb"] = {"lines": [{"text": " ".join(palavras[:2])}, {"text": " ".join(palavras[2:4]) or "AGORA", "hl": True}], "icon": "ia"}
+        nota("Thumb: o roteiro veio sem thumb; usei o tema.")
     th = render.thumbs(roteiro["thumb"], cfg, pasta, curto)
     # 7. pacote
     etapa("pacote", "Pacote de publicação")

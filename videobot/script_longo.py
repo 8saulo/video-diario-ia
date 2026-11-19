@@ -22,7 +22,9 @@ REGRAS_VIRAL = """ESTRUTURA DE RETENÇÃO (YouTube, vídeo longo):
 - Cada capítulo abre com uma pergunta ou tensão e termina com um GANCHO ABERTO que puxa o próximo ("mas isso não explica por que...").
 - Uma revelação por cena. A cada ~1 minuto, quebra de padrão: pergunta direta ao espectador, contraste, "agora vem a parte estranha".
 - Entregue a promessa no fim (payoff) com uma última virada. Inclua o outro lado (contraponto) de forma honesta.
-- Tom de conversa com o espectador ("você"), frases curtas, verbos fortes, curiosidade e leve ironia; nada de linguagem de relatório."""
+- Tom de conversa com o espectador ("você"), frases curtas, verbos fortes, curiosidade e leve ironia; nada de linguagem de relatório.
+- É uma HISTÓRIA contínua, não uma sequência de manchetes: cada cena nasce da anterior com conectivos naturais ("só que...",
+  "e aí...", "o problema é que...", "e foi aí que..."), e os fatos entram como provas dentro dela."""
 
 REGRAS_TEXTO = """REGRAS DE TEXTO
 - Narração em PT-BR falado. Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito");

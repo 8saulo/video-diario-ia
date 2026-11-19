@@ -60,6 +60,15 @@ Data de hoje: {hoje.strftime('%d/%m/%Y')}. Tema: "{fatos['tema']}". Ângulo: {fa
 FATOS VERIFICADOS (use SOMENTE estes números; cite os ids em fact_ids):
 {fl}
 
+NARRATIVA (o mais importante): conte uma HISTÓRIA, não uma lista de manchetes.
+- GANCHO (cena 1, no máximo 9 palavras, ~3 s): o ponto mais intrigante — um conflito, um mistério, uma consequência para quem assiste
+  ou uma pergunta que exige resposta. Ele cria uma pergunta na cabeça do espectador.
+- DESENVOLVIMENTO: cada cena nasce da anterior e abre a próxima, com conectivos naturais de quem conta um caso ("só que...",
+  "e aí...", "o problema é que...", "mas tem um detalhe...", "e foi aí que..."). Contexto rápido (quem/o quê, por que importa),
+  depois uma VIRADA no meio. Os fatos e números entram como PROVAS dentro da história, nunca em sequência solta.
+- DESFECHO: responde a pergunta do gancho (fecha o ciclo), traz a consequência para o espectador e só então o CTA.
+- Teste: lido em voz alta, tem que soar como um amigo contando um caso curioso, não como leitura de jornal.
+
 REGRAS DO ROTEIRO
 - {regras_formato}
 - Narração em PT-BR falado, como um criador de shorts conversando com o espectador ("você"): frases curtas (até 12 palavras),
@@ -129,6 +138,9 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
     if cfg["formato"] == "curto":
         if not alvos["cenas"][0] <= len(cenas) <= alvos["cenas"][1]:
             err.append(f"o curto tem {len(cenas)} cenas; precisa de {alvos['cenas'][0]} a {alvos['cenas'][1]}")
+        n1 = len(cenas[0].get("text", "").split())
+        if n1 > 12:  # o gancho precisa caber nos primeiros ~3 s
+            err.append(f"a cena 1 (gancho) tem {n1} palavras; precisa ter no máximo 9 (cerca de 3 segundos) e prender na hora")
     elif not alvos["caps"][0] <= len(chs) <= alvos["caps"][1]:
         err.append(f"o longo tem {len(chs)} capítulos; precisa de {alvos['caps'][0]} a {alvos['caps'][1]}")
     por_id = {f["id"]: f for f in fatos["fatos"]}

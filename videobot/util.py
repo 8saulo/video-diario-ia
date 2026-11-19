@@ -170,8 +170,20 @@ def garantir_gsap():
 
 
 def chave(nome: str) -> str | None:
-    """Lê uma chave do ambiente sem nunca imprimi-la."""
+    """Lê uma chave do ambiente sem nunca imprimi-la.
+
+    No Windows, se o processo foi aberto antes do `setx` (lote de 13/11/2026: o Pixabay ficou de fora),
+    busca a chave salva na conta (HKCU\\Environment) e guarda no ambiente do processo."""
     v = os.environ.get(nome, "").strip()
+    if not v and sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+                v = str(winreg.QueryValueEx(k, nome)[0]).strip()
+            if v:
+                os.environ[nome] = v
+        except OSError:
+            v = ""
     return v or None
 
 

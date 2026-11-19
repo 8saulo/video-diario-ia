@@ -164,7 +164,7 @@ def candidatos(buscas: list[str], prefere: str) -> list[dict]:
 
 # ---------------------------------------------------------------- IA: buscas e escolha
 def _prompt_buscas(cenas: list[dict], tema: str) -> str:
-    linhas = "\n".join(f'{i}. [{sc["id"]}] {sc["text"]}' for i, sc in enumerate(cenas))
+    linhas = "\n".join(f'- id "{sc["id"]}": {sc["text"]}' for sc in cenas)
     return f"""Tema do vídeo: "{tema}". Para CADA cena abaixo, diga o que deve aparecer na tela como foto ou vídeo REAL,
 ligado especificamente à frase da cena (a pessoa citada, a empresa, o produto, o lugar, o objeto concreto).
 Escreva 2 buscas curtas EM INGLÊS (2 a 4 palavras, nomes próprios primeiro) para bancos de imagens livres (Wikimedia Commons):
@@ -466,7 +466,10 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
     except Exception as e:
         nota(f"Mídia: a IA não montou as buscas ({str(e)[:100]}); vídeo sem fotos.")
         return []
-    por_id = {str(c.get("id")): c for c in (plano.get("cenas") or []) if isinstance(c, dict)}
+    lst = [c for c in (plano.get("cenas") or []) if isinstance(c, dict)]
+    por_id = {str(c.get("id")): c for c in lst}
+    if not any(sc["id"] in por_id for sc in alvo) and len(lst) == len(alvo):
+        por_id = {sc["id"]: c for sc, c in zip(alvo, lst)}  # o modelo devolveu "0", "1"... em vez dos ids: casa pela ordem
     dest = pasta / "midia"
     dest.mkdir(parents=True, exist_ok=True)
     creditos, max_cenas = [], int(mcfg.get("max_cenas", 99))

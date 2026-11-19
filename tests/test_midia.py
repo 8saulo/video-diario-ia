@@ -189,3 +189,15 @@ def test_embalagem_aceita_titulo_em_formatos_variados():
     assert _achatar_embalagem({"youtube": {"título": "T1"}})["titulo"] == "T1"
     e = _achatar_embalagem({"title": ["T1", "T2", "T3"]})
     assert e["titulo"] == "T1" and e["alternativos"] == ["T2", "T3"]
+
+
+def test_ids_numericos_do_plano_de_busca_casam_pela_ordem(monkeypatch, tmp_path, cfg):
+    """19/11/2026: a IA devolveu "0", "1"... no lugar dos ids e nenhuma cena ganhou foto."""
+    from videobot import llm
+    monkeypatch.setattr(llm, "gerar_json", lambda *a, **k: ({"cenas": [{"id": "0", "buscas": ["x"], "tipo": "foto"},
+                                                                       {"id": "1", "buscas": ["y"], "tipo": "foto"}]}, {}, "m"))
+    vistos = []
+    monkeypatch.setattr(midia, "candidatos", lambda b, p: vistos.append(b) or [])
+    rot = {"tema": "t", "chapters": [{"scenes": [{"id": "gancho", "text": "a", "params": {}}, {"id": "nvidia", "text": "b", "params": {}}]}]}
+    midia.aplicar(rot, cfg, tmp_path, {}, 800, 600, 30)
+    assert vistos == [["x"], ["y"]]

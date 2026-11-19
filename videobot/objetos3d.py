@@ -115,7 +115,7 @@ def revisar(roteiro: dict, cfg: dict) -> int:
     Cenas com foto/vídeo ficam de fora (a mídia cobre o 3D). Devolve quantas cenas foram revisadas."""
     from .llm import gerar_json
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])
-             if not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video"))]
+             if not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video") or (sc.get("params") or {}).get("_quadro"))]
     if not cenas:
         return 0
     try:
@@ -141,8 +141,8 @@ def para_cenas(roteiro: dict) -> None:
     for ch in roteiro.get("chapters", []):
         for sc in ch.get("scenes", []):
             prm = sc.get("params") or {}
-            if prm.get("_photo") or prm.get("_video"):
-                objs = []  # foto/vídeo cobrem a tela
+            if prm.get("_photo") or prm.get("_video") or prm.get("_quadro"):
+                objs = []  # foto/vídeo ou o quadro de dossiê ocupam a área do 3D
             elif "objetos_revisados" in sc:
                 objs = list(sc["objetos_revisados"])
             else:
