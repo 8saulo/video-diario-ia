@@ -90,9 +90,9 @@ visual:
     sub: "Vídeo novo todo dia"
     redes: [youtube, instagram, tiktok]
     perfis:                         # @ de cada rede (aparece embaixo do nome); vazio = só o nome da rede
-      youtube: ""
-      instagram: ""
-      tiktok: ""
+      youtube: "@sauloconectati"
+      instagram: "@sauloconectati"
+      tiktok: "@sauloconectati"
   cena3d: "tema"                    # "tema" = objetos 3D em código escolhidos para cada cena (foguete, chip, moedas...); "gpon" = cena fixa de fibra óptica; vazio = fundo 2D
   escala3d: 0.75                    # resolução interna do 3D (menor = render mais rápido)
   quadro: true                      # quadro de dossiê por cena: pessoas, logos, fotos/vídeos em polaroide, recorte de jornal, post-it

@@ -157,15 +157,41 @@ def licoes(n: int = 3) -> str:
             "\nRepita o que os de mais retenção têm em comum (gancho, ritmo, tipo de revelação) e evite o padrão dos de menos.")
 
 
-def autorizar(cliente_json: str) -> None:
-    """Fluxo OAuth local (loopback): imprime o refresh token só no SEU terminal, para você salvar nos Secrets do GitHub."""
+REPO = "8saulo/video-diario-ia"
+
+
+def salvar_secrets_github(valores: dict, repo: str = REPO, run=None) -> None:
+    """Grava cada valor como Secret do repositório com o gh CLI. O valor vai pela entrada padrão (nunca na linha de
+    comando, que fica no histórico/lista de processos) e nada é impresso além do nome do Secret."""
+    import subprocess
+    run = run or subprocess.run
+    for nome, valor in valores.items():
+        run(["gh", "secret", "set", nome, "--repo", repo], input=valor, text=True, check=True, capture_output=True)
+        print(f"  Secret {nome} gravado no GitHub")
+
+
+def _cliente(cliente_json: str) -> dict:
+    """client_id/client_secret: do client_secret.json ou digitados no terminal (o secret sem eco na tela)."""
+    if cliente_json:
+        c = json.loads(Path(cliente_json).read_text(encoding="utf-8"))
+        return c.get("installed") or c.get("web") or c
+    import getpass
+    cid = input("Client ID (termina em .apps.googleusercontent.com): ").strip()
+    sec = getpass.getpass("Client secret (não aparece enquanto digita): ").strip()
+    if not cid.endswith(".apps.googleusercontent.com") or not sec:
+        raise SystemExit("Client ID ou Client secret inválido.")
+    return {"client_id": cid, "client_secret": sec}
+
+
+def autorizar(cliente_json: str = "", salvar_github: bool = True) -> None:
+    """Fluxo OAuth local (loopback): abre o login do Google e grava YT_CLIENT_ID, YT_CLIENT_SECRET e YT_REFRESH_TOKEN
+    direto nos Secrets do GitHub (gh CLI). Com salvar_github=False, mostra os valores só no SEU terminal."""
     import http.server
     import secrets
     import threading
     import urllib.parse
     import webbrowser
-    c = json.loads(Path(cliente_json).read_text(encoding="utf-8"))
-    c = c.get("installed") or c.get("web") or c
+    c = _cliente(cliente_json)
     estado, porta, codigo = secrets.token_urlsafe(16), 8765 + 2, {}
 
     class H(http.server.BaseHTTPRequestHandler):
@@ -193,6 +219,15 @@ def autorizar(cliente_json: str) -> None:
                                        "redirect_uri": redir, "grant_type": "authorization_code"}, timeout=30)
     r.raise_for_status()
     rt = r.json().get("refresh_token")
+    if not rt:
+        raise SystemExit("O Google não devolveu o refresh token; tente de novo (o login precisa mostrar a tela de permissões).")
+    if salvar_github:
+        try:
+            salvar_secrets_github({"YT_CLIENT_ID": c["client_id"], "YT_CLIENT_SECRET": c["client_secret"], "YT_REFRESH_TOKEN": rt})
+            print("Pronto! A próxima execução no GitHub já publica no YouTube.")
+            return
+        except Exception as e:
+            print(f"\nNão consegui gravar no GitHub com o gh ({type(e).__name__}); salve à mão:")
     print("\nSalve estes 3 valores como Secrets do repositório no GitHub (Settings > Secrets and variables > Actions):")
     print("  YT_CLIENT_ID     =", c["client_id"])
     print("  YT_CLIENT_SECRET = (o client_secret do arquivo JSON)")

@@ -56,3 +56,29 @@ def test_tags_coladas_com_espaco_viram_varias():
     tags = publish._tags_ok(["IA energia consumo data center GPT-3 GPT-4 eletricidade sustentabilidade tecnologia Brasil IA"])
     assert len(tags) >= 10 and "energia" in tags and tags.count("IA") == 1
     assert publish._tags_ok(["data center", "energia renovável"]) == ["data center", "energia renovável"]
+
+
+def test_secrets_vao_para_o_github_pela_entrada_padrao(capsys):
+    """youtube-auth grava as chaves com o gh: o valor nunca vai na linha de comando nem é impresso."""
+    from videobot import youtube
+    chamadas = []
+    youtube.salvar_secrets_github({"YT_REFRESH_TOKEN": "segredo-123"}, run=lambda cmd, **k: chamadas.append((cmd, k)))
+    cmd, k = chamadas[0]
+    assert cmd == ["gh", "secret", "set", "YT_REFRESH_TOKEN", "--repo", "8saulo/video-diario-ia"]
+    assert k["input"] == "segredo-123" and "segredo-123" not in " ".join(cmd)
+    assert "segredo-123" not in capsys.readouterr().out
+
+
+def test_cliente_digitado_sem_arquivo(monkeypatch):
+    """Sem o client_secret.json, o Client ID e o Client secret são pedidos no terminal (o secret sem eco)."""
+    import getpass
+    from videobot import youtube
+    monkeypatch.setattr("builtins.input", lambda *a: "123-abc.apps.googleusercontent.com")
+    monkeypatch.setattr(getpass, "getpass", lambda *a: "GOCSPX-x")
+    assert youtube._cliente("") == {"client_id": "123-abc.apps.googleusercontent.com", "client_secret": "GOCSPX-x"}
+
+
+def test_cena_final_mostra_o_arroba_do_canal(cfg):
+    from videobot import render
+    fim = render.final_seguir(cfg, 0, False)
+    assert {r["perfil"] for r in fim["redes"]} == {"@sauloconectati"}
