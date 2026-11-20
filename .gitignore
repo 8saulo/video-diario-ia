@@ -5,3 +5,6 @@ engine/vendor/
 .venv/
 config.local.yml
 historico/temas_local.json
+
+# credencial OAuth do YouTube (nunca vai para o git)
+client_secret*.json

@@ -1,0 +1,68 @@
+name: Publicar no YouTube
+run-name: "YouTube: ${{ inputs.tag || 'último Release' }}"
+
+# Envio avulso de um vídeo que já está num Release (ex.: um vídeo refeito no PC). As chaves do YouTube
+# (YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN) só existem nos Secrets; por isso o envio roda aqui.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag do Release com o vídeo (vazio = o Release mais recente)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: video-diario
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Baixar o vídeo do Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          [ -n "$TAG" ] || TAG=$(gh release list --limit 1 --exclude-pre-releases --json tagName -q '.[0].tagName')
+          echo "Release: $TAG"
+          mkdir -p saida/pub
+          gh release download "$TAG" -D saida/pub -p '*.mp4' -p '*.jpg' -p 'publicacao.md'
+          gh release view "$TAG" --json name -q .name > saida/pub/_titulo.txt
+          ls -la saida/pub
+          python - <<'PY'
+          import glob, json, os
+          p = "saida/pub"
+          video = glob.glob(f"{p}/*.mp4")[0]
+          json.dump({"pasta": p, "video": video, "previa": "", "thumbs": sorted(glob.glob(f"{p}/*.jpg")),
+                     "publicacao": f"{p}/publicacao.md", "titulo": open(f"{p}/_titulo.txt", encoding="utf-8").read().strip(),
+                     "modo": "completo"}, open("saida/ultimo.json", "w", encoding="utf-8"), ensure_ascii=False)
+          PY
+
+      - name: Publicar no YouTube
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python -m videobot publicar-youtube
+
+      - name: Salvar o id do YouTube no histórico
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add historico/temas.json
+          git diff --cached --quiet || (git commit -m "Histórico: vídeo publicado no YouTube" && git pull --rebase && git push)

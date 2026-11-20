@@ -82,3 +82,16 @@ def test_cena_final_mostra_o_arroba_do_canal(cfg):
     from videobot import render
     fim = render.final_seguir(cfg, 0, False)
     assert {r["perfil"] for r in fim["redes"]} == {"@sauloconectati"}
+
+
+def test_workflow_de_envio_avulso_usa_os_secrets_e_monta_o_ultimo_json():
+    """publicar-youtube.yml: baixa o Release, monta saida/ultimo.json com os campos que publicar() lê e usa os 3 Secrets."""
+    import yaml
+    from videobot.util import RAIZ
+    wf = yaml.safe_load((RAIZ / ".github" / "workflows" / "publicar-youtube.yml").read_text(encoding="utf-8"))
+    passos = {p.get("name"): p for p in wf["jobs"]["publicar"]["steps"] if p.get("name")}
+    env = passos["Publicar no YouTube"]["env"]
+    assert set(env) == {"YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN"}
+    baixar = passos["Baixar o vídeo do Release"]["run"]
+    for campo in ('"video"', '"thumbs"', '"publicacao"', '"titulo"'):
+        assert campo in baixar
