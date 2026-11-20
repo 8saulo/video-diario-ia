@@ -88,7 +88,10 @@ visual:
   quadro: true                      # quadro de dossiê por cena: pessoas, logos, fotos/vídeos em polaroide, recorte de jornal, post-it
   escala3d_longo: 1.0               # vídeo longo (16:9): 3D em resolução cheia (mais nítido; o render demora mais)
   legendas: true
-  musica: true                      # trilha gerada em código, baixinha por baixo da voz
+  musica: true                      # trilha baixinha por baixo da voz (abaixa sozinha quando a voz entra)
+  musica_real:                      # faixa real de licença livre (Openverse: Jamendo, ccMixter...); sem resultado, usa a trilha em código
+    ativo: true
+    buscas: [electronic, ambient, chillout, cinematic]  # buscas curtas funcionam melhor; troca a cada dia
   efeitos: true                     # whoosh/pop gerados em código
   workers: 0                        # 0 = um por núcleo de CPU
 
@@ -100,6 +103,11 @@ llm:
   ordem:                            # provedores tentados em ordem; se um esgota a cota, passa para o próximo
     - groq
     - openrouter
+    - github                        # GitHub Models: grátis, só no GitHub Actions (token da execução)
+  limites_dia:                      # pedidos por dia em que o provedor é poupado (planos grátis); 0 = sem limite
+    openrouter: 45                  # o grátis do OpenRouter corta em 50/dia
+    github: 140                     # o grátis do GitHub Models corta em ~150/dia nos modelos menores
+  cache_dias: 7                     # respostas válidas da IA ficam guardadas (refazer um vídeo não gasta cota)
   groq:
     modelos:                        # preferidos primeiro (nome ou trecho do nome); depois os outros da sua chave
       - gpt-oss-120b
@@ -142,6 +150,11 @@ busca:
 # ---------------- ENTREGA ----------------
 entrega:
   release: true                     # publica um Release no GitHub com vídeo, thumbs e textos
+  youtube:                          # envio automático (precisa dos Secrets YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN)
+    ativo: true
+    privacidade: private            # private (você revisa e publica) | unlisted | public
+    agendar_hora: ""                # ex.: "18:30" (Brasília) publica sozinho nesse horário (só com privacidade private)
+    categoria_id: "28"              # 28 = Ciência e tecnologia
   limite_previa_mb: 30              # prévia que abre no celular
 
 midia:                              # fotos e vídeos reais por cena (Wikimedia Commons + Openverse; sem chave)
@@ -150,3 +163,6 @@ midia:                              # fotos e vídeos reais por cena (Wikimedia 
   visao: true                       # a IA olha as miniaturas antes de escolher (modelos grátis do OpenRouter; llm.visao.modelos)
   escolha_sem_ver: false            # sem modelo de visão: false = cena sem mídia (garante relevância); true = decide pelo título
   pixabay_sem_visao: true           # sem visão, ainda escolhe entre os do Pixabay pelas tags (que descrevem a imagem)
+
+roteiro:
+  critico: true                     # um editor (IA) dá nota a gancho/narrativa/fluidez; abaixo de 7 o roteiro é reescrito

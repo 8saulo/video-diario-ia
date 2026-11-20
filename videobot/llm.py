@@ -22,6 +22,9 @@ PROVEDORES = {
     "groq": {"base": "https://api.groq.com/openai/v1", "env": "GROQ_API_KEY", "titulo": "Groq"},
     "openrouter": {"base": "https://openrouter.ai/api/v1", "env": "OPENROUTER_API_KEY", "titulo": "OpenRouter"},
     "gemini": {"base": "", "env": "GEMINI_API_KEY", "titulo": "Google Gemini"},
+    # GitHub Models: grátis com o token temporário da execução no Actions (permissão models: read). No PC fica desligado
+    # (não usamos credencial pessoal para isso).
+    "github": {"base": "https://models.github.ai/inference", "env": "GITHUB_TOKEN", "titulo": "GitHub Models"},
 }
 # modelos que não servem para escrever texto
 NAO_TEXTO = re.compile(r"whisper|tts|guard|embed|image|vision|audio|transcri|playai|orpheus|rerank|moderation|compound|banana|live|robotics|computer", re.I)
@@ -31,14 +34,64 @@ _modelos_cache: dict[str, list[str]] = {}
 _fora: set[str] = set()  # "provedor/modelo" que já falharam de vez nesta execução
 
 
+_GITHUB_MODELOS = ["openai/gpt-4.1-mini", "openai/gpt-4o-mini", "meta/llama-4-scout-17b-16e-instruct"]
+
+
+# ---------------------------------------------------------------- controle de cota (pedidos por provedor no dia)
+_uso: dict[str, int] = {}
+
+
+def _arquivo_uso():
+    from .util import RAIZ
+    import datetime as _dt
+    return RAIZ / "saida" / f"_cota_{_dt.date.today().isoformat()}.json"
+
+
+def _carregar_uso():
+    if not _uso:
+        try:
+            _uso.update(json.loads(_arquivo_uso().read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+
+def contar(prov: str):
+    _carregar_uso()
+    with _lock:
+        _uso[prov] = _uso.get(prov, 0) + 1
+        try:
+            _arquivo_uso().parent.mkdir(parents=True, exist_ok=True)
+            _arquivo_uso().write_text(json.dumps(_uso), encoding="utf-8")
+        except Exception:
+            pass
+
+
+def esgotado(prov: str, cfg: dict) -> bool:
+    """Perto do limite diário grátis (llm.limites_dia), o provedor é poupado para não falhar no meio do vídeo."""
+    _carregar_uso()
+    lim = int((((cfg.get("llm") or {}).get("limites_dia") or {}).get(prov)) or 0)
+    return bool(lim) and _uso.get(prov, 0) >= lim
+
+
+def resumo_uso() -> str:
+    _carregar_uso()
+    return ", ".join(f"{PROVEDORES.get(p, {}).get('titulo', p)}: {n}" for p, n in sorted(_uso.items())) or "nenhum"
+
+
 def ordem(cfg: dict) -> list[str]:
     o = (cfg.get("llm") or {}).get("ordem") or ["groq", "openrouter"]
     return [p for p in o if p in PROVEDORES]
 
 
+def _tem_chave(prov: str) -> bool:
+    if prov == "github" and not os.environ.get("GITHUB_ACTIONS"):
+        return False  # só com o token temporário da execução no Actions; nunca com um token pessoal da máquina
+    return bool(chave(PROVEDORES[prov]["env"]))
+
+
 def disponiveis(cfg: dict) -> list[str]:
     """Provedores da ordem que têm chave configurada."""
-    return [p for p in ordem(cfg) if chave(PROVEDORES[p]["env"])]
+    return [p for p in ordem(cfg) if _tem_chave(p)]
 
 
 # ---------------------------------------------------------------- listar modelos
@@ -49,6 +102,8 @@ def listar_modelos(prov: str, forcar: bool = False) -> list[str]:
             return _modelos_cache[prov]
     key = chave(PROVEDORES[prov]["env"])
     nomes: list[str] = []
+    if prov == "github":  # sem listagem: usa os modelos do config (ids do catálogo do GitHub Models)
+        return list(_GITHUB_MODELOS)
     if key:
         try:
             if prov == "gemini":
@@ -205,7 +260,11 @@ def _cota_do_dia(msg: str) -> bool:
 def _rodada(prov_lista, cfg, lcfg, prompt, sistema, msgs, temperatura, max_tokens, espera_max):
     erros, so_cota = [], True
     for prov in prov_lista:
+        if esgotado(prov, cfg):
+            erros.append(f"{prov}: limite diário reservado (llm.limites_dia)")
+            continue
         for m in _ordenar(prov, cfg)[: int(lcfg.get("modelos_por_provedor", 4))]:
+            contar(prov)
             st, txt, espera, msg = _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max)
             if st == 200 and txt:
                 return txt, f"{prov}/{m}", erros, False
@@ -271,8 +330,8 @@ def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int
     """Pergunta a um modelo grátis que enxerga imagem (OpenRouter) olhando as imagens (URLs). Devolve (obj, modelo).
     Usa llm.visao.modelos (trechos do nome) em ordem; levanta RuntimeError se nenhum responder."""
     vcfg = (cfg.get("llm") or {}).get("visao") or {}
-    if not chave(PROVEDORES["openrouter"]["env"]):
-        raise RuntimeError("sem OPENROUTER_API_KEY para os modelos de visão")
+    if not chave(PROVEDORES["openrouter"]["env"]) or esgotado("openrouter", cfg):
+        return _visao_github(prompt, imagens, cfg, max_tokens, "OpenRouter indisponível ou no limite do dia")
     prefs = list(vcfg.get("modelos") or ["gemma-4-31b", "nemotron-3.5-super-vl", "gemma-4-26b"])
     nomes = _modelos_visao()
     modelos = [n for p in prefs for n in nomes if p in n and f"openrouter/{n}" not in _fora]
@@ -281,6 +340,7 @@ def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int
     erros = []
     modelos += [n for n in nomes if n not in modelos and f"openrouter/{n}" not in _fora]  # depois, os outros de visão
     for m in list(dict.fromkeys(modelos))[:5]:
+        contar("openrouter")
         st, txt, espera, msg = _openai("openrouter", m, msgs, 0.1, max_tokens)  # 1 tentativa: se um recusa, vai para o próximo
         if st == 200 and txt:
             try:
@@ -291,7 +351,23 @@ def gerar_visao_json(prompt: str, imagens: list[str], cfg: dict, max_tokens: int
         erros.append(f"{m}: HTTP {st} {msg[:90]}")
         if st == 429 and _cota_do_dia(msg):
             break  # a cota diária grátis é da conta inteira: os outros modelos de visão também vão recusar
-    raise RuntimeError("nenhum modelo de visão respondeu: " + "; ".join(erros[-3:]))
+    return _visao_github(prompt, imagens, cfg, max_tokens, "; ".join(erros[-3:]))
+
+
+def _visao_github(prompt, imagens, cfg, max_tokens, motivo):
+    """Reserva de visão: GitHub Models (só no Actions, com o token da execução)."""
+    if not _tem_chave("github") or esgotado("github", cfg):
+        raise RuntimeError("nenhum modelo de visão respondeu: " + motivo)
+    conteudo = [{"type": "text", "text": prompt}] + [{"type": "image_url", "image_url": {"url": u}} for u in imagens]
+    for m in ("openai/gpt-4.1-mini", "openai/gpt-4o-mini"):
+        contar("github")
+        st, txt, _, msg = _openai("github", m, [{"role": "user", "content": conteudo}], 0.1, max_tokens)
+        if st == 200 and txt:
+            try:
+                return extrair_json(txt), f"github/{m}"
+            except Exception:
+                continue
+    raise RuntimeError("nenhum modelo de visão respondeu: " + motivo + "; GitHub Models também falhou")
 
 
 def extrair_json(txt: str):
@@ -314,13 +390,37 @@ def extrair_json(txt: str):
         raise
 
 
+def _cache_arq(prompt: str, sistema: str, temperatura: float):
+    import hashlib
+    from .util import RAIZ
+    h = hashlib.sha256(f"{sistema}\n{temperatura}\n{prompt}".encode("utf-8")).hexdigest()[:32]
+    return RAIZ / "saida" / "_cache_llm" / f"{h}.json"
+
+
 def gerar_json(prompt: str, cfg: dict, temperatura: float = 0.5, sistema: str = "", max_tokens: int | None = None):
-    """Devolve (objeto, {}, "provedor/modelo"). O {} mantém a assinatura antiga (metadados de busca)."""
+    """Devolve (objeto, {}, "provedor/modelo"). O {} mantém a assinatura antiga (metadados de busca).
+    Respostas válidas ficam em cache por llm.cache_dias (o mesmo pedido, ex. ao refazer um vídeo, não gasta cota)."""
+    import time as _t
+    dias = float((cfg.get("llm") or {}).get("cache_dias", 7))
+    arq = _cache_arq(prompt, sistema, temperatura)
+    if dias > 0 and arq.exists() and _t.time() - arq.stat().st_mtime < dias * 86400:
+        try:
+            c = json.loads(arq.read_text(encoding="utf-8"))
+            return c["obj"], {}, c["modelo"] + " (cache)"
+        except Exception:
+            pass
     ultimo = None
     for _ in range(2):
         txt, modelo = gerar(prompt, cfg, temperatura=temperatura, sistema=sistema, max_tokens=max_tokens)
         try:
-            return extrair_json(txt), {}, modelo
+            obj = extrair_json(txt)
+            if dias > 0:
+                try:
+                    arq.parent.mkdir(parents=True, exist_ok=True)
+                    arq.write_text(json.dumps({"obj": obj, "modelo": modelo}, ensure_ascii=False), encoding="utf-8")
+                except Exception:
+                    pass
+            return obj, {}, modelo
         except Exception as e:
             ultimo = e
             prompt += "\n\nATENÇÃO: responda SOMENTE com JSON válido, sem texto fora dele."

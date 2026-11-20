@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 
 from .llm import gerar_json
+from .script import licoes_do_canal
 from .objetos3d import prompt_catalogo
 from .util import log, nota, slugify
 
@@ -52,6 +53,8 @@ FATOS VERIFICADOS (a base de tudo; cite os ids):
 {_fatos_txt(fatos)}
 
 {REGRAS_VIRAL}
+
+{licoes_do_canal()}
 
 Monte a ESTRUTURA de um vídeo de ~{alvos['seg'] / 60:.0f} minutos com {caps[0]} a {caps[1]} capítulos:
 - capítulo 1 = o gancho (30 a 45 s) + a promessa; o último = payoff + virada final + pergunta para os comentários.

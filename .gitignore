@@ -4,3 +4,4 @@ saida/
 engine/vendor/
 .venv/
 config.local.yml
+historico/temas_local.json

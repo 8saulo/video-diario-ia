@@ -11,6 +11,19 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+  // encolhe a fonte até o texto caber na caixa (largura e altura), sem quebrar palavra no meio
+  function caber(e, maxW, maxH, min) {
+    let f = parseFloat(e.style.fontSize) || parseFloat(getComputedStyle(e).fontSize) || 40;
+    for (let n = 0; n < 60 && f > min && (e.scrollWidth > maxW + 1 || (maxH && e.scrollHeight > maxH + 1)); n++) {
+      f -= 2; e.style.fontSize = f + 'px';
+    }
+    return f;
+  }
+  // tamanho inicial pela maior palavra (antes de medir): palavra longa nunca estoura a largura
+  function fontePorPalavra(txt, largura, base, k) {
+    const maior = Math.max(1, ...String(txt || '').split(/\s+/).map(p => p.length));
+    return Math.max(14, Math.min(base, Math.floor(largura / (maior * k))));
+  }
   function lum(hex) { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 0.5; const n = parseInt(m[1], 16); return (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255; }
 
   // posições (centro x/y em fração da área do quadro, largura em px da tela 1080 de largura, rotação)
@@ -61,7 +74,7 @@
 
   PECA.logo = function (q, it, w) {
     const card = el('div', 'q-card q-logo', q.area);
-    const claro = lum(it.cor) < 0.22;  // logo escura (ex.: preta) vai sobre fundo claro
+    const claro = it.fundo === 'claro' || lum(it.cor) < 0.22;  // logo escura (ex.: preta) ou colorida da Commons: fundo claro
     css(card, { width: w + 'px', height: (w * 0.72) + 'px', background: claro ? '#f4f5f8' : '#0e1118',
                 boxShadow: `0 0 0 3px ${it.cor}, 0 0 46px ${it.cor}99, 0 24px 40px rgba(0,0,0,.55)` });
     const img = el('img', '', card); img.alt = ''; img.src = it.svg || '';
@@ -76,7 +89,9 @@
     el('div', 'q-jornal-topo', card, '— EDIÇÃO EXTRA —');
     const h = el('div', 'q-jornal-texto', card, esc(it.texto || ''));
     const n = (it.texto || '').length;
-    css(h, { fontSize: Math.round(w * (n > 40 ? 0.085 : n > 24 ? 0.1 : 0.12)) + 'px' });
+    const util = w - 44;
+    css(h, { width: util + 'px', fontSize: fontePorPalavra(it.texto, util, Math.round(w * (n > 40 ? 0.085 : n > 24 ? 0.1 : 0.12)), 0.62) + 'px' });
+    caber(h, util, Math.round(w * 0.5), 16);
     el('div', 'q-jornal-linhas', card);
     el('div', 'q-fita', card);
     return { card, zoom: null };
@@ -87,8 +102,12 @@
     const lado = Math.round(w * 0.78);
     css(card, { width: lado + 'px', height: lado + 'px' });
     const v = el('div', 'q-postit-valor', card, esc(it.valor || ''));
-    css(v, { fontSize: Math.round(lado * ((it.valor || '').length > 7 ? 0.2 : 0.27)) + 'px' });
-    el('div', 'q-postit-rotulo', card, esc(it.rotulo || ''));
+    const util = lado - 44;
+    css(v, { maxWidth: util + 'px', fontSize: fontePorPalavra(it.valor, util, Math.round(lado * ((it.valor || '').length > 7 ? 0.2 : 0.27)), 0.5) + 'px' });
+    const r = el('div', 'q-postit-rotulo', card, esc(it.rotulo || ''));
+    css(r, { maxWidth: util + 'px', fontSize: fontePorPalavra(it.rotulo, util, 24, 0.6) + 'px' });
+    caber(r, util, Math.round(util * 0.3), 12);
+    caber(v, util, util - r.scrollHeight - 10, 16);
     alfinete(card, '#1e6bff');
     return { card, zoom: null };
   };
@@ -111,7 +130,7 @@
     const fundo = el('div', 'q-fundo', root);
     el('div', 'q-holofote', fundo); el('div', 'q-linhas', fundo);
     // área do quadro: no vertical, entre os cartões de cima e a legenda; no horizontal, à direita
-    const R = port ? { x: 0, y: 770, w: W, h: 650 } : { x: Math.round(W * 0.44), y: 120, w: Math.round(W * 0.54), h: H - 300 };
+    const R = port ? { x: 0, y: 770, w: W, h: 615 } : { x: Math.round(W * 0.44), y: 120, w: Math.round(W * 0.54), h: H - 300 };
     q.area = el('div', 'q-area', root);
     css(q.area, { left: R.x + 'px', top: R.y + 'px', width: R.w + 'px', height: R.h + 'px' });
     const k = port ? 1 : 1.05;
@@ -132,8 +151,17 @@
     // carimbo sobre a primeira foto/pessoa (ou sobre o centro)
     let carimbo = null;
     if (Q.carimbo) {
-      const alvo = pecas.find(p => ['foto', 'video', 'pessoa'].includes(p.it.tipo)) || pecas[0];
-      carimbo = el('div', 'q-carimbo', alvo ? alvo.c : q.area, esc(Q.carimbo));
+      // nunca sobre a foto de uma pessoa: vai na foto/vídeo, no recorte de jornal ou no post-it
+      const alvo = pecas.find(p => ['foto', 'video'].includes(p.it.tipo)) || pecas.find(p => ['manchete', 'nota', 'logo'].includes(p.it.tipo));
+      const canto = alvo && ['manchete', 'nota'].includes(alvo.it.tipo);
+      carimbo = el('div', 'q-carimbo', canto || !alvo ? q.area : alvo.c, esc(Q.carimbo));
+      if (canto) {
+        // jornal/post-it: o carimbo vai no canto de cima do recorte, por cima de tudo, sem cobrir o texto principal
+        const c = alvo.c, cw = c.offsetWidth, chh = c.offsetHeight, lw = Math.round(cw * 0.62);
+        carimbo.classList.add('q-carimbo-canto');
+        css(carimbo, { width: lw + 'px', marginLeft: '0', left: (parseFloat(c.style.left) + cw * 0.5 - lw * 0.72) + 'px',
+                       top: (parseFloat(c.style.top) - chh * 0.5 - 52) + 'px' });
+      }
     }
     // etiquetas de dossiê
     const et = el('div', 'q-etiqueta', root, '// ' + esc(Q.etiqueta || 'DOSSIÊ'));

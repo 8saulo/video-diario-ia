@@ -101,12 +101,9 @@ def garantir_three():
 
 
 THREE_JSM = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-EXTRAS_3D = ("utils/BufferGeometryUtils.js", "utils/SkeletonUtils.js", "loaders/GLTFLoader.js",
-             "environments/RoomEnvironment.js", "geometries/RoundedBoxGeometry.js")
-# modelos 3D prontos (CC0) embutidos como base64: o motor abre em file://, onde fetch de arquivo é bloqueado
-MODELOS_3D = {
-    "robo": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
-}
+# só bibliotecas de código (nenhum modelo 3D pronto): ambiente de estúdio, caixa arredondada e o leitor de SVG
+# que transforma logos e letras em formas para extrudar
+EXTRAS_3D = ("environments/RoomEnvironment.js", "geometries/RoundedBoxGeometry.js", "loaders/SVGLoader.js")
 
 
 def modulo_para_script(src: str) -> str:
@@ -133,27 +130,19 @@ def modulo_para_script(src: str) -> str:
 
 
 def garantir_extras3d():
-    """vendor/three-extras.js (GLTFLoader, RoomEnvironment...) e vendor/modelos3d.js (GLBs em base64)."""
-    import base64
+    """vendor/three-extras.js (RoomEnvironment, RoundedBoxGeometry, SVGLoader). Nenhum modelo 3D pronto."""
     vend = ENGINE / "vendor"
     vend.mkdir(parents=True, exist_ok=True)
+    (vend / "modelos3d.js").unlink(missing_ok=True)  # versões antigas embutiam um robô pronto (removido)
     ext = vend / "three-extras.js"
-    if not (ext.exists() and ext.stat().st_size > 50_000 and "RoundedBoxGeometry" in ext.read_text(encoding="utf-8")):
-        log("baixando extras do Three.js 0.160.0 (GLTFLoader, RoomEnvironment; licença MIT)")
+    if not (ext.exists() and "SVGLoader" in ext.read_text(encoding="utf-8")):
+        log("baixando extras do Three.js 0.160.0 (RoomEnvironment, RoundedBoxGeometry, SVGLoader; licença MIT)")
         partes = []
         for arq in EXTRAS_3D:
             with urllib.request.urlopen(THREE_JSM + arq, timeout=60) as r:
                 partes.append(f"// {arq}\n" + modulo_para_script(r.read().decode("utf-8")))
         ext.write_text("\n".join(partes), encoding="utf-8")
-    mod = vend / "modelos3d.js"
-    if not (mod.exists() and mod.stat().st_size > 100_000):
-        log("baixando modelos 3D (RobotExpressive, CC0)")
-        js = ["window.MODELOS3D = {};"]
-        for nome, url in MODELOS_3D.items():
-            with urllib.request.urlopen(url, timeout=60) as r:
-                js.append(f"window.MODELOS3D[{nome!r}] = '{base64.b64encode(r.read()).decode()}';")
-        mod.write_text("\n".join(js), encoding="utf-8")
-    return ext, mod
+    return ext
 
 
 def garantir_gsap():

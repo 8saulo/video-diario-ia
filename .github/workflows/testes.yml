@@ -1,0 +1,36 @@
+name: Testes
+
+on:
+  push:
+    branches: [main]
+    paths: ["videobot/**", "engine/**", "tests/**", "config.yml", "requirements*.txt", ".github/workflows/**"]
+  schedule:
+    - cron: "23 6 * * 1"   # toda segunda, 03:23 de Brasília: inclui os testes lentos (navegador, 3D, vídeo)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Cache do Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Testes (todos, inclusive os lentos)
+        run: python -m pytest -q

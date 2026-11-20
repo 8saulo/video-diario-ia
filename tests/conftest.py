@@ -77,3 +77,14 @@ def gemini_falso(monkeypatch, tmp_path):
     monkeypatch.setattr(tts, "chave", lambda nome: "x")
     monkeypatch.setattr(tts, "transcrever", lambda *a, **k: None)  # sem Whisper nos testes rápidos
     return estado
+
+
+@pytest.fixture(autouse=True)
+def _isolar_cota_e_cache(monkeypatch, tmp_path):
+    """Os testes não leem nem gravam o contador de cota e o cache de respostas reais da máquina."""
+    from videobot import llm
+    llm._uso.clear()
+    monkeypatch.setattr(llm, "_arquivo_uso", lambda: tmp_path / "_cota.json")
+    monkeypatch.setattr(llm, "_cache_arq", lambda *a: tmp_path / "_cache" / "x.json")
+    yield
+    llm._uso.clear()

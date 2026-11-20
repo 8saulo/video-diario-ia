@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import shutil
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -10,7 +11,12 @@ from zoneinfo import ZoneInfo
 from . import audio, render, tts
 from .util import NOTAS, RAIZ, escrever_json, etapa, falhar, ler_json, log, nota, resumo_github, slugify
 
-HIST = RAIZ / "historico" / "temas.json"
+HIST = RAIZ / "historico" / "temas.json"              # vídeos do GitHub (versionado)
+HIST_LOCAL = RAIZ / "historico" / "temas_local.json"  # vídeos feitos no PC (fora do git: não conflita com o GitHub)
+
+
+def _hist_alvo() -> Path:
+    return HIST if os.environ.get("GITHUB_ACTIONS") else HIST_LOCAL
 
 
 def hoje() -> dt.date:
@@ -18,13 +24,16 @@ def hoje() -> dt.date:
 
 
 def historico() -> list:
-    return ler_json(HIST, []) or []
+    """Os dois históricos juntos (evita repetir tema e paleta entre o PC e o GitHub), em ordem de data."""
+    h = (ler_json(HIST, []) or []) + (ler_json(HIST_LOCAL, []) or [])
+    return sorted(h, key=lambda e: e.get("data", ""))
 
 
 def registrar_tema(entrada: dict):
-    h = historico()
+    alvo = _hist_alvo()
+    h = ler_json(alvo, []) or []
     h.append(entrada)
-    escrever_json(HIST, h[-200:])
+    escrever_json(alvo, h[-200:])
 
 
 def escolher_paleta(cfg: dict, hist: list, data: dt.date) -> str:
@@ -123,8 +132,8 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
                 break
             if cfg.get("_sem_crivo"):  # lote pedido pelo usuário: a checagem não bloqueia (usa só os fatos confirmados)
                 fatos.setdefault("tema", cand.get("tema", "")); fatos.setdefault("angulo", ""); fatos.setdefault("fatos", [])
-                nota(f"CRIVO 2/3 ignorado nesta execução (--sem-crivo): '{cand['tema']}' seguiu com {len(fatos['fatos'])} fato(s) "
-                     f"confirmado(s) ({fatos.get('motivo', '')}).")
+                nota(f"ATENÇÃO — VÍDEO SEM CHECAGEM COMPLETA (--sem-crivo): '{cand['tema']}' seguiu com {len(fatos['fatos'])} fato(s) "
+                     f"confirmado(s) ({fatos.get('motivo', '')}). Revise antes de publicar.")
                 escolhido = cand
                 break
             nota(f"CRIVO 2/3: '{cand['tema']}' não teve fontes verificáveis suficientes ({fatos['motivo']}); passei para o próximo.")
@@ -157,18 +166,25 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     quadro = bool(cfg["visual"].get("quadro", True))
     # com o quadro de dossiê, foto/vídeo viram recortes (polaroide 4:3); sem ele, ocupam a tela inteira
     mw, mh = (800, 600) if quadro else ((1920, 1080) if longo else (1080, 1920))
-    creditos = midia.aplicar(roteiro, cfg, pasta, durs, mw, mh, int(cfg["visual"].get("fps", 30)))
+    from . import elementos
+    arte = elementos.dirigir(roteiro, cfg) if quadro else None  # uma chamada: quadro + buscas de mídia + objetos 3D
+    creditos = midia.aplicar(roteiro, cfg, pasta, durs, mw, mh, int(cfg["visual"].get("fps", 30)), plano_pronto=arte)
     if longo and roteiro.get("thumb"):  # longo: thumb com foto real do assunto central
         capa = midia.foto_thumb(roteiro, cfg, pasta, creditos)
         if capa:
             roteiro["thumb"]["photo"] = capa["photo"]
             creditos = creditos + [{"cena": "thumb", "titulo": "foto da capa", "credito": capa["credito"], "pagina": capa["pagina"]}]
+    tem3d = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon")
     if quadro:  # pessoas (foto da Wikipedia), logos das marcas, recortes de jornal, post-its e carimbos por cena
-        from . import elementos
-        creditos = creditos + elementos.montar(roteiro, cfg, pasta)
+        if tem3d:  # objetos 3D ligados à fala: o quadro alterna com eles
+            if arte is not None:
+                elementos.objetos_da_arte(roteiro, arte)
+            else:
+                objetos3d.revisar(roteiro, cfg, todas=True)
+        creditos = creditos + elementos.montar(roteiro, cfg, pasta, arte=arte)
     if creditos:
         roteiro["creditos_fotos"] = creditos
-    if (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon"):
+    if tem3d and not quadro:
         objetos3d.revisar(roteiro, cfg)
     # 5. animação
     etapa("cenas", "Montagem das cenas e prévia de layout")
@@ -179,7 +195,11 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         nota(f"CRIVO 5: {len(issues)} alerta(s) de layout na prévia (ver previa_crivo5.png): "
              + "; ".join(f"{i['seg']}:{i['tipo']}" for i in issues[:8]))
     etapa("audio", "Trilha, efeitos e mixagem")
-    mix, medidas = audio.mixar(data["segments"], data["duration"], pasta, cfg)
+    from . import musica
+    trilha_real = musica.escolher(cfg, pasta, semente=data_hoje.toordinal())
+    if trilha_real:
+        roteiro.setdefault("creditos_fotos", []).append({k: trilha_real[k] for k in ("titulo", "credito", "pagina")})
+    mix, medidas = audio.mixar(data["segments"], data["duration"], pasta, cfg, trilha_real["wav"] if trilha_real else None)
     nome = f"{slug}_{'curto' if curto else 'longo'}.mp4"
     etapa("render", "Render quadro a quadro")
     video = render.render(data, mix, pasta, nome, int(cfg["visual"].get("workers", 0)))
@@ -202,12 +222,19 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
             p.unlink()
     shutil.rmtree(pasta / "audio", ignore_errors=True)
     if modo != "demo" and not orig:
-        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug, "paleta": paleta,
-                        "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
+        primeira = next((sc.get("text", "") for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])), "")
+        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug, "paleta": paleta, "formato": cfg["formato"],
+                        "gancho": primeira[:120], "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],
-             "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:100],
+             "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": (f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:90]
+                    + (f"-r{os.environ.get('GITHUB_RUN_NUMBER') or dt.datetime.now().strftime('%H%M')}" if orig else "")),
              "titulo": pacote["titulo"], "modo": modo}
     escrever_json(RAIZ / "saida" / "ultimo.json", saida)
     resumo_github(Path(pacote["relatorio"]).read_text(encoding="utf-8"))
+    try:
+        from .llm import resumo_uso
+        log(f"pedidos às IAs de texto/visão hoje: {resumo_uso()}")
+    except Exception:
+        pass
     log("pronto:", video)
     return saida

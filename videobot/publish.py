@@ -77,7 +77,10 @@ def _lista(v) -> list:
     if v is None or v == "":
         return []
     if isinstance(v, (list, tuple)):
-        return [str(x) for x in v]
+        out = []
+        for x in v:  # ["IA, energia, data center"] também vira 3 itens
+            out += [p.strip() for p in str(x).split(",") if p.strip()] if "," in str(x) else [str(x)]
+        return out
     # alguns modelos mandam a lista como texto: "IA, OpenAI, ..." ou "#ia #tecnologia"
     s = str(v)
     partes = s.split(",") if "," in s else (s.split() if s.count("#") > 1 else [s])
@@ -155,7 +158,7 @@ def escrever(roteiro, data, pesquisa, fatos, voz, conf, medidas, issues, pasta: 
         desc += ["", "FONTES"] + [f"{n} ({d}): {u}" for n, u, d in fontes]
     fotos = roteiro.get("creditos_fotos") or []
     if fotos:
-        desc += ["", "FOTOS E VÍDEOS (licenças livres)"] + [f"{f['credito']}: {f['pagina']}" for f in fotos]
+        desc += ["", "FOTOS, VÍDEOS E MÚSICA (licenças livres)"] + [f"{f['credito']}: {f['pagina']}" for f in fotos]
     desc += ["", " ".join(yt.get("hashtags", [])[:5])]
     descricao = "\n".join(desc).strip()
     corte = corte_tiktok(data, roteiro) if not curto else None

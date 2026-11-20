@@ -31,6 +31,14 @@ eye, signal, chat, water, car, game, music, shield, question, bubble, factory"""
 NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta"}
 
 
+def licoes_do_canal() -> str:
+    try:
+        from .youtube import licoes
+        return licoes()
+    except Exception:
+        return ""
+
+
 def _alvos(cfg):
     if cfg["formato"] == "curto":
         s = float(cfg["duracao"].get("curto_seg", 65))
@@ -59,6 +67,8 @@ Data de hoje: {hoje.strftime('%d/%m/%Y')}. Tema: "{fatos['tema']}". Ângulo: {fa
 
 FATOS VERIFICADOS (use SOMENTE estes números; cite os ids em fact_ids):
 {fl}
+
+{licoes_do_canal()}
 
 NARRATIVA (o mais importante): conte uma HISTÓRIA, não uma lista de manchetes.
 - GANCHO (cena 1, no máximo 9 palavras, ~3 s): o ponto mais intrigante — um conflito, um mistério, uma consequência para quem assiste
@@ -206,6 +216,56 @@ def _sanear(r: dict, fatos: dict, cfg, hoje):
     return r
 
 
+def _prompt_critico(r: dict) -> str:
+    cenas = "\n".join(f'{i + 1}. {sc.get("text", "")}' for i, sc in enumerate(sc for ch in r.get("chapters", []) for sc in ch.get("scenes", [])))
+    return f"""Você é editor-chefe de vídeos curtos virais. Avalie este roteiro (uma fala por cena, na ordem):
+{cenas}
+
+Dê notas de 0 a 10:
+- gancho: a cena 1 prende nos primeiros 3 segundos (curiosidade, conflito ou consequência para quem assiste)?
+- narrativa: é uma HISTÓRIA (cada cena nasce da anterior, com virada e desfecho que fecha o gancho) ou uma lista de manchetes?
+- fluidez: soa natural falado em voz alta, com conectivos, sem frases de relatório?
+E liste até 5 problemas CONCRETOS e acionáveis (cite a cena pelo número e diga como reescrever).
+Responda SOMENTE com JSON: {{"gancho": n, "narrativa": n, "fluidez": n, "problemas": ["..."]}}"""
+
+
+def revisar_narrativa(r, erros, cand, fatos, cfg, hoje, alvos):
+    """Crítico (ideia do OpenReels): nota gancho/narrativa/fluidez; abaixo de 7, ou roteiro curto, uma reescrita dirigida.
+    Também resolve o roteiro curto demais dizendo QUANTO e ONDE acrescentar (antes só se pedia 'corrija')."""
+    try:
+        nota_c, _, _ = gerar_json(_prompt_critico(r), cfg, temperatura=0.2, max_tokens=1200)
+    except Exception:
+        nota_c = {}
+    notas = {k: float(nota_c.get(k) or 10) for k in ("gancho", "narrativa", "fluidez")}
+    problemas = [str(p) for p in (nota_c.get("problemas") or [])][:5]
+    cenas = [sc for ch in r.get("chapters", []) for sc in ch.get("scenes", [])]
+    n_pal = sum(len(sc.get("text", "").split()) for sc in cenas)
+    falta = alvos["palavras"][0] - n_pal
+    pedidos = []
+    if min(notas.values()) < 7:
+        pedidos += [f"crítico: gancho {notas['gancho']:g}/10, narrativa {notas['narrativa']:g}/10, fluidez {notas['fluidez']:g}/10"] + problemas
+    if falta > 0:
+        k = max(1, round(falta / 20))
+        pedidos.append(f"o roteiro tem {n_pal} palavras e precisa de pelo menos {alvos['palavras'][0]}: ACRESCENTE {k} cena(s) nova(s) de "
+                       f"18 a 24 palavras no DESENVOLVIMENTO (antes do desfecho), aprofundando a história com os fatos ainda não usados, "
+                       f"sem mexer no gancho; não encurte as outras cenas")
+    log(f"crítico do roteiro: gancho {notas['gancho']:g}, narrativa {notas['narrativa']:g}, fluidez {notas['fluidez']:g}; "
+        f"{n_pal} palavras" + ("" if pedidos else " — aprovado"))
+    if not pedidos:
+        return r, erros
+    try:
+        r2, _, _ = gerar_json(_prompt(cand, fatos, cfg, hoje, alvos, erros + pedidos, r), cfg, temperatura=0.4)
+    except Exception:
+        return r, erros
+    e2 = validar(r2, fatos, cfg, hoje)
+    n2 = sum(len(sc.get("text", "").split()) for ch in r2.get("chapters", []) for sc in ch.get("scenes", []))
+    # aceita se não piorou a validação e (se faltava texto) chegou mais perto do tamanho certo
+    if len(e2) <= len(erros) and (falta <= 0 or n2 > n_pal):
+        log(f"crítico: roteiro reescrito ({n_pal} -> {n2} palavras)")
+        return r2, e2
+    return r, erros
+
+
 def escrever(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     alvos = _alvos(cfg)
     if cfg["formato"] == "longo":  # longo: em etapas (estrutura + um pedido por capítulo); o curto segue igual
@@ -223,6 +283,8 @@ def escrever(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
         e2 = validar(r2, fatos, cfg, hoje)
         if len(e2) <= len(erros):
             r, erros = r2, e2
+    if cfg["formato"] != "longo" and (cfg.get("roteiro") or {}).get("critico", True):
+        r, erros = revisar_narrativa(r, erros, cand, fatos, cfg, hoje, alvos)
     if erros:
         nota("Roteiro: pendências após 2 correções: " + "; ".join(erros[:6]))
         r = _sanear(r, fatos, cfg, hoje)

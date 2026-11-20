@@ -49,6 +49,7 @@ on:
 permissions:
   contents: write
   actions: read
+  models: read          # GitHub Models (IA grátis de reserva, com o token desta execução)
 
 concurrency:
   group: video-diario
@@ -78,6 +79,8 @@ jobs:
     needs: checar
     if: needs.checar.outputs.pular != '1'
     runs-on: ubuntu-24.04   # fixo: o Playwright fixado suporta 24.04
+    env:
+      TEM_YOUTUBE: ${{ secrets.YT_REFRESH_TOKEN != '' }}   # secrets não podem ir direto num if de passo
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
@@ -126,6 +129,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           IN_MODO: ${{ inputs.modo || 'completo' }}
           IN_TEMA: ${{ inputs.tema }}
@@ -176,10 +180,27 @@ jobs:
           subprocess.run(cmd, check=True)
           PY
 
+      - name: Publicar no YouTube
+        if: success() && env.TEM_YOUTUBE == 'true'
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python -m videobot publicar-youtube
+
+      - name: Atualizar desempenho (YouTube Analytics)
+        if: always() && env.TEM_YOUTUBE == 'true'
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python -m videobot desempenho
+
       - name: Salvar histórico de temas
         if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add historico/temas.json
+          git add historico/temas.json historico/desempenho.json 2>/dev/null || git add historico/temas.json
           git diff --cached --quiet || (git commit -m "Histórico: tema de $(date -u +%F)" && git push)

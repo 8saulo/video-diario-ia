@@ -86,3 +86,24 @@ def test_chave_salva_com_setx_e_lida_do_registro(monkeypatch):
     monkeypatch.setitem(sys.modules, "winreg", fake)
     assert util.chave("CHAVE_TESTE_X") == "segredo"
     monkeypatch.delenv("CHAVE_TESTE_X", raising=False)
+
+
+def test_historico_do_pc_fica_fora_do_arquivo_do_github(monkeypatch, tmp_path):
+    """O historico/temas.json entrava em conflito no git toda vez que o PC gerava vídeo."""
+    monkeypatch.setattr(pipeline, "HIST", tmp_path / "temas.json")
+    monkeypatch.setattr(pipeline, "HIST_LOCAL", tmp_path / "temas_local.json")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    pipeline.registrar_tema({"data": "2026-11-20", "slug": "pc"})
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    pipeline.registrar_tema({"data": "2026-11-21", "slug": "gh"})
+    assert [e["slug"] for e in pipeline.ler_json(tmp_path / "temas.json", [])] == ["gh"]
+    assert [e["slug"] for e in pipeline.ler_json(tmp_path / "temas_local.json", [])] == ["pc"]
+    assert [e["slug"] for e in pipeline.historico()] == ["pc", "gh"], "a escolha de tema enxerga os dois"
+
+
+def test_sem_crivo_e_proibido_no_github(monkeypatch):
+    from videobot import __main__ as m
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    with pytest.raises(SystemExit) as e:
+        m.main(["run", "--sem-crivo"])
+    assert "não é permitido no GitHub" in str(e.value)

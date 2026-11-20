@@ -27,10 +27,24 @@ def main(argv=None):
     r.add_argument("--buscas", default="", help="buscas extras em inglês separadas por ;")
     r.add_argument("--refazer", default="", help="pasta de um vídeo anterior (com roteiro.json): refaz narração e render")
     r.add_argument("--sem-crivo", action="store_true", help="a checagem de fatos não bloqueia o vídeo (só nesta execução)")
+    sub.add_parser("publicar-youtube", help="envia o último vídeo (saida/ultimo.json) ao YouTube")
+    sub.add_parser("desempenho", help="atualiza historico/desempenho.json com o YouTube Analytics")
+    au = sub.add_parser("youtube-auth", help="autoriza o canal (OAuth) e mostra o refresh token para os Secrets do GitHub")
+    au.add_argument("--cliente", required=True, help="arquivo client_secret.json baixado do Google Cloud")
     u = sub.add_parser("ui", help="abre a interface local no navegador")
     u.add_argument("--porta", type=int, default=8765)
     u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
     a = ap.parse_args(argv)
+
+    if a.cmd in ("publicar-youtube", "desempenho", "youtube-auth"):
+        from . import youtube
+        if a.cmd == "youtube-auth":
+            youtube.autorizar(a.cliente)
+        elif a.cmd == "publicar-youtube":
+            youtube.publicar(carregar_config())
+        else:
+            youtube.atualizar_desempenho()
+        return
 
     if a.cmd == "ui":
         from .interface import servir
@@ -60,6 +74,9 @@ def main(argv=None):
         cfg["tema"]["buscas_extras"] = list(cfg["tema"].get("buscas_extras") or []) + [b.strip() for b in a.buscas.split(";") if b.strip()]
 
     if a.sem_crivo:
+        import os
+        if os.environ.get("GITHUB_ACTIONS"):
+            raise SystemExit("--sem-crivo não é permitido no GitHub: vídeo publicado tem que passar pela checagem de fatos.")
         cfg["_sem_crivo"] = True
     from .pipeline import executar
     executar(cfg, a.modo, a.refazer.strip())

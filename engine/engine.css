@@ -128,7 +128,7 @@ html, body { background: #000; overflow: hidden; }
 
 /* ---------------------------------------------------------------- quadro de dossiê (engine/quadro.js) */
 .port.mode-quadro .box { top: 200px; bottom: 1180px; }
-.port.mode-quadro #cap { top: 1440px; }  /* acima da área dos botões do Reels/TikTok (abaixo de ~1550) */
+.port.mode-quadro #cap { top: 1400px; }  /* acima da área dos botões do Reels/TikTok (abaixo de ~1550) */
 .port.mode-quadro #src { top: 1600px; font-size: 22px; }
 .mode-quadro #credit { display: none; } /* no quadro o crédito vai em cada recorte */
 .land.mode-quadro .box { right: 1100px; }
@@ -165,11 +165,12 @@ html, body { background: #000; overflow: hidden; }
 .q-jornal-texto { font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif; font-weight: 900; line-height: 1.02; color: #15130e; letter-spacing: -.01em; }
 .q-jornal-linhas { height: 46px; margin-top: 12px; background: repeating-linear-gradient(180deg, rgba(40,35,25,.35) 0 3px, transparent 3px 11px); }
 .q-postit { background: linear-gradient(160deg, #ffe066, #ffd23f 70%, #f0bf20); padding: 22px; box-shadow: 0 18px 30px rgba(0,0,0,.5); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-.q-postit-valor { font-family: Anton, Impact, sans-serif; color: #1a1406; line-height: 1; white-space: nowrap; }
+.q-postit-valor { font-family: Anton, Impact, sans-serif; color: #1a1406; line-height: 1; overflow-wrap: normal; word-break: keep-all; }
 .q-postit-rotulo { margin-top: 10px; font: 800 24px/1.1 Figtree, sans-serif; color: #3a2e05; }
 .q-carimbo { position: absolute; left: 50%; top: 58%; transform-origin: 50% 50%; margin-left: -46%; width: 92%; text-align: center; padding: 10px 6px;
   font: 900 40px/1 Figtree, sans-serif; letter-spacing: .02em; color: #e8183c; border: 6px solid #e8183c; border-radius: 6px; background: rgba(255,255,255,.82);
   box-shadow: 0 0 0 3px rgba(255,255,255,.82); z-index: 4; white-space: nowrap; }
+.q-carimbo.q-carimbo-canto { z-index: 9; font-size: 30px; padding: 8px 4px; border-width: 5px; }
 .q-etiqueta, .q-vivo { position: absolute; z-index: 8; font: 700 26px/1 'DejaVu Sans Mono', Consolas, monospace; letter-spacing: .08em; color: #e8183c; text-shadow: 0 0 14px rgba(232,24,60,.45); white-space: nowrap; }
 .q-vivo { color: #e9e9ee; }
 .q-vivo i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #e8183c; margin-right: 10px; box-shadow: 0 0 10px #e8183c; }

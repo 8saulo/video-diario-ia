@@ -30,3 +30,6 @@ fazer a suíte passar.
 - `historico/temas.json` é atualizado pela própria rotina; não edite à mão.
 - Arquivos em `saida/` são gerados e ficam fora do git.
 - Python do projeto: `.venv` (Windows: `.venv/Scripts/python.exe`).
+- 3D: nada de modelo pronto (GLB/GLTF/OBJ); tudo é geometria gerada em código ou extrusão de SVG.
+- Marca/pessoa só aparecem no vídeo se forem ditas na cena; carimbo nunca acusa pessoa real.
+- Ajustes só do PC vão no `config.local.yml`, nunca em mudanças locais do `config.yml`.

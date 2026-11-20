@@ -1,7 +1,7 @@
 # Execucao diaria local do video-diario-ia (chamada pelo Agendador de Tarefas do Windows).
 # - Roda no maximo 1 vez por dia (marca em saida\_agendado_ultimo.txt).
 # - Espera ate 60 min pela internet antes de comecar.
-# - Atualiza o codigo do GitHub (git pull) e gera o video com o .venv.
+# - Atualiza o codigo (git pull) e dispara a rotina no GitHub (o video e feito e publicado la).
 # Agendar/desagendar: agendar_local.ps1 (ou: agendar_local.ps1 -Remover)
 $ErrorActionPreference = "Continue"
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -38,6 +38,8 @@ try {
 
     # o agendamento do GitHub atrasa horas: o PC dispara a rotina de la na hora certa,
     # se ainda nao houve video do dia (concluido com sucesso ou em andamento) no GitHub
+    # O video e feito no GitHub (onde ele e publicado). O PC nao gera um segundo video (gastava cota e CPU
+    # e nao ia para lugar nenhum): so dispara a rotina de la na hora certa, se ainda nao houve video do dia.
     try {
         $runs = & gh run list --workflow video-diario.yml --limit 40 --json displayTitle,createdAt,status,conclusion | ConvertFrom-Json
         $feitos = @($runs | Where-Object {
@@ -46,21 +48,14 @@ try {
             ($_.status -ne "completed" -or $_.conclusion -eq "success") })
         if ($feitos.Count -eq 0) {
             & gh workflow run video-diario.yml --ref main 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "gh workflow run falhou (codigo $LASTEXITCODE)" }
             Log "GitHub: rotina disparada"
         } else {
             Log "GitHub: ja ha video do dia ($($feitos.Count)); nao disparei"
         }
-    } catch { Log "GitHub: nao consegui disparar ($($_.Exception.Message))" }
-
-    $py = Join-Path $raiz ".venv\Scripts\python.exe"
-    $env:PYTHONIOENCODING = "utf-8"
-    & $py -u -m videobot run 2>&1 | ForEach-Object { "$_" } | Out-File -Append -Encoding utf8 $log
-    if ($LASTEXITCODE -eq 0) {
         Set-Content $marca $hoje
         Log "ok"
-    } else {
-        Log "falhou (codigo $LASTEXITCODE); tento de novo no proximo gatilho"
-    }
+    } catch { Log "GitHub: nao consegui disparar ($($_.Exception.Message)); tento de novo no proximo gatilho" }
 } finally {
     Remove-Item $trava -ErrorAction SilentlyContinue
 }

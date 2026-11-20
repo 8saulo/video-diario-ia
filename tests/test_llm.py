@@ -60,3 +60,33 @@ def test_resposta_vazia_explica_o_motivo(monkeypatch):
     st, txt, _, msg = llm._openai("openrouter", "nvidia/nemotron:free", [{"role": "user", "content": "x"}], 0.2, 100)
     assert st == 200 and txt == "" and "pensando" in msg
     assert enviados["reasoning"] == {"effort": "low", "exclude": True}
+
+
+def test_provedor_no_limite_do_dia_e_poupado(monkeypatch, cfg):
+    """Lote FTTH: o grátis do OpenRouter (50/dia) acabou de madrugada e 5 vídeos se perderam."""
+    usados = []
+    monkeypatch.setattr(llm, "_openai", lambda prov, m, *a: usados.append(prov) or (200, "ok", 0.0, ""))
+    cfg = dict(cfg, llm=dict(cfg["llm"], limites_dia={"groq": 2}))
+    for _ in range(2):
+        llm.contar("groq")
+    assert llm.gerar("x", cfg) == ("ok", "openrouter/openrouter-a")
+    assert usados == ["openrouter"]
+
+
+def test_resposta_valida_fica_em_cache(monkeypatch, cfg, tmp_path):
+    chamadas = []
+    monkeypatch.setattr(llm, "_cache_arq", lambda *a: tmp_path / "c.json")
+    monkeypatch.setattr(llm, "gerar", lambda *a, **k: chamadas.append(1) or ('{"a": 1}', "groq/m"))
+    assert llm.gerar_json("p", cfg)[0] == {"a": 1}
+    obj, _, modelo = llm.gerar_json("p", cfg)
+    assert obj == {"a": 1} and modelo.endswith("(cache)") and len(chamadas) == 1
+
+
+def test_github_models_so_dentro_do_actions(monkeypatch, cfg):
+    """No PC havia um GITHUB_TOKEN pessoal e o GitHub Models foi usado (4 pedidos): não pode."""
+    monkeypatch.undo()
+    monkeypatch.setattr(llm, "chave", lambda n: "token")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    assert "github" not in llm.disponiveis(cfg)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert "github" in llm.disponiveis(cfg)

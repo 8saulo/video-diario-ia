@@ -1,13 +1,14 @@
 // 3D temático em código (Three.js): cada cena monta os objetos que o roteiro pediu em params._3d
 // ({objetos: ["foguete", "moedas"], camera: "orbita"}). Os objetos são desenhados aqui (cantos
 // arredondados, materiais físicos com reflexo do ambiente) e alguns vêm de modelos prontos CC0
-// (window.MODELOS3D, embutidos em vendor/modelos3d.js). Cores da paleta do vídeo.
+// Nenhum modelo pronto: tudo é geometria gerada aqui, inclusive logos e números da cena extrudados a partir de SVG
+// (videobot/texto3d.py e o acervo de logos). Cores da paleta do vídeo.
 // Determinístico: o mesmo t gera sempre o mesmo quadro (animações usam mixer.setTime).
 (function () {
   'use strict';
   const W3T = { on: false };
   let R, S, C, W, H, PORT, ACC, ACC2, GLOW, DUST, SOMBRA, FX;
-  const MODELOS = {};  // gltf já interpretados (preparados no init)
+
   const GRUPOS = [];  // por segmento: { holder, upds: [fn], cam, vals }
 
   // ------------------------------------------------------------------ utilidades
@@ -176,28 +177,88 @@
 
   KIT.robo_simples = () => {
     const g = new THREE.Group();
-    g.add(mesh(new THREE.CapsuleGeometry(0.9, 1.0, 8, 24), M.branco, 0, 3.0, 0));
-    const cab = new THREE.Group(); cab.position.set(0, 4.55, 0); g.add(cab);
-    cab.add(mesh(new THREE.SphereGeometry(0.7, 32, 24), M.branco));
-    cab.add(mesh(RB(1.0, 0.32, 0.3), bas(ACC2), 0, 0.05, 0.55));
-    const braco = (x) => { const p = new THREE.Group(); p.position.set(x, 3.85, 0); p.add(mesh(new THREE.CapsuleGeometry(0.24, 1.5, 6, 16), M.cinza, 0, -0.95, 0)); g.add(p); return p; };
-    const bd = braco(1.15); braco(-1.15).rotation.z = -0.12;
-    for (const x of [-0.45, 0.45]) g.add(mesh(new THREE.CapsuleGeometry(0.28, 1.4, 6, 16), M.cinza, x, 1.0, 0));
-    return { g, upd(t) { bd.rotation.z = 0.5 + 0.55 * (0.5 + 0.5 * Math.sin(t * 2.4)); cab.rotation.y = 0.35 * Math.sin(t * 0.8); } };
+    const casco = std(0xeef1f6, { roughness: 0.28, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.12 });
+    const junta = std(0x1b2030, { metalness: 0.7, roughness: 0.35 });
+    // tronco com placa peitoral e luz
+    g.add(mesh(new THREE.CapsuleGeometry(0.95, 1.1, 10, 32), casco, 0, 3.05, 0));
+    g.add(mesh(RB(1.1, 0.75, 0.25), junta, 0, 3.25, 0.82));
+    const peito = mesh(new THREE.CircleGeometry(0.2, 32), bas(ACC2), 0, 3.25, 0.96); g.add(peito);
+    g.add(mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.35, 32), junta, 0, 2.0, 0));
+    // cabeça: casco, viseira escura com faixa de luz, antena
+    const cab = new THREE.Group(); cab.position.set(0, 4.75, 0); g.add(cab);
+    cab.add(mesh(new THREE.SphereGeometry(0.78, 40, 28), casco));
+    const visor = mesh(new THREE.SphereGeometry(0.66, 40, 20, -1.1, 2.2, 1.1, 0.75), std(0x0a0d14, { metalness: 0.9, roughness: 0.08, clearcoat: 1 }));
+    visor.position.z = 0.16; cab.add(visor);
+    const olhos = mesh(RB(0.7, 0.09, 0.05), bas(ACC2), 0, 0.05, 0.8); cab.add(olhos);
+    cab.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.45, 8), junta, 0, 0.95, 0));
+    const ponta = glow(ACC, 0.5); ponta.position.set(0, 1.2, 0); cab.add(ponta);
+    g.add(mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.35, 16), junta, 0, 4.05, 0));
+    // braços: ombro, cotovelo e mão
+    const braco = (x) => {
+      const ombro = new THREE.Group(); ombro.position.set(x, 3.85, 0); g.add(ombro);
+      ombro.add(mesh(new THREE.SphereGeometry(0.3, 20, 16), junta));
+      ombro.add(mesh(new THREE.CapsuleGeometry(0.2, 0.7, 6, 16), casco, 0, -0.6, 0));
+      const cot = new THREE.Group(); cot.position.y = -1.05; ombro.add(cot);
+      cot.add(mesh(new THREE.SphereGeometry(0.2, 16, 12), junta));
+      cot.add(mesh(new THREE.CapsuleGeometry(0.17, 0.6, 6, 16), casco, 0, -0.45, 0));
+      cot.add(mesh(new THREE.SphereGeometry(0.22, 16, 12), junta, 0, -0.95, 0));
+      return { ombro, cot };
+    };
+    const bd = braco(1.25), be = braco(-1.25);
+    be.ombro.rotation.z = -0.12;
+    // pernas
+    for (const x of [-0.42, 0.42]) {
+      g.add(mesh(new THREE.CapsuleGeometry(0.26, 0.75, 6, 16), casco, x, 1.25, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.24, 16, 12), junta, x, 0.75, 0));
+      g.add(mesh(RB(0.5, 0.25, 0.75), junta, x, 0.15, 0.1));
+    }
+    return { g, upd(t) {
+      const aceno = 0.5 + 0.5 * Math.sin(t * 3.2);
+      bd.ombro.rotation.z = 2.3; bd.cot.rotation.z = -0.4 - 0.6 * aceno;
+      cab.rotation.y = 0.35 * Math.sin(t * 0.8); cab.rotation.z = 0.06 * Math.sin(t * 1.6);
+      peito.material.color.copy(ACC2).multiplyScalar(0.6 + 0.4 * aceno);
+      g.position.y = 0.04 * Math.sin(t * 2.2);
+    } };
   };
 
-  // robô humanoide: RobotExpressive (Tomás Laulhé / Quaternius, CC0) com as animações do próprio modelo
-  KIT.robo = (ctx) => {
-    const base = MODELOS.robo;
-    if (!base || !THREEX.clone) return KIT.robo_simples(ctx);
-    const obj = THREEX.clone(base.scene);
-    const g = new THREE.Group(); g.add(obj);
-    const mixer = new THREE.AnimationMixer(obj);
-    const gestos = ['Wave', 'ThumbsUp', 'Yes', 'Dance', 'Idle'];
-    const nome = gestos[Math.floor(ctx.rnd() * gestos.length)];
-    const clip = base.animations.find(a => a.name === nome) || base.animations.find(a => a.name === 'Idle') || base.animations[0];
-    if (clip) mixer.clipAction(clip).play();
-    return { g, upd(t, lt) { mixer.setTime(lt); g.rotation.y = 0.35 * Math.sin(t * 0.35); } };
+  // robô humanoide feito em código: cabeça com viseira, tronco, braços articulados e pernas (aceno determinístico)
+  KIT.robo = KIT.robo_simples;
+
+  // ------------------------------------------------------------------ extrusão de SVG: logo da marca ou texto da cena
+  // ctx.svg = texto SVG (contornos fechados), ctx.cor = cor principal. Chanfro, metal com verniz e brilho de recorte.
+  KIT.svg3d = (ctx) => {
+    const g = new THREE.Group();
+    if (!window.THREEX || !THREEX.SVGLoader || !ctx.svg) return KIT.rede_neural(ctx);
+    const dados = new THREEX.SVGLoader().parse(ctx.svg);
+    const formas = [];
+    dados.paths.forEach(p => { THREEX.SVGLoader.createShapes(p).forEach(f => formas.push(f)); });
+    if (!formas.length) return KIT.rede_neural(ctx);
+    // tamanho do desenho (unidades do SVG) para calibrar profundidade e chanfro
+    const caixa2d = new THREE.Box2();
+    formas.forEach(f => f.getPoints(12).forEach(pt => caixa2d.expandByPoint(pt)));
+    const larg = Math.max(1, caixa2d.max.x - caixa2d.min.x, caixa2d.max.y - caixa2d.min.y);
+    const prof = larg * (ctx.texto ? 0.09 : 0.14);
+    const geo = new THREE.ExtrudeGeometry(formas, { depth: prof, bevelEnabled: true, bevelThickness: prof * 0.22, bevelSize: larg * 0.006,
+                                                   bevelSegments: 3, curveSegments: 10 });
+    geo.center();
+    const cor = new THREE.Color(ctx.cor || ACC);
+    const frente = std(cor, { metalness: 0.55, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, emissive: cor, emissiveIntensity: 0.12 });
+    const lado = std(cor.clone().multiplyScalar(0.55), { metalness: 0.85, roughness: 0.3 });
+    const m = new THREE.Mesh(geo, [frente, lado]);
+    m.scale.set(1, -1, 1);  // SVG tem y para baixo
+    const piv = new THREE.Group(); piv.add(m);
+    const escala = (ctx.texto ? 6.4 : 4.4) / larg, y0 = ctx.texto ? 3.0 : 2.6;
+    piv.scale.setScalar(escala);
+    piv.position.y = y0;
+    g.add(piv);
+    const halo = glow(cor, 7, 0.22); halo.position.set(0, 2.6, -1.2); g.add(halo);
+    return { g, upd(t, lt) {
+      const u = Math.min(1, lt / 0.9);
+      piv.rotation.y = (1 - (1 - u) * (1 - u)) * Math.PI * 2 * (ctx.texto ? 0 : 1) + 0.35 * Math.sin(t * 0.7);
+      piv.rotation.x = (ctx.texto ? -0.12 : 0) + 0.1 * Math.sin(t * 0.9);
+      piv.position.y = y0 + 0.12 * Math.sin(t * 1.3);
+      if (ctx.texto) piv.scale.setScalar(escala * (0.6 + 0.4 * (1 - Math.pow(1 - u, 3))));  // número cresce ao entrar
+    } };
   };
 
   KIT.rede_neural = (ctx) => {
@@ -512,9 +573,11 @@
   }
 
   function construir(nome, tam, seed, vals, principal) {
-    const fab = KIT[nome] || KIT.rede_neural;
+    // nome = id do catálogo, ou {svg, cor, texto} para extrudar um logo/texto da cena
+    const extra = typeof nome === 'object' && nome ? nome : null;
+    const fab = extra ? KIT.svg3d : (KIT[nome] || KIT.rede_neural);
     let r;
-    try { r = fab({ rnd: rng(seed), vals }); } catch (e) { r = KIT.rede_neural({ rnd: rng(seed), vals }); }
+    try { r = fab(Object.assign({ rnd: rng(seed), vals }, extra || {})); } catch (e) { r = KIT.rede_neural({ rnd: rng(seed), vals }); }
     // w (posição na cena) → ajuste (tamanho e centro) → r.g (o objeto, livre para animar)
     const w = new THREE.Group(), ajuste = new THREE.Group(); w.add(ajuste); ajuste.add(r.g);
     const b = caixa(w), s = b.getSize(V(0, 0, 0)), m = Math.max(s.x, s.y, s.z) || 1;
@@ -587,29 +650,6 @@
     geo.setAttribute('normal', new THREE.BufferAttribute(out, 3)); geo.userData.liso = true;
   }
 
-  function prepararModelos() {
-    const fontes = window.MODELOS3D || {}, nomes = Object.keys(fontes);
-    if (!nomes.length || !window.THREEX || !THREEX.GLTFLoader) return Promise.resolve();
-    const loader = new THREEX.GLTFLoader();
-    return Promise.all(nomes.map(nome => new Promise(ok => {
-      try {
-        const bin = Uint8Array.from(atob(fontes[nome]), c => c.charCodeAt(0)).buffer;
-        loader.parse(bin, '', gltf => { MODELOS[nome] = gltf; ok(); }, () => ok());
-      } catch (e) { ok(); }
-    }))).then(() => {
-      // robô nas cores da paleta: corpo claro, detalhes no acento
-      if (MODELOS.robo) MODELOS.robo.scene.traverse(o => {
-        if (!o.isMesh) return;
-        const n = (o.material.name || '').toLowerCase();
-        if (n.includes('main')) o.material = std(0xe9edf3, { roughness: 0.35, metalness: 0.2, clearcoat: 0.8 });
-        else if (n.includes('grey')) o.material = std(ACC, { metalness: 0.5, roughness: 0.3, emissive: ACC, emissiveIntensity: 0.15 });
-        else o.material = std(0x1a1f2b, { metalness: 0.6, roughness: 0.3 });
-        o.frustumCulled = false;
-        suavizar(o.geometry);
-      });
-    });
-  }
-
   W3T.init = async function (stage, data) {
     W = data.w; H = data.h; PORT = H > W;
     ACC = new THREE.Color(data.theme.accent); ACC2 = new THREE.Color(data.theme.accent2);
@@ -638,7 +678,6 @@
       S.environment = pm.fromScene(new THREEX.RoomEnvironment(R), 0.04).texture;
       pm.dispose();
     }
-    await prepararModelos();
     C = new THREE.PerspectiveCamera(PORT ? 48 : 36, W / H, 0.1, 200);
     // mesmo enquadramento de antes (objeto entre os cartões e a legenda / à direita), recortado na faixa
     if (PORT) C.setViewOffset(W, H, 0, -H * 0.02 + FX.y, W, FX.h);
@@ -691,6 +730,6 @@
     R.render(S, C);
   };
 
-  W3T._grupos = GRUPOS; W3T._modelos = MODELOS;  // só para inspeção em testes
+  W3T._grupos = GRUPOS;  // só para inspeção em testes
   window.W3T = W3T;
 })();

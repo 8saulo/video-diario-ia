@@ -110,12 +110,12 @@ CENAS:
 Responda SOMENTE com JSON: {{"cenas": [{{"id": "...", "objetos": ["id do catálogo"]}}]}}"""
 
 
-def revisar(roteiro: dict, cfg: dict) -> int:
+def revisar(roteiro: dict, cfg: dict, todas: bool = False) -> int:
     """Revisão dedicada (uma chamada à IA): objetos ligados à fala de cada cena, ou nenhum.
     Cenas com foto/vídeo ficam de fora (a mídia cobre o 3D). Devolve quantas cenas foram revisadas."""
     from .llm import gerar_json
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])
-             if not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video") or (sc.get("params") or {}).get("_quadro"))]
+             if todas or not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video") or (sc.get("params") or {}).get("_quadro"))]
     if not cenas:
         return 0
     try:
@@ -143,10 +143,14 @@ def para_cenas(roteiro: dict) -> None:
             prm = sc.get("params") or {}
             if prm.get("_photo") or prm.get("_video") or prm.get("_quadro"):
                 objs = []  # foto/vídeo ou o quadro de dossiê ocupam a área do 3D
-            elif "objetos_revisados" in sc:
+            elif sc.get("objetos_revisados"):
                 objs = list(sc["objetos_revisados"])
+            elif sc.get("objetos_extra"):  # logo/número/palavra da cena extrudados em 3D (elementos.preparar_3d)
+                objs = list(sc["objetos_extra"])
+            elif "objetos_revisados" in sc:
+                objs = []
             else:
                 objs = escolher(sc, tema, anterior)
             cam = sc.get("camera3d") if sc.get("camera3d") in CAMERAS else CAMERAS[i % len(CAMERAS)]
             sc.setdefault("params", {})["_3d"] = {"objetos": objs, "camera": cam}
-            anterior, i = (objs[0] if objs else ""), i + 1
+            anterior, i = (objs[0] if objs and isinstance(objs[0], str) else ""), i + 1

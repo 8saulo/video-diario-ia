@@ -115,6 +115,36 @@ def pop() -> np.ndarray:
     return (np.sin(2 * np.pi * np.cumsum(fq) / SR) * np.exp(-t * 45) * 0.12).astype(np.float32)
 
 
+def batida() -> np.ndarray:
+    """Carimbo batendo no papel: grave curto + estalo."""
+    L = int(0.22 * SR)
+    t = np.arange(L) / SR
+    grave = np.sin(2 * np.pi * (55 + 90 * np.exp(-t * 30)) * t) * np.exp(-t * 18)
+    estalo = np.random.default_rng(3).standard_normal(L) * np.exp(-t * 160) * 0.5
+    return ((grave + estalo) * 0.32).astype(np.float32)
+
+
+def musica_em_loop(wav: Path, n: int, inicio: float = 0.2, xfade: float = 2.0) -> np.ndarray:
+    """Faixa real em loop até cobrir n amostras (com fusão nas emendas), no nível da trilha sintetizada."""
+    x = ler_wav(wav)
+    x = x[int(len(x) * inicio):] if len(x) > SR * 40 else x  # pula a introdução das faixas longas
+    if len(x) < SR * 5:
+        raise ValueError("faixa curta demais")
+    f = int(xfade * SR)
+    out = np.zeros(n + len(x), np.float32)
+    pos = 0
+    rampa = np.linspace(0, 1, f, dtype=np.float32)
+    while pos < n:
+        y = x.copy()
+        y[:f] *= rampa
+        y[-f:] *= rampa[::-1]
+        out[pos:pos + len(y)] += y
+        pos += len(y) - f
+    out = out[:n]
+    rms = float(np.sqrt((out ** 2).mean()) + 1e-9)
+    return out * (0.06 / rms)  # mesmo nível médio da trilha em código (bem baixinha por baixo da voz)
+
+
 def _envelope(x: np.ndarray, win=0.05) -> np.ndarray:
     w = int(win * SR)
     pad = (-len(x)) % w
@@ -150,7 +180,7 @@ def medir(path: Path) -> dict:
             "lufs": g(r"I:\s*(-?[\d.]+) LUFS"), "true_peak": g(r"Peak:\s*(-?[\d.]+) dBFS")}
 
 
-def mixar(segs: list[dict], total: float, pasta: Path, cfg: dict) -> tuple[Path, dict]:
+def mixar(segs: list[dict], total: float, pasta: Path, cfg: dict, musica_wav: Path | None = None) -> tuple[Path, dict]:
     n = int(total * SR) + SR
     voz = np.zeros(n, np.float32)
     fx = np.zeros(n, np.float32)
@@ -165,9 +195,26 @@ def mixar(segs: list[dict], total: float, pasta: Path, cfg: dict) -> tuple[Path,
                 fx[i0:i0 + len(w)] += w[:n - i0]
             elif s["start"] > 0.1:
                 fx[i0:i0 + len(pp)] += pp[:n - i0] * 0.6
+            q = (s.get("params") or {}).get("_quadro")
+            if q:  # efeitos no ritmo das animações do quadro (engine/quadro.js): alfinete de cada recorte e o carimbo
+                k = min(4, len(q.get("itens") or []))
+                for i in range(k):
+                    j = int((s["start"] + 0.08 + i * 0.22 + 0.42) * SR)
+                    fx[j:j + len(pp)] += pp[:max(0, n - j)] * 0.8
+                if q.get("carimbo"):
+                    bt = batida()
+                    j = int((s["start"] + 0.75 + k * 0.12 + 0.18) * SR)
+                    fx[j:j + len(bt)] += bt[:max(0, n - j)]
     mix = voz.copy()
     if cfg["visual"].get("musica", True):
-        mus = trilha(n / SR)
+        mus = None
+        if musica_wav:
+            try:
+                mus = musica_em_loop(Path(musica_wav), n)
+            except Exception as e:
+                nota(f"Trilha: não consegui usar a música baixada ({str(e)[:80]}); usei a trilha em código.")
+        if mus is None:
+            mus = trilha(n / SR)
         mus = np.pad(mus, (0, max(0, n - len(mus))))[:n]  # int(n / SR * SR) pode dar n - 1
         env = _envelope(voz)
         ganho = 1.0 - 0.62 * np.clip(env * 1.6, 0, 1)

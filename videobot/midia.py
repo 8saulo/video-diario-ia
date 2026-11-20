@@ -450,7 +450,8 @@ def foto_thumb(roteiro: dict, cfg: dict, pasta: Path, creditos: list[dict]) -> d
 
 
 # ---------------------------------------------------------------- orquestração
-def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: int, h: int, fps: int) -> list[dict]:
+def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: int, h: int, fps: int,
+            plano_pronto: dict | None = None) -> list[dict]:
     """Escolhe e baixa mídia para as cenas; grava params._photo / params._video / params._credit.
     Devolve a lista de créditos (para a descrição e o relatório)."""
     from .llm import gerar_json
@@ -461,11 +462,14 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
     alvo = [sc for sc in cenas if sc.get("template") != "cta"]  # o CTA fica limpo (pergunta + opções)
     if not alvo:
         return []
-    try:
-        plano, _, _ = gerar_json(_prompt_buscas(alvo, roteiro.get("tema", "")), cfg, temperatura=0.3, max_tokens=3000)
-    except Exception as e:
-        nota(f"Mídia: a IA não montou as buscas ({str(e)[:100]}); vídeo sem fotos.")
-        return []
+    if plano_pronto is not None:  # buscas já decididas na direção de arte (uma chamada a menos)
+        plano = {"cenas": [dict(v, id=k) for k, v in plano_pronto.items()]}
+    else:
+        try:
+            plano, _, _ = gerar_json(_prompt_buscas(alvo, roteiro.get("tema", "")), cfg, temperatura=0.3, max_tokens=3000)
+        except Exception as e:
+            nota(f"Mídia: a IA não montou as buscas ({str(e)[:100]}); vídeo sem fotos.")
+            return []
     lst = [c for c in (plano.get("cenas") or []) if isinstance(c, dict)]
     por_id = {str(c.get("id")): c for c in lst}
     if not any(sc["id"] in por_id for sc in alvo) and len(lst) == len(alvo):

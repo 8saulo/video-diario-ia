@@ -10,7 +10,10 @@ Gera **todo dia, sozinho, no GitHub Actions** um vídeo em português sobre IA e
 6. **Anima** em código no estilo "estúdio escuro": cenas HTML + GSAP renderizadas quadro a quadro no Chromium, a 30 fps.
    - Tipos de cena: número gigante, comparação, lista, barras, citação, linha do tempo, KPIs, chat de IA, ícones, pergunta, medidor, fluxo e CTA.
    - Legendas karaokê, cartelas de capítulo, fonte no rodapé e barra de progresso.
-   - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica. Acabamento de produto: reflexos de estúdio (mapa de ambiente), materiais com verniz, cantos arredondados, sombra de contato, entrada com impulso e câmera em movimento; o robô é um modelo pronto e animado (RobotExpressive, CC0).
+   - Fundo 3D do tema (`visual.cena3d: tema`): o roteiro escolhe, para cada cena, objetos de um catálogo desenhado em código (foguete, chip, GPU, moedas, gráfico, data center, robô, usina, globo…). Gráficos 3D usam os números da cena quando eles são comparáveis. `cena3d: gpon` mantém a cena fixa de fibra óptica. Acabamento de produto: reflexos de estúdio (mapa de ambiente), materiais com verniz, cantos arredondados, sombra de contato, entrada com impulso e câmera em movimento; **nenhum modelo pronto**: tudo é geometria gerada em código, inclusive o robô, a **logo da marca citada** e o **número/palavra da cena**, extrudados em 3D a partir do SVG (logos do Simple Icons; letras da fonte Anton via `videobot/texto3d.py`).
+   - **Quadro de dossiê por cena** (`visual.quadro`, `engine/quadro.js` + `videobot/elementos.py`): polaroides com alfinete, moldura dourada para a figura principal, logos das marcas, recorte de jornal, post-it e carimbo. **Marca e pessoa só entram se forem ditas na cena** (regra em código). Pessoa: foto da página na Wikipedia ou arquivo da Commons com o nome completo (licença livre). Carimbos nunca acusam ninguém. Quadro e 3D se alternam entre as cenas.
+   - **Roteiro narrativo**: gancho de até 9 palavras (~3 s), desenvolvimento encadeado com virada e desfecho que fecha o gancho; um **crítico** (IA) dá nota a gancho/narrativa/fluidez e pede reescrita abaixo de 7; roteiro curto demais ganha cenas no desenvolvimento.
+   - **Trilha real de licença livre** (`visual.musica_real`, Openverse: Jamendo, ccMixter…), instrumental, CC0/CC BY, com crédito; efeitos sincronizados com o quadro (alfinete e carimbo).
    - **Fotos e vídeos reais por cena** (`midia:` no config): a IA escreve buscas ligadas à fala de cada cena, busca na Wikimedia Commons, no Openverse e, com `PIXABAY_API_KEY`, no Pixabay; um modelo grátis que enxerga imagem (OpenRouter) olha um mosaico dos candidatos e escolhe o que mostra o assunto da frase, ou nenhum. Só licenças com uso comercial e edição (CC0, domínio público, CC BY, CC BY-SA, Pixabay), com crédito na tela e na descrição. Vídeos viram quadros e tocam no render quadro a quadro.
    - **Objetos 3D só ligados à fala da cena**: uma revisão dedicada da IA escolhe do catálogo só o que a frase cita (ou nenhum); sem revisão, valem palavras-chave da própria cena. Cenas com foto/vídeo não desenham o 3D, e o 3D é desenhado só na faixa onde aparece (render bem mais rápido em CPU).
 7. **Confere** o resultado:
@@ -34,11 +37,22 @@ No GitHub, abra **Settings → Secrets and variables → Actions → New reposit
 | `PIXABAY_API_KEY` | Opcional | Fotos e vídeos atuais para assuntos genéricos (escritório, fábrica, trânsito). Sem ela, a mídia vem só da Wikimedia Commons e do Openverse | [pixabay.com/api/docs](https://pixabay.com/api/docs/) |
 | `TAVILY_API_KEY` | **Recomendada** | Busca de fontes e notícias na web. Sem ela, sobra a Wikipedia (sem notícias recentes) | [tavily.com](https://tavily.com) |
 | `GEMINI_API_KEY` | Não | Só a narração (Gemini TTS). Sem ela, a voz sai no edge-tts | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` | Não | **Publicação automática no YouTube** e leitura do **YouTube Analytics** (o roteirista aprende o que reteve mais). Veja "Publicar no YouTube" abaixo | Google Cloud Console |
 | `YOUTUBE_API_KEY` | Não, mas recomendada | Pesquisa no YouTube mais confiável. Sem ela, o script lê as páginas públicas | Google Cloud Console → ative "YouTube Data API v3" → Credenciais → Chave de API |
 
 Sem nenhuma chave de texto, a execução diária para com um aviso claro. O **modo demo** funciona sem nenhuma chave: ele usa um roteiro fixo e serve para testar o motor.
 
 Os planos grátis têm limites por minuto e por dia. O script tenta os provedores na ordem de `llm.ordem` e, dentro de cada um, os modelos da sua chave (preferidos primeiro). Quando um estoura a cota, passa para o próximo. Quanto mais chaves, menos chance de o dia ficar sem IA.
+
+No GitHub Actions o projeto também usa o **GitHub Models** (grátis, com o token da própria execução, permissão `models: read`) como reserva de texto e de visão. No PC ele fica desligado. O consumo de cada IA é contado por dia (`llm.limites_dia`): perto do limite grátis o provedor é poupado, e respostas válidas ficam em cache (`llm.cache_dias`), então refazer um vídeo não gasta cota de novo.
+
+### Publicar no YouTube (opcional)
+
+1. No [Google Cloud Console](https://console.cloud.google.com/): crie um projeto, ative **YouTube Data API v3** e **YouTube Analytics API**, configure a tela de consentimento (tipo *Externo*, adicione seu e-mail como usuário de teste) e crie uma credencial **OAuth → App para computador**. Baixe o `client_secret.json`.
+2. No seu PC: `python -m videobot youtube-auth --cliente client_secret.json`. O navegador abre o login do Google; no fim, o terminal mostra os 3 valores.
+3. Salve-os como Secrets `YT_CLIENT_ID`, `YT_CLIENT_SECRET` e `YT_REFRESH_TOKEN`. Pronto: cada vídeo vai para o canal como **privado** (padrão em `entrega.youtube.privacidade`) com título, descrição, tags, thumb e o rótulo de conteúdo sintético; mude para `public` ou use `agendar_hora` quando quiser.
+
+> Thumb personalizada exige o canal verificado por telefone ([youtube.com/verify](https://www.youtube.com/verify)). TikTok não entra: a API de publicação exige aprovação do app pelo TikTok.
 
 > As chaves ficam só nas secrets do GitHub (ou nas variáveis do seu PC). O código lê a chave do ambiente, envia só no cabeçalho da requisição e nunca a imprime.
 
@@ -111,6 +125,10 @@ No Windows, também dá para dar duplo clique em `Abrir interface.bat`. Abre `ht
 - Copiar o TEMA e o FORMATO das referências, nunca o conteúdo. Nada é baixado de outros criadores.
 
 ## Limitações conhecidas
+
+- **Ajustes só do PC** ficam em `config.local.yml` (fora do git), que se sobrepõe ao `config.yml`. O histórico de vídeos feitos no PC fica em `historico/temas_local.json` (fora do git); o do GitHub, em `historico/temas.json`.
+- A tarefa diária do Windows (`agendar_local.ps1`) **só dispara a rotina no GitHub** (onde o vídeo é feito e publicado); o PC não gera um segundo vídeo.
+- `--sem-crivo` (checagem de fatos sem bloquear) só existe no PC e marca o vídeo como "sem checagem completa"; no GitHub é recusado.
 
 - **Cota grátis do Gemini TTS** é pequena. O script faz o mínimo de pedidos (um por capítulo) e descobre sozinho os modelos TTS disponíveis para a chave. Se todos derem 429, a narração sai em edge-tts. Os termos do edge-tts preveem uso pessoal; para monetizar, use o Gemini com cota.
 - **GitHub desativa agendamentos** de repositórios públicos após 60 dias sem atividade. O commit diário do histórico deve contar como atividade; se mesmo assim for desativado, reative em *Actions*.

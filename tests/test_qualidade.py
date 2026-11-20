@@ -38,26 +38,37 @@ def test_roteiro_pede_emocao_por_cena_e_tom_falado(cfg):
 
 
 @pytest.mark.lento
-def test_motor_3d_carrega_robo_pronto_e_lupa_sem_erro_js(cfg):
-    """O robô vem do GLB (CC0) com animação; nenhum erro de JavaScript ao montar e desenhar."""
+def test_motor_3d_gera_por_codigo_logo_e_numero_extrudados_sem_erro_js(cfg):
+    """Sem modelos prontos: logo e número da cena viram 3D extrudado a partir de SVG; robô e lupa feitos em código."""
     from videobot import render
+    from videobot.texto3d import svg_de_texto
     util.garantir_gsap()
-    seg = lambda i, objs: {"id": f"s{i}", "kind": "scene", "template": "headline", "start": i * 3.0, "dur": 3.0,
+    logo = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M2 2h20v20H2z M6 6v12h12V6z'/></svg>"
+    seg = lambda i, objs: {"id": f"s{i}", "kind": "scene", "template": "headline", "start": i * 2.0, "dur": 2.0,
                            "text": "x", "params": {"text": "x", "_3d": {"objetos": objs, "camera": "orbita"}}}
-    data = {"w": 1080, "h": 1920, "fps": 30, "duration": 6, "captions": [], "showCaptions": False, "brand": "",
+    data = {"w": 1080, "h": 1920, "fps": 30, "duration": 8, "captions": [], "showCaptions": False, "brand": "",
             "brandLogo": "", "brandLogoOpacity": 0, "brandLogoPeriod": 9, "scene3d": "tema", "scale3d": 0.5,
-            "theme": render._tema(cfg["visual"]), "segments": [seg(0, ["robo"]), seg(1, ["lupa"])]}
+            "theme": render._tema(cfg["visual"]), "segments": [seg(0, [{"svg": logo, "cor": "#76B900"}]),
+            seg(1, [{"svg": svg_de_texto("17%"), "texto": True}]), seg(2, ["robo"]), seg(3, ["lupa"])]}
     pw, br, pg = render._abrir(1080, 1920)
     erros = []
     pg.on("pageerror", lambda e: erros.append(str(e)))
     try:
         render._boot(pg, data)
-        for t in (0.5, 1.5, 3.5):
+        for t in (0.5, 2.5, 4.5, 6.5):
             pg.evaluate("t => window.renderAt(t)", t)
-        assert pg.evaluate("() => !!window.W3T._modelos.robo && window.W3T._modelos.robo.animations.length > 5")
+        assert pg.evaluate("() => !window.MODELOS3D"), "nenhum modelo 3D pronto pode ser carregado"
+        assert pg.evaluate("() => !!(window.THREEX && THREEX.SVGLoader)")
     finally:
         br.close(); pw.stop()
     assert not erros, erros
+
+
+def test_texto_vira_svg_com_contorno_das_letras():
+    from videobot.texto3d import svg_de_texto
+    s = svg_de_texto("US$ 5 TRI")
+    assert s.startswith("<svg") and s.count("<path") == 7  # 7 caracteres visíveis (espaços não têm contorno)
+    assert svg_de_texto("") is None
 
 
 def test_tags_em_texto_viram_lista():
@@ -149,11 +160,13 @@ def test_visao_tenta_cada_modelo_uma_vez(monkeypatch, cfg):
     from videobot import llm
     monkeypatch.setattr(llm, "chave", lambda n: "x")
     monkeypatch.setattr(llm, "_modelos_visao", lambda: ["a:free", "b:free", "c:free"])
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")  # a reserva do GitHub Models só existe no Actions
     chamadas = []
     monkeypatch.setattr(llm, "_openai", lambda prov, m, *a: chamadas.append(m) or (429, "", 0.0, "Provider returned error"))
     with pytest.raises(RuntimeError):
         llm.gerar_visao_json("p", ["data:image/jpeg;base64,x"], dict(cfg, llm=dict(cfg["llm"], visao={"modelos": ["a", "b", "c"]})))
-    assert chamadas == ["a:free", "b:free", "c:free"]
+    assert chamadas[:3] == ["a:free", "b:free", "c:free"]
+    assert chamadas[3:] == ["openai/gpt-4.1-mini", "openai/gpt-4o-mini"], "depois do OpenRouter, a reserva é o GitHub Models"
 
 
 def test_sem_visao_escolhe_so_entre_pixabay_pelas_tags(monkeypatch, cfg):
@@ -164,3 +177,8 @@ def test_sem_visao_escolhe_so_entre_pixabay_pelas_tags(monkeypatch, cfg):
              {"fonte": "Pixabay", "tipo": "foto", "titulo": "factory, robot", "descricao": "", "categorias": ["factory"], "url": "u2"}]
     k = midia.escolher({"id": "s", "text": "robôs na fábrica"}, cands, dict(cfg, midia=dict(cfg["midia"], visao=False)))
     assert k == 1 and "Commons" not in vistos[0] and "factory, robot" in vistos[0]
+
+
+def test_tags_em_lista_com_um_texto_so():
+    from videobot.publish import _lista
+    assert _lista(["IA, energia, data center"]) == ["IA", "energia", "data center"]
