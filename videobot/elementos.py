@@ -305,9 +305,19 @@ ACUSATORIO = re.compile(r"espi|golp|fraud|mentir|culpad|crimin|ladr|corrupt|trai
                         r"escand|ilegal|trapac|enganad|acusad|suspeit|suposta|suposto", re.I)
 
 
+def encurtar(texto: str, n: int) -> str:
+    """Corta em até n caracteres sem partir palavra ("35 mil residências" nunca vira "35 mil residên")."""
+    t = re.sub(r"\s+", " ", str(texto or "")).strip()
+    if len(t) <= n:
+        return t
+    if " " not in t[:n + 1]:
+        return t.split(" ")[0]  # palavra única longa: inteira (o quadro encolhe a fonte)
+    return t[:n + 1].rsplit(" ", 1)[0].rstrip(" ,.;:-–—")
+
+
 def carimbo_seguro(texto: str) -> str:
     """Carimbo nunca acusa ninguém (risco de difamação ao lado da foto de uma pessoa real)."""
-    t = (texto or "").strip()[:24].upper()
+    t = encurtar(texto, 24).upper()
     return "" if not t or ACUSATORIO.search(unicodedata.normalize("NFD", t).encode("ascii", "ignore").decode()) else t
 
 
@@ -376,7 +386,7 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
                     creditos.append({"cena": sc["id"], "titulo": p["nome"], "credito": pessoas_cache[k]["credito"], "pagina": pessoas_cache[k]["pagina"]})
             f = pessoas_cache[k]
             if f:
-                itens.append({"tipo": "pessoa", "src": f["src"], "nome": p["nome"], "papel": str(p.get("papel") or "")[:40], "credito": f["credito"]})
+                itens.append({"tipo": "pessoa", "src": f["src"], "nome": p["nome"], "papel": encurtar(p.get("papel"), 40), "credito": f["credito"]})
         propostas = [str(m.get("nome") if isinstance(m, dict) else m).strip() for m in (a.get("marcas") or [])]
         for nome in list(dict.fromkeys([n for n in propostas if n] + marcas_no_texto(sc.get("text", ""))))[:2]:
             apel = _apelidos(nome) + APELIDOS_EXTRA.get(_norm(nome), [])
@@ -398,17 +408,17 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
         if manchete and any(not citado(m, texto, _apelidos(m)) for m in marcas_no_texto(" " + manchete)):
             barrados.append(f"manchete '{manchete}'"); manchete = ""
         if manchete:
-            itens.append({"tipo": "manchete", "texto": manchete[:60]})
+            itens.append({"tipo": "manchete", "texto": encurtar(manchete, 60)})
         nt = a.get("nota") if isinstance(a.get("nota"), dict) else {}
         if str(nt.get("valor") or "").strip():
-            itens.append({"tipo": "nota", "valor": str(nt["valor"])[:14], "rotulo": str(nt.get("rotulo") or "")[:30]})
+            itens.append({"tipo": "nota", "valor": encurtar(nt["valor"], 22), "rotulo": encurtar(nt.get("rotulo"), 30)})
         destaque = str(a.get("destaque") or "").strip().lower()
         for it in itens:  # a pessoa/marca em destaque vai para o centro, maior
             if destaque and destaque in (it.get("nome") or "").lower():
                 it["destaque"] = True
         if itens:
             prm["_quadro"] = {"itens": itens[:4], "carimbo": carimbo_seguro(str(a.get("carimbo") or "")),
-                              "etiqueta": str(a.get("etiqueta") or roteiro.get("tema", ""))[:40].upper(), "reais": reais}
+                              "etiqueta": encurtar(a.get("etiqueta") or roteiro.get("tema", ""), 40).upper(), "reais": reais}
         anterior = sc.get("text", "")
     # logos do Simple Icons (SVG de verdade) podem virar 3D extrudado
     logos_svg = {}

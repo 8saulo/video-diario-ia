@@ -289,3 +289,11 @@ def test_carimbo_no_jornal_nao_cobre_a_manchete(tmp_path, cfg):
     finally:
         br.close(); pw.stop()
     assert sobre < 0.08, f'carimbo cobre {sobre:.0%} da manchete'
+
+
+def test_textos_do_quadro_nao_partem_palavra():
+    """20/11/2026: o post-it saiu '35 mil residên' (corte fixo em 14 letras no Python)."""
+    assert elementos.encurtar("35 mil residências", 22) == "35 mil residências"
+    assert elementos.encurtar("35 mil residências americanas", 22) == "35 mil residências"
+    assert elementos.encurtar("Supercalifragilístico", 5) == "Supercalifragilístico"
+    assert not elementos.encurtar("uma frase longa, cortada", 18).endswith(",")
