@@ -297,3 +297,24 @@ def test_textos_do_quadro_nao_partem_palavra():
     assert elementos.encurtar("35 mil residências americanas", 22) == "35 mil residências"
     assert elementos.encurtar("Supercalifragilístico", 5) == "Supercalifragilístico"
     assert not elementos.encurtar("uma frase longa, cortada", 18).endswith(",")
+
+
+@pytest.mark.lento
+def test_legenda_de_duas_linhas_no_quadro_fica_acima_dos_botoes(tmp_path, cfg):
+    """20/11/2026: na cena do GPT-3 a legenda de 2 linhas descia até a área dos botões (alerta legenda_no_rodape)."""
+    from videobot import render, util
+    util.garantir_gsap()
+    q = {"itens": [{"tipo": "manchete", "texto": "Treino GPT-3 gera 550 t CO2"}], "carimbo": "", "etiqueta": ""}
+    texto = "Treinar o GPT-três consumiu quinhentas e cinquenta toneladas de carbono"
+    seg = {"id": "s0", "kind": "scene", "template": "headline", "start": 0, "dur": 4.0, "text": texto, "params": {"text": "x", "_quadro": q}}
+    pal = texto.split()
+    caps = [{"start": 0.1, "end": 3.9, "words": [{"w": w, "s": 0.1 + i * 0.3, "e": 0.35 + i * 0.3} for i, w in enumerate(pal)]}]
+    data = {"w": 1080, "h": 1920, "fps": 30, "duration": 4, "captions": caps, "showCaptions": True, "brand": "", "brandLogo": "",
+            "brandLogoOpacity": 0, "brandLogoPeriod": 9, "scene3d": "tema", "scale3d": 0.5, "theme": render._tema(cfg["visual"]), "segments": [seg]}
+    pw, br, pg = render._abrir(1080, 1920)
+    try:
+        render._boot(pg, data)
+        alertas = pg.evaluate("() => window.audit()")
+    finally:
+        br.close(); pw.stop()
+    assert not [a for a in alertas if a["tipo"] == "legenda_no_rodape"], alertas

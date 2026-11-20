@@ -573,6 +573,64 @@
     c.tl.fromTo(ln, { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: 'power3.inOut' }, 0.7);
   };
 
+  // Cena final de todo vídeo: seguir/se inscrever (YouTube, Instagram, TikTok). O dedo toca cada botão nos tempos p.taps
+  // (o mixer põe um clique nos mesmos tempos) e o botão vira "INSCRITO ✓" / "SEGUINDO ✓".
+  T.__seguir = function (c, p) {
+    const W = ST.w, H = ST.h, port = c.port;
+    const fim = el('div', 'fim', c.root);
+    const topo = el('div', 'fim-topo', fim);
+    let lg = null;
+    if (p.logo) { lg = el('img', 'fim-logo', topo); lg.src = p.logo; lg.alt = ''; }
+    const tit = el('div', 'fim-titulo', topo); const spans = wordSpans(tit, p.titulo || 'Gostou? Então siga!', '');
+    const sub = p.sub ? el('div', 'fim-sub', topo) : null; if (sub) sub.textContent = p.sub;
+    const lista = el('div', 'fim-lista', fim);
+    const cards = (p.redes || []).map((r) => {
+      const k = el('div', 'fim-card fim-' + r.rede, lista);
+      const ic = el('div', 'fim-icone', k);
+      css(ic, { background: r.rede === 'instagram' ? 'radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)' : r.cor });
+      const im = el('img', '', ic); im.src = r.svg; im.alt = '';
+      const tx = el('div', 'fim-texto', k);
+      el('div', 'fim-rede', tx, esc(r.nome));
+      if (r.perfil) el('div', 'fim-perfil', tx, esc(r.perfil));
+      const bt = el('div', 'fim-botao', k);
+      const a = el('span', 'fim-acao', bt, esc(r.acao));
+      const f = el('span', 'fim-feito', bt, esc(r.feito) + ' \u2713');
+      css(bt, { background: r.rede === 'tiktok' ? '#FE2C55' : r.rede === 'instagram' ? '#0095F6' : '#FF0000' });
+      return { k, bt, a, f, r };
+    });
+    // entrada
+    c.tl.fromTo(fim, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: 'power1.out' }, 0);
+    if (lg) popIn(c.tl, lg, 0.1);
+    wordsIn(c.tl, spans, 0.2, 0.06);
+    if (sub) riseIn(c.tl, sub, 0.45, 20);
+    cards.forEach((o, i) => c.tl.fromTo(o.k, { autoAlpha: 0, x: port ? (i % 2 ? 160 : -160) : 0, y: port ? 0 : 120, scale: 0.9 },
+      { autoAlpha: 1, x: 0, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.6)' }, 0.45 + i * 0.13));
+    // dedo que toca cada botão
+    const cur = el('div', 'fim-dedo', fim);
+    const taps = p.taps || cards.map((_, i) => 1.25 + i * 0.55);
+    const fr = fim.getBoundingClientRect();
+    c.tl.set(cur, { autoAlpha: 0 }, 0);
+    cards.forEach((o, i) => {
+      const t = taps[i], b = o.bt.getBoundingClientRect();
+      const x = b.left - fr.left + b.width * 0.7, y = b.top - fr.top + b.height * 0.62;
+      if (i === 0) c.tl.fromTo(cur, { autoAlpha: 0, x: W * 0.9, y: H * 0.95 }, { autoAlpha: 1, x, y, duration: 0.42, ease: 'power3.out', immediateRender: false }, t - 0.45);
+      else c.tl.to(cur, { x, y, duration: 0.36, ease: 'power2.inOut' }, t - 0.4);
+      c.tl.to(cur, { scale: 0.78, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut' }, t);
+      c.tl.to(o.bt, { scale: 0.9, duration: 0.08, yoyo: true, repeat: 1 }, t);
+      c.tl.to(o.bt, { backgroundColor: '#2b2f3a', duration: 0.15 }, t + 0.06);
+      c.tl.fromTo(o.a, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.12, immediateRender: false }, t + 0.06);
+      c.tl.fromTo(o.f, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.2 }, t + 0.1);
+      const rip = el('div', 'fim-onda', o.bt);
+      c.tl.fromTo(rip, { scale: 0.2, autoAlpha: 0.9 }, { scale: 2.4, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, t + 0.02);
+      c.tl.fromTo(o.k, { boxShadow: '0 0 0 0px rgba(255,255,255,0), 0 20px 50px rgba(0,0,0,.5)' },
+        { boxShadow: '0 0 0 4px ' + o.r.cor + ', 0 0 50px ' + o.r.cor, duration: 0.25, yoyo: true, repeat: 1 }, t + 0.05);
+    });
+    const ult = taps[cards.length - 1] || 1.5;
+    c.tl.to(cur, { autoAlpha: 0, duration: 0.3 }, ult + 0.35);
+    // pulso dos cartões até o fim
+    c.tl.to(cards.map(o => o.k), { scale: 1.03, duration: 0.45, yoyo: true, repeat: 3, ease: 'sine.inOut', stagger: 0.1 }, ult + 0.4);
+  };
+
   // ---------- construção ----------
   function buildBg(stage, port) {
     const bg = el('div', '', stage); bg.id = 'bg';
@@ -643,8 +701,8 @@
     const tl = gsap.timeline({ paused: true });
     const r = box.getBoundingClientRect();
     const c = { root, cam, box, tl, d: seg.dur, port: ST.port, cw: r.width, ch: r.height, counters: [], seg };
-    const fn = seg.kind === 'chapter' ? T.__chapter : (T[seg.template] || T.headline);
-    try { fn(c, seg.kind === 'chapter' ? seg : (seg.params || {})); }
+    const fn = seg.kind === 'chapter' ? T.__chapter : seg.kind === 'seguir' ? T.__seguir : (T[seg.template] || T.headline);
+    try { fn(c, seg.kind === 'chapter' || seg.kind === 'seguir' ? seg : (seg.params || {})); }
     catch (err) { box.innerHTML = ''; c.counters = []; T.headline(c, { text: (seg.params && (seg.params.text || seg.params.title)) || seg.text || '' }); seg.error = String(err); }
     tl.fromTo(cam, { scale: 1 }, { scale: seg.kind === 'chapter' ? 1.06 : 1.04, duration: seg.dur, ease: 'none' }, 0);
     if (photoImg) {  // Ken Burns: zoom e deslize lentos (vídeo: mais sutil), direção alternada por cena
@@ -716,10 +774,11 @@
     }
     updateHud(t, active);
     moveLogo(t);
+    if (HUD.logo && active && active.kind === 'seguir') HUD.logo.style.opacity = '0';  // a cena final já mostra a logo grande
     const m3 = modulo3d();
     if (m3 && m3.on) {
       // foto/vídeo cobrem a tela: sem desenhar o 3D (é o que mais pesa no render em CPU)
-      const coberto = !!(active && active.params && (active.params._photo || active.params._video || active.params._quadro));
+      const coberto = !!(active && (active.kind === 'seguir' || (active.params && (active.params._photo || active.params._video || active.params._quadro))));
       const cv = document.getElementById('gl3d');
       if (cv && cv.style.visibility !== (coberto ? 'hidden' : 'visible')) cv.style.visibility = coberto ? 'hidden' : 'visible';
       if (!coberto) m3.render(t, active, active ? segs.indexOf(active) : 0);

@@ -48,3 +48,11 @@ def test_licoes_do_canal_entram_no_roteiro(monkeypatch, tmp_path):
     monkeypatch.setattr(youtube, "DESEMPENHO", tmp_path / "d.json")
     txt = youtube.licoes(1)
     assert "Mais retenção" in txt and '"T0"' in txt.split("Menos")[0] and '"T1"' in txt.split("Menos")[1]
+
+
+def test_tags_coladas_com_espaco_viram_varias():
+    """20/11/2026: a IA mandou as tags num texto só separado por espaços e o YouTube receberia 1 tag de 137 caracteres."""
+    from videobot import publish
+    tags = publish._tags_ok(["IA energia consumo data center GPT-3 GPT-4 eletricidade sustentabilidade tecnologia Brasil IA"])
+    assert len(tags) >= 10 and "energia" in tags and tags.count("IA") == 1
+    assert publish._tags_ok(["data center", "energia renovável"]) == ["data center", "energia renovável"]

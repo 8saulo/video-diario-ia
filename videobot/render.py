@@ -32,6 +32,34 @@ def _logo(v: dict) -> dict:
     return {"brandLogo": f.resolve().as_uri(), "brandLogoOpacity": float(v.get("marca_opacidade", 0.5))}
 
 
+REDES = {  # logos oficiais (Simple Icons, CC0) em assets/redes
+    "youtube": {"nome": "YouTube", "cor": "#FF0000", "acao": "INSCREVA-SE", "feito": "INSCRITO"},
+    "instagram": {"nome": "Instagram", "cor": "#E4405F", "acao": "SEGUIR", "feito": "SEGUINDO"},
+    "tiktok": {"nome": "TikTok", "cor": "#111111", "acao": "SEGUIR", "feito": "SEGUINDO"},
+}
+
+
+def final_seguir(cfg: dict, t: float, longo: bool) -> dict | None:
+    """Cena final de todo vídeo: animação de seguir/se inscrever no YouTube, Instagram e TikTok (visual.final_seguir)."""
+    f = (cfg.get("visual") or {}).get("final_seguir") or {}
+    if not f.get("ativo", True):
+        return None
+    perfis = f.get("perfis") or {}
+    redes = []
+    for r in f.get("redes") or ["youtube", "instagram", "tiktok"]:
+        svg = ENGINE.parent / "assets" / "redes" / f"{r}.svg"
+        if r in REDES and svg.exists():
+            redes.append({**REDES[r], "rede": r, "svg": svg.resolve().as_uri(), "perfil": str(perfis.get(r) or "").strip()})
+    if not redes:
+        return None
+    dur = float(f.get("dur", 4.2))
+    taps = [round(1.25 + i * 0.55, 2) for i in range(len(redes))]  # o mixer põe um clique em cada toque
+    logo = _logo(cfg.get("visual") or {}).get("brandLogo", "")
+    return {"id": "seguir", "kind": "seguir", "start": t, "dur": dur, "text": "", "params": {}, "redes": redes, "taps": taps,
+            "titulo": str(f.get("titulo") or "Gostou? Então siga!"), "sub": str(f.get("sub") or ""),
+            "logo": logo, "chapterTitle": ""}
+
+
 def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     longo = roteiro["formato"] == "longo"
     cena3d = roteiro.get("cena3d") or cfg["visual"].get("cena3d") or ""
@@ -62,8 +90,14 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
                 caps.append({"start": round(ini, 3), "end": round(max(fim, ini + 0.2), 3),
                              "words": [{"w": x["w"], "s": round(t + x["s"], 3)} for x in grp]})
             t += d
-    segs[-1]["dur"] += FINAL_EXTRA
-    t += FINAL_EXTRA
+    fim = final_seguir(cfg, t, longo)
+    extra = 0.5 if fim else FINAL_EXTRA  # com a cena de seguir, só um respiro curto depois da última fala
+    segs[-1]["dur"] += extra
+    t += extra
+    if fim:
+        fim["start"] = round(t, 3)
+        segs.append(fim)
+        t += fim["dur"]
     caps.sort(key=lambda c: c["start"])
     for a, b in zip(caps, caps[1:]):
         a["end"] = min(a["end"], b["start"])

@@ -43,7 +43,11 @@ def corte_tiktok(data: dict, roteiro: dict) -> dict | None:
 
 def _tags_ok(tags: list[str]) -> list[str]:
     out, tot = [], 0
-    for t in tags:
+    soltas = []
+    for t in tags:  # "IA energia consumo data center ..." (lista colada com espaços) vira uma tag por palavra
+        t = str(t)
+        soltas += t.split() if len(t) > 40 and len(t.split()) >= 5 and "," not in t else [t]
+    for t in soltas:
         t = t.strip().strip("#")
         if not t or t.lower() in (x.lower() for x in out):
             continue

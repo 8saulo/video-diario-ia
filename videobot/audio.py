@@ -193,6 +193,11 @@ def mixar(segs: list[dict], total: float, pasta: Path, cfg: dict, musica_wav: Pa
         if cfg["visual"].get("efeitos", True):
             if s["kind"] == "chapter":
                 fx[i0:i0 + len(w)] += w[:n - i0]
+            elif s["kind"] == "seguir":  # cena final: um clique em cada botão tocado (mesmos tempos do engine)
+                fx[i0:i0 + len(w)] += w[:n - i0] * 0.7
+                for tp in s.get("taps") or []:
+                    j = int((s["start"] + tp) * SR)
+                    fx[j:j + len(pp)] += pp[:max(0, n - j)]
             elif s["start"] > 0.1:
                 fx[i0:i0 + len(pp)] += pp[:n - i0] * 0.6
             q = (s.get("params") or {}).get("_quadro")

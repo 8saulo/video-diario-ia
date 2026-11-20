@@ -128,7 +128,7 @@ html, body { background: #000; overflow: hidden; }
 
 /* ---------------------------------------------------------------- quadro de dossiê (engine/quadro.js) */
 .port.mode-quadro .box { top: 200px; bottom: 1180px; }
-.port.mode-quadro #cap { top: 1400px; }  /* acima da área dos botões do Reels/TikTok (abaixo de ~1550) */
+.port.mode-quadro #cap { top: auto; bottom: 384px; align-items: flex-end; }  /* ancorada pela base: com 2 linhas cresce para cima e nunca desce até os botões do Reels/TikTok (~1550) */
 .port.mode-quadro #src { top: 1600px; font-size: 22px; }
 .mode-quadro #credit { display: none; } /* no quadro o crédito vai em cada recorte */
 .land.mode-quadro .box { right: 1100px; }
@@ -174,3 +174,31 @@ html, body { background: #000; overflow: hidden; }
 .q-etiqueta, .q-vivo { position: absolute; z-index: 8; font: 700 26px/1 'DejaVu Sans Mono', Consolas, monospace; letter-spacing: .08em; color: #e8183c; text-shadow: 0 0 14px rgba(232,24,60,.45); white-space: nowrap; }
 .q-vivo { color: #e9e9ee; }
 .q-vivo i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #e8183c; margin-right: 10px; box-shadow: 0 0 10px #e8183c; }
+
+/* ---------------------------------------------------------------- cena final: seguir / inscrever-se */
+.fim { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 70px;
+  background: radial-gradient(ellipse at 50% 40%, rgba(var(--acc-rgb), .28), rgba(5,6,10,.92) 70%); z-index: 20; }
+.fim-topo { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+.fim-logo { height: 170px; width: auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,.6)); }
+.fim-titulo { font: 900 96px/1.02 Figtree, sans-serif; color: #fff; letter-spacing: -.03em; max-width: 960px; }
+.fim-sub { font: 700 40px/1.1 Figtree, sans-serif; color: var(--acc2); }
+.fim-lista { display: flex; flex-direction: column; gap: 34px; }
+.fim-card { position: relative; display: flex; align-items: center; gap: 30px; width: 880px; padding: 26px 30px; border-radius: 34px;
+  background: rgba(18,20,28,.92); border: 2px solid rgba(255,255,255,.1); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+.fim-icone { flex: none; width: 130px; height: 130px; border-radius: 32px; display: grid; place-items: center; }
+.fim-icone img { width: 64%; height: 64%; filter: brightness(0) invert(1); }
+.fim-tiktok .fim-icone { box-shadow: -5px -4px 0 #25F4EE, 5px 4px 0 #FE2C55; }
+.fim-texto { flex: 1; min-width: 0; }
+.fim-rede { font: 900 52px/1 Figtree, sans-serif; color: #fff; }
+.fim-perfil { margin-top: 8px; font: 700 32px/1 Figtree, sans-serif; color: rgba(235,235,240,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fim-botao { position: relative; flex: none; display: grid; place-items: center; min-width: 300px; height: 96px; padding: 0 26px; border-radius: 48px; overflow: hidden;
+  font: 900 34px/1 Figtree, sans-serif; color: #fff; letter-spacing: .02em; }
+.fim-botao > span { grid-area: 1 / 1; white-space: nowrap; }
+.fim-feito { opacity: 0; visibility: hidden; }
+.fim-onda { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255,255,255,.55); opacity: 0; }
+.fim-dedo { position: absolute; left: 0; top: 0; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; background: rgba(255,255,255,.6);
+  box-shadow: 0 0 0 6px rgba(255,255,255,.95), 0 14px 30px rgba(0,0,0,.5); z-index: 5; }
+.land .fim { gap: 60px; }
+.land .fim-lista { flex-direction: row; gap: 40px; }
+.land .fim-card { width: 540px; flex-direction: column; text-align: center; padding: 40px 30px; }
+.land .fim-titulo { max-width: 1500px; }
