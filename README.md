@@ -50,8 +50,8 @@ No GitHub Actions o projeto também usa o **GitHub Models** (grátis, com o toke
 ### Publicar no YouTube (opcional)
 
 1. No [Google Cloud Console](https://console.cloud.google.com/): crie um projeto, ative **YouTube Data API v3** e **YouTube Analytics API**, configure a tela de consentimento (tipo *Externo*, adicione seu e-mail como usuário de teste) e crie uma credencial **OAuth → App para computador**. Baixe o `client_secret.json`.
-2. No seu PC: `python -m videobot youtube-auth --cliente client_secret.json`. O navegador abre o login do Google; no fim, o terminal mostra os 3 valores.
-3. Salve-os como Secrets `YT_CLIENT_ID`, `YT_CLIENT_SECRET` e `YT_REFRESH_TOKEN`. Pronto: cada vídeo vai para o canal como **privado** (padrão em `entrega.youtube.privacidade`) com título, descrição, tags, thumb e o rótulo de conteúdo sintético; mude para `public` ou use `agendar_hora` quando quiser.
+2. No seu PC: `python -m videobot youtube-auth --cliente client_secret.json` (ou só `python -m videobot youtube-auth`, e o terminal pede o Client ID e o Client secret, este sem aparecer na tela). O navegador abre o login do Google; no fim, as 3 chaves (`YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN`) são gravadas direto nos Secrets do repositório pelo `gh`, sem aparecer no terminal (`--so-mostrar` para só exibir).
+3. Pronto: cada vídeo vai para o canal como **privado** (padrão em `entrega.youtube.privacidade`) com título, descrição, tags, thumb e o rótulo de conteúdo sintético; mude para `public` ou use `agendar_hora` quando quiser.
 
 > Thumb personalizada exige o canal verificado por telefone ([youtube.com/verify](https://www.youtube.com/verify)). TikTok não entra: a API de publicação exige aprovação do app pelo TikTok.
 
