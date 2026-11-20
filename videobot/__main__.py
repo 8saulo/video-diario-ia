@@ -31,7 +31,9 @@ def main(argv=None):
     sub.add_parser("desempenho", help="atualiza historico/desempenho.json com o YouTube Analytics")
     au = sub.add_parser("youtube-auth", help="autoriza o canal (OAuth) e grava as 3 chaves nos Secrets do GitHub")
     au.add_argument("--cliente", default="", help="arquivo client_secret.json do Google Cloud (sem ele, o terminal pede o Client ID e o Client secret)")
-    au.add_argument("--so-mostrar", action="store_true", help="só mostra os valores no terminal, sem gravar no GitHub")
+    au.add_argument("--so-mostrar", action="store_true", help="só mostra os valores no terminal, sem gravar em lugar nenhum")
+    au.add_argument("--destino", choices=["github", "pc", "ambos"], default="github",
+                    help="onde gravar as 3 chaves: Secrets do GitHub, variáveis de ambiente do Windows ou os dois")
     u = sub.add_parser("ui", help="abre a interface local no navegador")
     u.add_argument("--porta", type=int, default=8765)
     u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
@@ -40,7 +42,7 @@ def main(argv=None):
     if a.cmd in ("publicar-youtube", "desempenho", "youtube-auth"):
         from . import youtube
         if a.cmd == "youtube-auth":
-            youtube.autorizar(a.cliente, salvar_github=not a.so_mostrar)
+            youtube.autorizar(a.cliente, destino="" if a.so_mostrar else a.destino)
         elif a.cmd == "publicar-youtube":
             youtube.publicar(carregar_config())
         else:

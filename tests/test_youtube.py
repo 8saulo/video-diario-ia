@@ -95,3 +95,28 @@ def test_workflow_de_envio_avulso_usa_os_secrets_e_monta_o_ultimo_json():
     baixar = passos["Baixar o vídeo do Release"]["run"]
     for campo in ('"video"', '"thumbs"', '"publicacao"', '"titulo"'):
         assert campo in baixar
+
+
+def test_chaves_gravadas_no_windows_sem_imprimir(capsys, monkeypatch):
+    """youtube-auth --destino pc: grava em HKCU\Environment (como o setx), sem imprimir o valor, e o processo já enxerga."""
+    import os
+    from videobot import youtube
+    gravados = {}
+
+    class FakeReg:
+        HKEY_CURRENT_USER, KEY_SET_VALUE, REG_SZ = "HKCU", 2, 1
+
+        class OpenKey:
+            def __init__(self, raiz, sub, *a):
+                assert (raiz, sub) == ("HKCU", "Environment")
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        @staticmethod
+        def SetValueEx(k, nome, _r, tipo, valor):
+            gravados[nome] = valor
+
+    monkeypatch.delenv("YT_REFRESH_TOKEN", raising=False)
+    youtube.salvar_no_pc({"YT_REFRESH_TOKEN": "segredo-456"}, winreg_mod=FakeReg)
+    assert gravados == {"YT_REFRESH_TOKEN": "segredo-456"} and os.environ["YT_REFRESH_TOKEN"] == "segredo-456"
+    assert "segredo-456" not in capsys.readouterr().out

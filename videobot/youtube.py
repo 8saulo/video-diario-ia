@@ -170,6 +170,19 @@ def salvar_secrets_github(valores: dict, repo: str = REPO, run=None) -> None:
         print(f"  Secret {nome} gravado no GitHub")
 
 
+def salvar_no_pc(valores: dict, winreg_mod=None) -> None:
+    """Grava cada valor como variável de ambiente da conta do Windows (HKCU\\Environment, o mesmo lugar do `setx`),
+    sem passar pela linha de comando e sem imprimir. util.chave() lê de lá mesmo em terminais já abertos."""
+    import os
+    if winreg_mod is None:
+        import winreg as winreg_mod
+    with winreg_mod.OpenKey(winreg_mod.HKEY_CURRENT_USER, "Environment", 0, winreg_mod.KEY_SET_VALUE) as k:
+        for nome, valor in valores.items():
+            winreg_mod.SetValueEx(k, nome, 0, winreg_mod.REG_SZ, valor)
+            os.environ[nome] = valor
+            print(f"  {nome} gravado nas variáveis de ambiente do Windows")
+
+
 def _cliente(cliente_json: str) -> dict:
     """client_id/client_secret: do client_secret.json ou digitados no terminal (o secret sem eco na tela)."""
     if cliente_json:
@@ -183,7 +196,7 @@ def _cliente(cliente_json: str) -> dict:
     return {"client_id": cid, "client_secret": sec}
 
 
-def autorizar(cliente_json: str = "", salvar_github: bool = True) -> None:
+def autorizar(cliente_json: str = "", destino: str = "github") -> None:
     """Fluxo OAuth local (loopback): abre o login do Google e grava YT_CLIENT_ID, YT_CLIENT_SECRET e YT_REFRESH_TOKEN
     direto nos Secrets do GitHub (gh CLI). Com salvar_github=False, mostra os valores só no SEU terminal."""
     import http.server
@@ -221,13 +234,25 @@ def autorizar(cliente_json: str = "", salvar_github: bool = True) -> None:
     rt = r.json().get("refresh_token")
     if not rt:
         raise SystemExit("O Google não devolveu o refresh token; tente de novo (o login precisa mostrar a tela de permissões).")
-    if salvar_github:
+    valores = {"YT_CLIENT_ID": c["client_id"], "YT_CLIENT_SECRET": c["client_secret"], "YT_REFRESH_TOKEN": rt}
+    ok = bool(destino)
+    if destino in ("pc", "ambos"):
         try:
-            salvar_secrets_github({"YT_CLIENT_ID": c["client_id"], "YT_CLIENT_SECRET": c["client_secret"], "YT_REFRESH_TOKEN": rt})
-            print("Pronto! A próxima execução no GitHub já publica no YouTube.")
-            return
+            salvar_no_pc(valores)
         except Exception as e:
-            print(f"\nNão consegui gravar no GitHub com o gh ({type(e).__name__}); salve à mão:")
+            ok = False
+            print(f"\nNão consegui gravar no Windows ({type(e).__name__}).")
+    if destino in ("github", "ambos"):
+        try:
+            salvar_secrets_github(valores)
+        except Exception as e:
+            ok = False
+            print(f"\nNão consegui gravar no GitHub com o gh ({type(e).__name__}).")
+    if ok:
+        print("Pronto! " + {"github": "A próxima execução no GitHub já publica no YouTube.",
+                            "pc": "O PC já pode publicar (python -m videobot publicar-youtube).",
+                            "ambos": "GitHub e PC já podem publicar no YouTube."}[destino])
+        return
     print("\nSalve estes 3 valores como Secrets do repositório no GitHub (Settings > Secrets and variables > Actions):")
     print("  YT_CLIENT_ID     =", c["client_id"])
     print("  YT_CLIENT_SECRET = (o client_secret do arquivo JSON)")
