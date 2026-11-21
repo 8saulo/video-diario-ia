@@ -97,6 +97,31 @@ def aplicar_thumb(vid: str, thumb: Path, token: str | None = None) -> bool:
     return True
 
 
+def esperar_processamento(vid: str, token: str, limite: float = 600, passo: float = 15, dormir=None) -> bool:
+    """Espera o YouTube terminar de processar o vídeo. 21/11/2026: a capa enviada no mesmo segundo do upload foi aceita,
+    mas o YouTube não gerou a versão vertical dos Shorts (shortsAspectRatio) e a aba Shorts mostrou um quadro do vídeo."""
+    import time
+    dormir = dormir or time.sleep
+    gasto = 0.0
+    while gasto <= limite:
+        r = requests.get("https://www.googleapis.com/youtube/v3/videos", params={"part": "status,processingDetails", "id": vid},
+                         headers={"Authorization": f"Bearer {token}"}, timeout=30)
+        it = (r.json().get("items") or [{}])[0] if r.status_code == 200 else {}
+        proc = (it.get("processingDetails") or {}).get("processingStatus")
+        if (it.get("status") or {}).get("uploadStatus") == "processed" or proc in ("succeeded", "failed", "terminated"):
+            return True
+        dormir(passo)
+        gasto += passo
+    return False
+
+
+def _tem_capa_vertical(vid: str, token: str) -> bool:
+    r = requests.get("https://www.googleapis.com/youtube/v3/videos", params={"part": "snippet", "id": vid},
+                     headers={"Authorization": f"Bearer {token}"}, timeout=30)
+    it = (r.json().get("items") or [{}])[0] if r.status_code == 200 else {}
+    return "shortsAspectRatio" in ((it.get("snippet") or {}).get("thumbnails") or {})
+
+
 def publicar(cfg: dict) -> str | None:
     """Envia o vídeo de saida/ultimo.json. Devolve o id do vídeo no YouTube ou None."""
     if not ((cfg.get("entrega") or {}).get("youtube") or {}).get("ativo", True):
@@ -122,9 +147,17 @@ def publicar(cfg: dict) -> str | None:
     if r.status_code not in (200, 201):
         raise RuntimeError(f"upload falhou (HTTP {r.status_code}): {r.text[:200]}")
     vid = r.json()["id"]
-    thumb = escolher_thumb(ultimo.get("thumbs", []), curto="_curto" in video.name or "-curto" in str(ultimo.get("tag", "")))
+    curto = "_curto" in video.name or "-curto" in str(ultimo.get("tag", ""))
+    thumb = escolher_thumb(ultimo.get("thumbs", []), curto=curto)
     if thumb:
-        aplicar_thumb(vid, thumb, tk)
+        if not esperar_processamento(vid, tk):
+            nota("YouTube: o processamento do vídeo passou de 10 min; capa enviada assim mesmo.")
+        if aplicar_thumb(vid, thumb, tk) and curto:
+            import time
+            time.sleep(20)
+            if not _tem_capa_vertical(vid, tk):  # ainda sem a versão vertical dos Shorts: reenvia uma vez
+                time.sleep(40)
+                aplicar_thumb(vid, thumb, tk)
     quando = meta["status"].get("publishAt")
     log(f"YouTube: enviado como {meta['status']['privacyStatus']}" + (f", fica público em {quando} (UTC)" if quando else "") + f" -> https://youtu.be/{vid}")
     # guarda o id no histórico (para o Analytics saber de qual vídeo é cada número)

@@ -159,3 +159,46 @@ def test_publico_com_rotina_atrasada_publica_na_hora(cfg):
     brt = dt.timezone(dt.timedelta(hours=-3))
     m = youtube.metadados(None, {"titulo": "t"}, c, agora=dt.datetime(2026, 11, 21, 9, 40, tzinfo=brt))
     assert m["status"]["privacyStatus"] == "public" and "publishAt" not in m["status"]
+
+
+def test_capa_do_curto_so_vai_depois_do_processamento(monkeypatch, tmp_path, cfg):
+    """21/11/2026: a capa enviada no segundo do upload não virou a capa vertical dos Shorts. Agora o envio espera o
+    processamento terminar, aplica a capa e, se a versão vertical (shortsAspectRatio) não aparecer, reenvia uma vez."""
+    import time
+    from videobot import pipeline
+    video = tmp_path / "x_curto.mp4"; video.write_bytes(b"mp4")
+    capa = tmp_path / "capa_1080x1920.jpg"; capa.write_bytes(b"jpg")
+    (tmp_path / "saida").mkdir()
+    (tmp_path / "saida" / "ultimo.json").write_text(json.dumps({"video": str(video), "titulo": "T", "thumbs": [str(capa)], "publicacao": ""}), encoding="utf-8")
+    monkeypatch.setattr(youtube, "RAIZ", tmp_path)
+    monkeypatch.setattr(pipeline, "HIST", tmp_path / "temas.json")
+    (tmp_path / "temas.json").write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(youtube, "chave", lambda n: "v")
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    eventos, estado = [], {"consultas": 0}
+
+    class R:
+        def __init__(self, st, js=None, hd=None): self.status_code, self._js, self.headers, self.text = st, js or {}, hd or {}, ""
+        def json(self): return self._js
+
+    def post(url, **k):
+        if "oauth2" in url:
+            return R(200, {"access_token": "a"})
+        if "thumbnails/set" in url:
+            eventos.append(("capa", estado["consultas"]))
+            return R(200)
+        return R(200, hd={"Location": "https://up"})
+
+    def get(url, params=None, **k):
+        if "processingDetails" in params["part"]:
+            estado["consultas"] += 1
+            pronto = estado["consultas"] >= 3  # processa na 3ª consulta
+            return R(200, {"items": [{"status": {"uploadStatus": "processed" if pronto else "uploaded"}}]})
+        return R(200, {"items": [{"snippet": {"thumbnails": {"default": {}}}}]})  # ainda sem a versão vertical
+
+    monkeypatch.setattr(youtube.requests, "post", post)
+    monkeypatch.setattr(youtube.requests, "get", get)
+    monkeypatch.setattr(youtube.requests, "put", lambda url, **k: R(200, {"id": "abc123"}))
+    assert youtube.publicar(cfg) == "abc123"
+    assert eventos and eventos[0] == ("capa", 3), "a capa só é enviada depois que o vídeo termina de processar"
+    assert len(eventos) == 2, "sem a versão vertical dos Shorts, a capa é reenviada uma vez"
