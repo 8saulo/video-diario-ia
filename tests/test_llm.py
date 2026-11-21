@@ -90,3 +90,28 @@ def test_github_models_so_dentro_do_actions(monkeypatch, cfg):
     assert "github" not in llm.disponiveis(cfg)
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     assert "github" in llm.disponiveis(cfg)
+
+
+def test_json_quebrado_troca_de_modelo_em_vez_de_desistir(monkeypatch, cfg, tmp_path):
+    """Run 44911067171: o capítulo 6 do longo voltou com JSON quebrado duas vezes do mesmo modelo e o vídeo morreu."""
+    monkeypatch.setattr(llm, "_cache_arq", lambda *a: tmp_path / "c.json")
+    pedidos = []
+
+    def falso(prompt, cfg, temperatura=0.5, sistema="", max_tokens=None, evitar=None):
+        pedidos.append(set(evitar or ()))
+        return ('{"a": 1,,}', "groq/ruim") if "groq/ruim" not in (evitar or ()) else ('{"a": 2}', "openrouter/bom")
+
+    monkeypatch.setattr(llm, "gerar", falso)
+    obj, _, modelo = llm.gerar_json("p", cfg)
+    assert obj == {"a": 2} and modelo == "openrouter/bom"
+    assert pedidos == [set(), {"groq/ruim"}]
+
+
+def test_rodada_pula_modelo_evitado(monkeypatch, cfg):
+    """O modelo que já quebrou o JSON não é chamado de novo no mesmo pedido."""
+    usados = []
+    monkeypatch.setattr(llm, "_openai", lambda prov, m, *a: usados.append(f"{prov}/{m}") or (200, "ok", 0.0, ""))
+    primeiro = llm.gerar("x", cfg)[1]
+    usados.clear()
+    assert llm.gerar("x", cfg, evitar={primeiro})[1] != primeiro
+    assert primeiro not in usados

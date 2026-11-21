@@ -226,8 +226,10 @@ def _gemini_texto(modelo: str, prompt: str, sistema: str, temperatura: float) ->
     return st, "", espera, ((js or {}).get("error") or {}).get("message", "")[:200]
 
 
-def gerar(prompt: str, cfg: dict, temperatura: float = 0.6, sistema: str = "", max_tokens: int | None = None) -> tuple[str, str]:
-    """Devolve (texto, "provedor/modelo"). Tenta provedores e modelos em ordem até um responder."""
+def gerar(prompt: str, cfg: dict, temperatura: float = 0.6, sistema: str = "", max_tokens: int | None = None,
+          evitar: set | None = None) -> tuple[str, str]:
+    """Devolve (texto, "provedor/modelo"). Tenta provedores e modelos em ordem até um responder.
+    evitar = modelos ("provedor/modelo") pulados neste pedido (ex.: já devolveram JSON quebrado)."""
     lcfg = cfg.get("llm") or {}
     max_tokens = max_tokens or int(lcfg.get("max_tokens", 8000))
     espera_max = float(lcfg.get("espera_max_s", 65))
@@ -240,7 +242,8 @@ def gerar(prompt: str, cfg: dict, temperatura: float = 0.6, sistema: str = "", m
     todos = []
     for rodada in range(rodadas):
         txt, modelo, erros, so_cota = _rodada(prov_lista=provs, cfg=cfg, lcfg=lcfg, prompt=prompt, sistema=sistema, msgs=msgs,
-                                             temperatura=temperatura, max_tokens=max_tokens, espera_max=espera_max)
+                                             temperatura=temperatura, max_tokens=max_tokens, espera_max=espera_max,
+                                             evitar=evitar or set())
         if txt:
             return txt, modelo
         todos += erros
@@ -257,13 +260,15 @@ def _cota_do_dia(msg: str) -> bool:
     return bool(re.search(r"per[- ]day|daily|per day|quota|tokens per day|TPD|RPD", msg or "", re.I))
 
 
-def _rodada(prov_lista, cfg, lcfg, prompt, sistema, msgs, temperatura, max_tokens, espera_max):
+def _rodada(prov_lista, cfg, lcfg, prompt, sistema, msgs, temperatura, max_tokens, espera_max, evitar=frozenset()):
     erros, so_cota = [], True
     for prov in prov_lista:
         if esgotado(prov, cfg):
             erros.append(f"{prov}: limite diário reservado (llm.limites_dia)")
             continue
         for m in _ordenar(prov, cfg)[: int(lcfg.get("modelos_por_provedor", 4))]:
+            if f"{prov}/{m}" in evitar:
+                continue
             contar(prov)
             st, txt, espera, msg = _tentar(prov, m, prompt, sistema, msgs, temperatura, max_tokens, espera_max)
             if st == 200 and txt:
@@ -409,9 +414,14 @@ def gerar_json(prompt: str, cfg: dict, temperatura: float = 0.5, sistema: str = 
             return c["obj"], {}, c["modelo"] + " (cache)"
         except Exception:
             pass
-    ultimo = None
-    for _ in range(2):
-        txt, modelo = gerar(prompt, cfg, temperatura=temperatura, sistema=sistema, max_tokens=max_tokens)
+    ultimo, evitar = None, set()
+    for _ in range(3):
+        try:
+            txt, modelo = gerar(prompt, cfg, temperatura=temperatura, sistema=sistema, max_tokens=max_tokens, evitar=evitar)
+        except RuntimeError:
+            if ultimo is None:
+                raise
+            break  # não sobrou outro modelo para tentar
         try:
             obj = extrair_json(txt)
             if dias > 0:
@@ -423,5 +433,7 @@ def gerar_json(prompt: str, cfg: dict, temperatura: float = 0.5, sistema: str = 
             return obj, {}, modelo
         except Exception as e:
             ultimo = e
+            log(f"  JSON inválido de {modelo} ({str(e)[:60]}); o próximo pedido vai para outro modelo")
+            evitar.add(modelo)  # run 44911067171: o mesmo gpt-oss-20b quebrou o JSON duas vezes e o longo morreu
             prompt += "\n\nATENÇÃO: responda SOMENTE com JSON válido, sem texto fora dele."
     raise RuntimeError(f"o modelo não devolveu JSON válido ({ultimo})")
