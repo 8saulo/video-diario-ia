@@ -131,6 +131,10 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # sem YOUTUBE_API_KEY, a pesquisa usa a autorização do canal (as páginas públicas bloqueiam o GitHub)
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           IN_MODO: ${{ inputs.modo || 'completo' }}
           IN_TEMA: ${{ inputs.tema }}
           IN_FORMATO: ${{ inputs.formato }}

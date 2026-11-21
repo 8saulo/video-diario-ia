@@ -223,7 +223,8 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     shutil.rmtree(pasta / "audio", ignore_errors=True)
     if modo != "demo" and not orig:
         primeira = next((sc.get("text", "") for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])), "")
-        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"], "slug": slug, "paleta": paleta, "formato": cfg["formato"],
+        registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"],
+                        "tema_pesquisa": ((pesquisa or {}).get("vencedor") or {}).get("tema", ""), "slug": slug, "paleta": paleta, "formato": cfg["formato"],
                         "gancho": primeira[:120], "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],
              "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": (f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:90]

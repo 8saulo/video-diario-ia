@@ -113,7 +113,7 @@ def test_workflow_de_envio_avulso_usa_os_secrets_e_monta_o_ultimo_json():
 
 
 def test_chaves_gravadas_no_windows_sem_imprimir(capsys, monkeypatch):
-    """youtube-auth --destino pc: grava em HKCU\Environment (como o setx), sem imprimir o valor, e o processo já enxerga."""
+    r"""youtube-auth --destino pc: grava em HKCU\Environment (como o setx), sem imprimir o valor, e o processo já enxerga."""
     import os
     from videobot import youtube
     gravados = {}

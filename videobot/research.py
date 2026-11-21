@@ -23,7 +23,9 @@ YT = "https://www.googleapis.com/youtube/v3"
 
 # ---------------------------------------------------------------- YouTube Data API
 def _api(path, params, key):
-    r = requests.get(f"{YT}/{path}", params=params, headers={"X-Goog-Api-Key": key}, timeout=30)
+    """key = chave de API ou "Bearer <token>" (OAuth do canal, escopo youtube.readonly)."""
+    cab = {"Authorization": key} if str(key).startswith("Bearer ") else {"X-Goog-Api-Key": key}
+    r = requests.get(f"{YT}/{path}", params=params, headers=cab, timeout=30)
     r.raise_for_status()
     return r.json()
 
@@ -170,18 +172,77 @@ def notas_metricas(c):
 
 
 # ---------------------------------------------------------------- orquestração
+_VAZIAS = set("""para como sobre pode podem mais menos quanto quanta realmente isso essa esse esta este porque entre depois antes
+contra segundo vale tanto verdade funciona funcionam ja que dos das nos nas uma uns umas sera sao tem estao vai vao seu sua
+seus suas ainda agora hoje novo nova novos novas what does really how much""".split())
+# o mesmo assunto dito com outras palavras ("energia" x "consumo energético" x "conta de luz")
+_SINONIMOS = {"consu": "energ", "eletr": "energ", "gasta": "energ", "gasto": "energ", "watts": "energ", "luz": "energ",
+              "traba": "empre", "vagas": "empre", "profi": "empre", "carre": "empre", "robos": "robo", "human": "robo"}
+
+
+def _raizes(tema: str) -> set:
+    """Raízes de 5 letras das palavras que dizem o assunto (energia/energético → energ), com sinônimos juntados."""
+    out = set()
+    for t in tokens(tema):
+        if t in _VAZIAS or (len(t) <= 3 and t != "luz"):
+            continue
+        r = t[:5]
+        out.add(_SINONIMOS.get(r, r))
+    return out
+
+
+def _parecidos(a: str, b: str) -> bool:
+    ra, rb = _raizes(a), _raizes(b)
+    return bool(ra and rb and len(ra & rb) / min(len(ra), len(rb)) >= 0.5)
+
+
 def _repetido(tema: str, hist: list, hoje: dt.date, dias: int) -> bool:
-    tk = set(t for t in tokens(tema) if len(t) > 3)
+    """Tema já usado nos últimos `dias`: compara com o tema do roteiro e com o tema que saiu da pesquisa/reserva."""
     for h in hist:
         try:
             d = dt.date.fromisoformat(h["data"])
         except Exception:
             continue
-        if (hoje - d).days <= dias:
-            th = set(t for t in tokens(h.get("tema", "")) if len(t) > 3)
-            if tk and th and len(tk & th) / min(len(tk), len(th)) >= 0.5:
-                return True
+        if (hoje - d).days <= dias and any(_parecidos(tema, h.get(k) or "") for k in ("tema", "tema_pesquisa")):
+            return True
     return False
+
+
+def _ultimo_uso(tema: str, hist: list) -> str:
+    """Data do último vídeo com assunto parecido ('' = nunca usado)."""
+    datas = [h.get("data", "") for h in hist if any(_parecidos(tema, h.get(k) or "") for k in ("tema", "tema_pesquisa"))]
+    return max(datas) if datas else ""
+
+
+def temas_novos(cfg: dict, hist: list, hoje: dt.date, dias: int) -> list:
+    """Sem referência do YouTube e com a reserva esgotada: a IA sugere temas inéditos (fora dos últimos 30 dias)."""
+    tcfg = cfg["tema"]
+    usados = [h.get("tema", "") for h in hist if h.get("data", "") >= (hoje - dt.timedelta(days=30)).isoformat()]
+    prompt = f"""Sugira 8 temas para vídeos curtos de um canal brasileiro sobre {tcfg.get('nicho', 'IA e tecnologia')}.
+Cada tema: até 8 palavras em PT-BR, explicável com números checáveis em fontes confiáveis (estudos, relatórios, notícias).
+Variedade: nada de energia/data centers se já foi usado. NÃO repita nem parafraseie estes temas já usados: {json.dumps(usados, ensure_ascii=False)}
+Responda SOMENTE um array JSON de strings."""
+    try:
+        lst, _, _ = gerar_json(prompt, cfg, temperatura=0.8)
+    except Exception as e:
+        nota(f"A IA não sugeriu temas novos ({str(e)[:100]}).")
+        return []
+    return [t.strip() for t in lst if isinstance(t, str) and t.strip() and not _repetido(t, hist, hoje, dias)]
+
+
+def temas_reserva(cfg: dict, hist: list, hoje: dt.date) -> list:
+    """Ordem de tentativa quando o YouTube não traz referência: reserva não usada nos últimos dias;
+    se esgotou, temas novos da IA; por último, a reserva do menos usado recentemente para o mais (nunca o de ontem primeiro)."""
+    tcfg = cfg["tema"]
+    dias = int(tcfg.get("nao_repetir_dias", 7))
+    todos = list(dict.fromkeys(tcfg.get("temas_reserva") or []))
+    livres = [t for t in todos if not _repetido(t, hist, hoje, dias)]
+    if livres:
+        idx = hoje.toordinal() % len(livres)
+        return livres[idx:] + livres[:idx]
+    nota(f"Todos os temas de reserva foram usados nos últimos {dias} dias; pedi temas novos à IA.")
+    novos = temas_novos(cfg, hist, hoje, dias)
+    return novos + sorted(todos, key=lambda t: _ultimo_uso(t, hist))
 
 
 def _fmt(n):
@@ -211,10 +272,16 @@ def pesquisar(cfg: dict, hist: list, hoje: dt.date) -> dict:
         nota(f"Só {len(buscas)} buscas configuradas (o prompt mestre pede pelo menos 12).")
     janela = int(tcfg.get("janela_dias", 15))
     cands, origem = [], ""
-    key = chave("YOUTUBE_API_KEY")
+    key, origem_api = chave("YOUTUBE_API_KEY"), "YouTube Data API"
+    if not key and chave("YT_REFRESH_TOKEN"):  # sem chave de API: usa a autorização do canal (escopo youtube.readonly)
+        try:
+            from .youtube import _token
+            key, origem_api = "Bearer " + _token(), "YouTube Data API (autorização do canal)"
+        except Exception as e:
+            nota(f"Não consegui usar a autorização do canal na pesquisa ({str(e)[:100]}).")
     if key:
         try:
-            cands, origem = via_api(buscas, janela, int(tcfg.get("candidatos_por_busca", 20)), key), "YouTube Data API"
+            cands, origem = via_api(buscas, janela, int(tcfg.get("candidatos_por_busca", 20)), key), origem_api
         except Exception as e:
             nota(f"YouTube Data API falhou ({str(e)[:120]}); tentei as páginas públicas.")
     if not cands:
@@ -291,9 +358,7 @@ Vídeos:
 
     if not validos:
         nota("Nenhuma referência do YouTube passou no CRIVO 1 hoje; usei a lista de temas de reserva.")
-        reserva = [t for t in tcfg.get("temas_reserva", []) if not _repetido(t, hist, hoje, dias)] or tcfg.get("temas_reserva", [])
-        idx = hoje.toordinal() % max(1, len(reserva))
-        ordem = reserva[idx:] + reserva[:idx]
+        ordem = temas_reserva(cfg, hist, hoje)
         return {"ranking": [{"tema": t, "titulo": "", "url": "", "reserva": True} for t in ordem],
                 "md": "# Pesquisa\n\nSem referências válidas hoje; tema da lista de reserva.\n", "md_vencedor": f"**Tema de reserva:** {ordem[0] if ordem else ''}"}
 

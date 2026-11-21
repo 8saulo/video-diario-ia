@@ -8,3 +8,4 @@ historico/temas_local.json
 
 # credencial OAuth do YouTube (nunca vai para o git)
 client_secret*.json
+client_secret*.txt
