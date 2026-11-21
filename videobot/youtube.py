@@ -74,11 +74,15 @@ def metadados(pub_md: Path | None, ultimo: dict, cfg: dict, agora: dt.datetime |
             "status": status}
 
 
-def escolher_thumb(thumbs: list) -> Path | None:
-    """Thumb do YouTube: a horizontal (thumb_1280x720), nunca a capa vertical (capa_1080x1920) dos Shorts/TikTok.
-    20/11/2026: o filtro pegava a capa vertical e depois a descartava, e o vídeo subia sem thumb."""
+def escolher_thumb(thumbs: list, curto: bool = False) -> Path | None:
+    """Capa do YouTube conforme o formato: curto -> a vertical (capa_1080x1920); longo -> a horizontal, a maior que
+    caiba no limite de 2 MB da API (thumb_1920x1080, senão thumb_1280x720). Sem a do formato, usa a outra.
+    20/11/2026: o filtro pegava a capa vertical e depois a descartava, e o vídeo subia sem capa."""
     fs = [Path(t) for t in thumbs or [] if Path(t).exists() and Path(t).stat().st_size <= 2 * 1024 * 1024]
-    return next((f for f in fs if "1280" in f.name), next((f for f in fs if not f.name.startswith("capa_")), None))
+    vert = [f for f in fs if f.name.startswith("capa_")]
+    hor = sorted((f for f in fs if not f.name.startswith("capa_")), key=lambda f: ("1920" not in f.name, "1280" not in f.name))
+    ordem = vert + hor if curto else hor + vert
+    return ordem[0] if ordem else None
 
 
 def aplicar_thumb(vid: str, thumb: Path, token: str | None = None) -> bool:
@@ -118,7 +122,7 @@ def publicar(cfg: dict) -> str | None:
     if r.status_code not in (200, 201):
         raise RuntimeError(f"upload falhou (HTTP {r.status_code}): {r.text[:200]}")
     vid = r.json()["id"]
-    thumb = escolher_thumb(ultimo.get("thumbs", []))
+    thumb = escolher_thumb(ultimo.get("thumbs", []), curto="_curto" in video.name or "-curto" in str(ultimo.get("tag", "")))
     if thumb:
         aplicar_thumb(vid, thumb, tk)
     quando = meta["status"].get("publishAt")

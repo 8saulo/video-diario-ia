@@ -23,13 +23,16 @@ def test_metadados_do_pacote_e_rotulo_sintetico(tmp_path, cfg):
     assert m["status"]["privacyStatus"] == "private" and m["status"]["publishAt"] == "2026-11-21T10:30:00Z"
 
 
-def test_thumb_horizontal_e_escolhida_e_nao_a_capa_vertical(tmp_path):
-    """20/11/2026: o vídeo subiu sem capa (pegava capa_1080x1920 e depois a descartava)."""
+def test_curto_usa_capa_vertical_e_longo_a_horizontal(tmp_path):
+    """20/11/2026: o vídeo subiu sem capa. Agora: curto -> capa vertical; longo -> horizontal (1920x1080 se couber)."""
     capa = tmp_path / "capa_1080x1920.jpg"; capa.write_bytes(b"x")
-    thumb = tmp_path / "thumb_1280x720.jpg"; thumb.write_bytes(b"x")
-    assert youtube.escolher_thumb([str(thumb), str(capa)]) == thumb
-    assert youtube.escolher_thumb([str(capa), str(thumb)]) == thumb
-    assert youtube.escolher_thumb([str(capa)]) is None
+    t720 = tmp_path / "thumb_1280x720.jpg"; t720.write_bytes(b"x")
+    t1080 = tmp_path / "thumb_1920x1080.jpg"; t1080.write_bytes(b"x")
+    assert youtube.escolher_thumb([str(t720), str(capa)], curto=True) == capa
+    assert youtube.escolher_thumb([str(t720), str(t1080)], curto=False) == t1080
+    assert youtube.escolher_thumb([str(t720)], curto=True) == t720, "sem capa vertical, o curto usa a horizontal"
+    t1080.write_bytes(b"x" * (2 * 1024 * 1024 + 1))
+    assert youtube.escolher_thumb([str(t1080), str(t720)], curto=False) == t720, "acima de 2 MB a API recusa"
 
 
 def test_upload_guarda_id_no_historico(monkeypatch, tmp_path, cfg):
