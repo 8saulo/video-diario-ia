@@ -14,10 +14,22 @@ def test_sem_secrets_nao_publica(monkeypatch, cfg):
 def test_metadados_do_pacote_e_rotulo_sintetico(tmp_path, cfg):
     pub = tmp_path / "publicacao.md"
     pub.write_text("### Descrição\n```\nLinha 1\nLinha 2\n```\n### Tags (2 tags)\n```\nIA, fibra óptica\n```\n", encoding="utf-8")
-    m = youtube.metadados(pub, {"titulo": "Título X"}, cfg)
+    import datetime as dt
+    madrugada = dt.datetime(2026, 11, 21, 2, 15, tzinfo=dt.timezone(dt.timedelta(hours=-3)))
+    m = youtube.metadados(pub, {"titulo": "Título X"}, cfg, agora=madrugada)
     assert m["snippet"]["title"] == "Título X" and m["snippet"]["description"] == "Linha 1\nLinha 2"
     assert m["snippet"]["tags"] == ["IA", "fibra óptica"] and m["status"]["containsSyntheticMedia"] is True
-    assert m["status"]["privacyStatus"] == "private", "padrão seguro: você revisa antes de ficar público"
+    # 21/11/2026: o canal passou a publicar público às 07:30 (antes o padrão era privado, revisado à mão)
+    assert m["status"]["privacyStatus"] == "private" and m["status"]["publishAt"] == "2026-11-21T10:30:00Z"
+
+
+def test_thumb_horizontal_e_escolhida_e_nao_a_capa_vertical(tmp_path):
+    """20/11/2026: o vídeo subiu sem capa (pegava capa_1080x1920 e depois a descartava)."""
+    capa = tmp_path / "capa_1080x1920.jpg"; capa.write_bytes(b"x")
+    thumb = tmp_path / "thumb_1280x720.jpg"; thumb.write_bytes(b"x")
+    assert youtube.escolher_thumb([str(thumb), str(capa)]) == thumb
+    assert youtube.escolher_thumb([str(capa), str(thumb)]) == thumb
+    assert youtube.escolher_thumb([str(capa)]) is None
 
 
 def test_upload_guarda_id_no_historico(monkeypatch, tmp_path, cfg):
@@ -120,3 +132,27 @@ def test_chaves_gravadas_no_windows_sem_imprimir(capsys, monkeypatch):
     youtube.salvar_no_pc({"YT_REFRESH_TOKEN": "segredo-456"}, winreg_mod=FakeReg)
     assert gravados == {"YT_REFRESH_TOKEN": "segredo-456"} and os.environ["YT_REFRESH_TOKEN"] == "segredo-456"
     assert "segredo-456" not in capsys.readouterr().out
+
+
+def test_publico_com_horario_agenda_para_as_7h30(cfg):
+    """privacidade public + agendar_hora 07:30: sobe privado com publishAt às 07:30 de Brasília (10:30 UTC)."""
+    import copy
+    import datetime as dt
+    from videobot import youtube
+    c = copy.deepcopy(cfg)
+    c.setdefault("entrega", {})["youtube"] = {"privacidade": "public", "agendar_hora": "07:30"}
+    brt = dt.timezone(dt.timedelta(hours=-3))
+    m = youtube.metadados(None, {"titulo": "t"}, c, agora=dt.datetime(2026, 11, 21, 2, 15, tzinfo=brt))
+    assert m["status"]["privacyStatus"] == "private" and m["status"]["publishAt"] == "2026-11-21T10:30:00Z"
+
+
+def test_publico_com_rotina_atrasada_publica_na_hora(cfg):
+    """Se a rotina do GitHub atrasar e passar das 07:30, o vídeo sai público na hora, sem esperar o dia seguinte."""
+    import copy
+    import datetime as dt
+    from videobot import youtube
+    c = copy.deepcopy(cfg)
+    c.setdefault("entrega", {})["youtube"] = {"privacidade": "public", "agendar_hora": "07:30"}
+    brt = dt.timezone(dt.timedelta(hours=-3))
+    m = youtube.metadados(None, {"titulo": "t"}, c, agora=dt.datetime(2026, 11, 21, 9, 40, tzinfo=brt))
+    assert m["status"]["privacyStatus"] == "public" and "publishAt" not in m["status"]

@@ -39,7 +39,7 @@ def _token() -> str:
     return r.json()["access_token"]
 
 
-def metadados(pub_md: Path | None, ultimo: dict, cfg: dict) -> dict:
+def metadados(pub_md: Path | None, ultimo: dict, cfg: dict, agora: dt.datetime | None = None) -> dict:
     """Título, descrição e tags a partir do pacote de publicação do vídeo (publicacao.md)."""
     ycfg = (cfg.get("entrega") or {}).get("youtube") or {}
     texto = pub_md.read_text(encoding="utf-8") if pub_md and pub_md.is_file() else ""
@@ -56,15 +56,41 @@ def metadados(pub_md: Path | None, ultimo: dict, cfg: dict) -> dict:
     status = {"privacyStatus": ycfg.get("privacidade", "private"), "selfDeclaredMadeForKids": False,
               "containsSyntheticMedia": True}  # narração com voz sintética: o YouTube pede esse rótulo
     agendar = str(ycfg.get("agendar_hora") or "").strip()
-    if agendar and status["privacyStatus"] == "private":
+    if agendar and status["privacyStatus"] in ("private", "public"):
+        # o YouTube só agenda vídeo privado: ele sobe privado com publishAt e vira PÚBLICO sozinho no horário (Brasília)
         h, m = (agendar.split(":") + ["0"])[:2]
-        quando = dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).replace(hour=int(h), minute=int(m), second=0, microsecond=0)
-        if quando < dt.datetime.now(quando.tzinfo) + dt.timedelta(minutes=20):
-            quando += dt.timedelta(days=1)
-        status["publishAt"] = quando.astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+        agora = agora or dt.datetime.now(dt.timezone(dt.timedelta(hours=-3)))
+        quando = agora.astimezone(dt.timezone(dt.timedelta(hours=-3))).replace(hour=int(h), minute=int(m), second=0, microsecond=0)
+        if quando < agora + dt.timedelta(minutes=20):
+            if status["privacyStatus"] == "public":
+                quando = None  # a rotina atrasou e o horário já passou: publica na hora, sem esperar o dia seguinte
+            else:
+                quando += dt.timedelta(days=1)
+        if quando:
+            status["privacyStatus"] = "private"
+            status["publishAt"] = quando.astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
     return {"snippet": {"title": (ultimo.get("titulo") or "Vídeo")[:100], "description": desc[:4900], "tags": tags[:30],
                         "categoryId": str(ycfg.get("categoria_id", "28")), "defaultLanguage": "pt-BR", "defaultAudioLanguage": "pt-BR"},
             "status": status}
+
+
+def escolher_thumb(thumbs: list) -> Path | None:
+    """Thumb do YouTube: a horizontal (thumb_1280x720), nunca a capa vertical (capa_1080x1920) dos Shorts/TikTok.
+    20/11/2026: o filtro pegava a capa vertical e depois a descartava, e o vídeo subia sem thumb."""
+    fs = [Path(t) for t in thumbs or [] if Path(t).exists() and Path(t).stat().st_size <= 2 * 1024 * 1024]
+    return next((f for f in fs if "1280" in f.name), next((f for f in fs if not f.name.startswith("capa_")), None))
+
+
+def aplicar_thumb(vid: str, thumb: Path, token: str | None = None) -> bool:
+    """Envia a thumb personalizada (exige o canal verificado por telefone em youtube.com/verify)."""
+    rt = requests.post(f"https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={vid}",
+                       headers={"Authorization": f"Bearer {token or _token()}", "Content-Type": "image/jpeg"},
+                       data=thumb.read_bytes(), timeout=120)
+    if rt.status_code != 200:
+        nota(f"YouTube: thumb não aplicada (HTTP {rt.status_code}: {rt.text[:160]}); verifique o canal em youtube.com/verify.")
+        return False
+    log(f"YouTube: thumb aplicada ({thumb.name})")
+    return True
 
 
 def publicar(cfg: dict) -> str | None:
@@ -92,14 +118,11 @@ def publicar(cfg: dict) -> str | None:
     if r.status_code not in (200, 201):
         raise RuntimeError(f"upload falhou (HTTP {r.status_code}): {r.text[:200]}")
     vid = r.json()["id"]
-    thumbs = [Path(t) for t in ultimo.get("thumbs", []) if Path(t).exists()]
-    thumb = next((t for t in thumbs if "1920" in t.name), thumbs[0] if thumbs else None)
-    if thumb and "capa_" not in thumb.name:
-        rt = requests.post(f"https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={vid}",
-                           headers={**h, "Content-Type": "image/jpeg"}, data=thumb.read_bytes(), timeout=120)
-        if rt.status_code != 200:  # thumb personalizada exige canal verificado por telefone
-            nota(f"YouTube: thumb não aplicada (HTTP {rt.status_code}); verifique o canal em youtube.com/verify.")
-    log(f"YouTube: enviado como {meta['status']['privacyStatus']} -> https://youtu.be/{vid}")
+    thumb = escolher_thumb(ultimo.get("thumbs", []))
+    if thumb:
+        aplicar_thumb(vid, thumb, tk)
+    quando = meta["status"].get("publishAt")
+    log(f"YouTube: enviado como {meta['status']['privacyStatus']}" + (f", fica público em {quando} (UTC)" if quando else "") + f" -> https://youtu.be/{vid}")
     # guarda o id no histórico (para o Analytics saber de qual vídeo é cada número)
     from .pipeline import HIST
     hist = ler_json(HIST, []) or []

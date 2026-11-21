@@ -162,8 +162,8 @@ entrega:
   release: true                     # publica um Release no GitHub com vídeo, thumbs e textos
   youtube:                          # envio automático (precisa dos Secrets YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN)
     ativo: true
-    privacidade: private            # private (você revisa e publica) | unlisted | public
-    agendar_hora: ""                # ex.: "18:30" (Brasília) publica sozinho nesse horário (só com privacidade private)
+    privacidade: public             # public | unlisted | private (você revisa e publica à mão)
+    agendar_hora: "07:30"           # Brasília: sobe privado e fica público sozinho nesse horário; se a rotina atrasar além dele, publica na hora. "" = na hora
     categoria_id: "28"              # 28 = Ciência e tecnologia
   limite_previa_mb: 30              # prévia que abre no celular
 
