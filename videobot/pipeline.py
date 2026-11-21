@@ -143,6 +143,10 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         etapa("roteiro", "Roteiro")
         roteiro = script.escrever(escolhido, fatos, cfg, data_hoje)
 
+    # números com escala já por extenso (value 14000 + " mi") consertados antes da direção de arte: o texto 3D sai do mesmo número
+    for ch in roteiro.get("chapters", []):
+        for sc in ch.get("scenes", []):
+            sc["params"] = render.corrigir_numeros(sc.get("params") or {})
     slug = roteiro.get("slug") or slugify(roteiro.get("tema", "video"))
     pasta = RAIZ / "saida" / f"{data_hoje.isoformat()}_{slug}"
     if pasta.exists():

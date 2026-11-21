@@ -166,8 +166,8 @@
     // etiquetas de dossiê
     const et = el('div', 'q-etiqueta', root, '// ' + esc(Q.etiqueta || 'DOSSIÊ'));
     const vivo = el('div', 'q-vivo', root, '<i></i>AO VIVO');
-    css(et, port ? { left: '58px', top: (R.y - 4) + 'px' } : { left: (R.x + 10) + 'px', top: (R.y + R.h + 10) + 'px' });
-    css(vivo, port ? { right: '58px', top: (R.y - 4) + 'px' } : { right: '60px', top: (R.y + R.h + 10) + 'px' });
+    css(et, port ? { left: '58px', top: (R.y - 4) + 'px' } : { left: (R.x + 10) + 'px', top: (R.y - 46) + 'px' });
+    css(vivo, port ? { right: '58px', top: (R.y - 4) + 'px' } : { left: (R.x + 10 + et.offsetWidth + 40) + 'px', top: (R.y - 46) + 'px' });
     if (q.video) seg.vid = q.video;
 
     return {

@@ -76,7 +76,9 @@
     const px = el('span', 'px', d); px.textContent = p.prefix || '';
     const n = el('span', 'n', d);
     const sx = el('span', 'sx', d); sx.textContent = p.suffix || '';
-    const dec = p.decimals || 0;
+    // sem decimals: usa as casas do próprio valor (até 2); 0,03 arredondado para 0 inventa um número
+    const dec = p.decimals != null ? p.decimals : (isNum(p.value) && !Number.isInteger(p.value)
+      ? Math.min(2, (String(p.value).split('.')[1] || '').length) : 0);
     const ano = isNum(p.value) && Number.isInteger(p.value) && p.value >= 1900 && p.value <= 2100 && !p.prefix && !p.suffix;
     if (ano) { n.textContent = String(p.value); return { d, n, dec, ano: true }; }
     if (isNum(p.value)) n.textContent = fmt(p.value, dec); else n.textContent = String(p.text || p.value || '');
@@ -464,7 +466,7 @@
       '<circle class="arc" cx="260" cy="260" r="220" fill="none" stroke="' + getAcc() + '" stroke-width="40" stroke-linecap="round" stroke-dasharray="' + Cc + ' ' + Cc + '" style="filter:drop-shadow(0 0 14px rgba(var(--acc-rgb),.6))"/></svg>';
     const arc = g.querySelector('.arc');
     const center = el('div', 'abs', g); css(center, { inset: '0', display: 'grid', placeItems: 'center' });
-    const nb = numBlock(center, { value: v, suffix: p.suffix == null ? '%' : p.suffix, decimals: p.decimals || 0 });
+    const nb = numBlock(center, { value: v, suffix: p.suffix == null ? '%' : p.suffix, decimals: p.decimals });
     fit(nb.d, S * 0.3, 50, S * 0.7, S * 0.4);
     const tx = el('div', '', col); css(tx, { display: 'flex', flexDirection: 'column', gap: '20px', alignItems: c.port ? 'center' : 'flex-start' });
     const tw = c.port ? c.cw : c.cw - S - 100;
@@ -558,12 +560,14 @@
     const wipe = el('div', 'wipe', c.root); const wipe2 = el('div', 'wipe', c.root); css(wipe2, { background: 'var(--acc2)', width: '30%' });
     c.tl.fromTo(wipe, { xPercent: -170 }, { xPercent: 260, duration: 0.6, ease: 'power3.inOut' }, 0);
     c.tl.fromTo(wipe2, { xPercent: -400 }, { xPercent: 700, duration: 0.6, ease: 'power3.inOut' }, 0.05);
-    const row = el('div', '', c.box); css(row, { display: 'flex', flexDirection: c.port ? 'column' : 'row', alignItems: 'center', gap: c.port ? '30px' : '80px' });
+    const row = el('div', '', c.box); css(row, { display: 'flex', flexDirection: c.port ? 'column' : 'row', alignItems: 'center', gap: c.port ? '30px' : '80px',
+      width: c.cw + 'px', justifyContent: c.port ? 'center' : 'flex-start' });
     const num = el('div', 'chapnum chk', row); num.textContent = String(p.num || 1).padStart(2, '0'); css(num, { fontSize: c.port ? '380px' : '420px' });
-    const col = el('div', '', row); css(col, { display: 'flex', flexDirection: 'column', gap: '30px', alignItems: c.port ? 'center' : 'flex-start' });
+    const col = el('div', '', row); css(col, { display: 'flex', flexDirection: 'column', gap: '30px', alignItems: c.port ? 'center' : 'flex-start',
+      flex: c.port ? '0 0 auto' : '1 1 0', minWidth: '0' });
     const eb = el('div', 'eyebrow chk', col, '<span class="dot"></span>Capítulo ' + (p.num || 1) + (p.total ? ' de ' + p.total : ''));
-    const tw = c.port ? c.cw : c.cw - 520;
-    const h = el('div', 'h1 chk', col); css(h, { width: tw + 'px', textAlign: c.port ? 'center' : 'left' });
+    const tw = c.port ? c.cw : Math.max(420, Math.round(col.getBoundingClientRect().width) || c.cw - 560);
+    const h = el('div', 'h1 chk', col); css(h, { width: tw + 'px', maxWidth: '100%', textAlign: c.port ? 'center' : 'left' });
     const spans = wordSpans(h, p.title || '', p.highlight);
     fit(h, c.port ? 110 : 116, 48, tw, c.port ? 420 : 520);
     const ln = el('div', '', col); css(ln, { width: '220px', height: '10px', borderRadius: '10px', background: 'var(--acc)', transformOrigin: c.port ? '50% 50%' : '0 50%' });
@@ -697,6 +701,8 @@
     const qd = P._quadro && window.QUADRO ? window.QUADRO.montar(root, seg, ST) : null;  // quadro de dossiê (engine/quadro.js)
     const cam = el('div', 'cam', root);
     const box = el('div', 'box', cam);
+    // cartão de capítulo usa a tela toda: no modo quadro/foto/3D a área de conteúdo encolhe para a esquerda e o título cortava
+    if (seg.kind === 'chapter' && !ST.port) css(box, { left: '130px', right: '130px' });
     root.style.visibility = 'visible';
     const tl = gsap.timeline({ paused: true });
     const r = box.getBoundingClientRect();

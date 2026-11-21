@@ -112,6 +112,32 @@ def openverse(q: str, n: int = 8) -> list[dict]:
 PIXABAY = "https://pixabay.com/api/"
 
 
+_PX_LOCK = __import__("threading").Lock()
+_PX_ULTIMO = [0.0]
+
+
+def _get_pixabay(url, prm, dormir=None, tentativas=4):
+    """O Pixabay corta em ~100 pedidos/min (HTTP 429). Um pedido por vez com intervalo mínimo e, no 429,
+    espera o tempo que ele pede (X-RateLimit-Reset/Retry-After) antes de tentar de novo."""
+    import time
+    dormir = dormir or time.sleep
+    for k in range(tentativas):
+        with _PX_LOCK:
+            falta = 0.7 - (time.monotonic() - _PX_ULTIMO[0])
+            if falta > 0:
+                dormir(falta)
+            _PX_ULTIMO[0] = time.monotonic()
+            r = requests.get(url, params=prm, headers={"User-Agent": UA}, timeout=20)
+            if r.status_code == 429 and k < tentativas - 1:
+                h = r.headers or {}
+                espera = float(h.get("Retry-After") or h.get("X-RateLimit-Reset") or 15)
+                dormir(min(65.0, max(2.0, espera)))
+                continue
+        r.raise_for_status()
+        return r.json()
+    return {}
+
+
 def pixabay(q: str, tipo: str, n: int = 6) -> list[dict]:
     """Pixabay (PIXABAY_API_KEY, grátis): fotos e vídeos atuais; licença do Pixabay permite uso comercial e edição."""
     from .util import chave
@@ -122,7 +148,7 @@ def pixabay(q: str, tipo: str, n: int = 6) -> list[dict]:
     prm = {"key": k, "q": q[:100], "per_page": max(3, n), "safesearch": "true", "lang": "en"}
     if tipo != "video":
         prm.update({"image_type": "photo", "min_width": 1000})
-    js = _get(url, prm)
+    js = _get_pixabay(url, prm)
     out = []
     for h in js.get("hits", []):
         base = {"fonte": "Pixabay", "titulo": h.get("tags", ""), "descricao": "", "categorias": (h.get("tags") or "").split(", "),

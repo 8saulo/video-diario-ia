@@ -4,6 +4,7 @@
   python -m videobot run --modo demo             # testa motor/voz/render sem pesquisa nem LLM
   python -m videobot run --tema "chips de IA" --formato curto --duracao 60 --narracao gemini --voz Kore
   python -m videobot ui                          # interface local no navegador
+  python -m videobot rerender saida/<pasta>      # refaz só a imagem (sem IA), com o áudio do vídeo antigo
 """
 from __future__ import annotations
 
@@ -34,6 +35,9 @@ def main(argv=None):
     au.add_argument("--so-mostrar", action="store_true", help="só mostra os valores no terminal, sem gravar em lugar nenhum")
     au.add_argument("--destino", choices=["github", "pc", "ambos"], default="github",
                     help="onde gravar as 3 chaves: Secrets do GitHub, variáveis de ambiente do Windows ou os dois")
+    rr = sub.add_parser("rerender", help="refaz só a imagem de um vídeo pronto (sem IA e sem voz nova), com o áudio original")
+    rr.add_argument("pasta", help="pasta do vídeo (com timeline.json, midia/ e o .mp4)")
+    rr.add_argument("--video", default="", help="o .mp4 antigo (padrão: o da pasta)")
     u = sub.add_parser("ui", help="abre a interface local no navegador")
     u.add_argument("--porta", type=int, default=8765)
     u.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
@@ -47,6 +51,12 @@ def main(argv=None):
             youtube.publicar(carregar_config())
         else:
             youtube.atualizar_desempenho()
+        return
+
+    if a.cmd == "rerender":
+        from pathlib import Path
+        from .rerender import refazer_imagem
+        refazer_imagem(Path(a.pasta), Path(a.video) if a.video else None)
         return
 
     if a.cmd == "ui":

@@ -20,6 +20,36 @@ FINAL_EXTRA = 1.5
 
 
 # ---------------------------------------------------------------- linha do tempo
+_MULT = {"mil": 1e3, "k": 1e3, "mi": 1e6, "m": 1e6, "milhao": 1e6, "milhão": 1e6, "milhoes": 1e6, "milhões": 1e6,
+         "bi": 1e9, "b": 1e9, "bilhao": 1e9, "bilhão": 1e9, "bilhoes": 1e9, "bilhões": 1e9, "tri": 1e12}
+
+
+def _escala(valor: float) -> tuple[float, str]:
+    """Número cru → (valor, sufixo) legível: 8000000 → (8, ' mi'); 14000 → (14, ' mil'); 500 → (500, '')."""
+    for lim, div, suf in ((1e12, 1e12, " tri"), (1e9, 1e9, " bi"), (1e6, 1e6, " mi"), (1e4, 1e3, " mil")):
+        if abs(valor) >= lim:
+            v = round(valor / div, 1)
+            return (int(v) if v == int(v) else v), suf
+    return valor, ""
+
+
+def corrigir_numeros(obj):
+    """Conserta número com sufixo de escala que já veio escrito por extenso (o roteiro manda value 14000 + suffix ' mi',
+    que vira '14.000 mi' = 14 bilhões). Se o valor já tem 4+ dígitos, o sufixo é redundante: reescala a partir do número cru.
+    Vale para qualquer template (bignumber, compare, barras...) e para vídeo curto e longo."""
+    if isinstance(obj, list):
+        return [corrigir_numeros(x) for x in obj]
+    if not isinstance(obj, dict):
+        return obj
+    out = {k: corrigir_numeros(v) for k, v in obj.items()}
+    v, suf = out.get("value"), out.get("suffix")
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and isinstance(suf, str):
+        chave = suf.strip().lower().rstrip(".")
+        if chave in _MULT and abs(v) >= 1000:
+            out["value"], out["suffix"] = _escala(v)
+    return out
+
+
 def _logo(v: dict) -> dict:
     """Marca d'água em imagem (visual.marca_logo): caminho relativo à raiz do repo ou absoluto."""
     p = (v.get("marca_logo") or "").strip()
@@ -78,7 +108,7 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
         for sc in ch["scenes"]:
             a = narr["cenas"][sc["id"]]
             d = a["dur"] + CAUDA
-            seg = {"id": sc["id"], "kind": "scene", "template": sc.get("template", "headline"), "params": sc.get("params", {}),
+            seg = {"id": sc["id"], "kind": "scene", "template": sc.get("template", "headline"), "params": corrigir_numeros(sc.get("params", {})),
                    "start": t, "dur": d, "wav": a["wav"], "source": sc.get("source", ""), "text": sc["text"],
                    "chapterTitle": (f"Cap {ci + 1} · {ch['title']}" if longo else (cfg["tema"].get("nicho") or ""))}
             segs.append(seg)
