@@ -1,6 +1,7 @@
 """Etapas 7 e 8: publicacao.md (YouTube + TikTok) e relatório da execução."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .util import NOTAS, nota
@@ -91,6 +92,20 @@ def _lista(v) -> list:
     return [p.strip() for p in partes if p.strip()]
 
 
+# chamada de comentário binária ("Comente sim ou não!", "Responda: sim ou não?") na legenda do TikTok/Instagram
+_CTA_BINARIO = re.compile(r"\b(?:comente|comenta|responda|responde|diga|conta|me diz)\b[^.!?\n]{0,30}?\bsim\b\s*(?:ou|/)\s*n[ãa]o\b[^.!?\n]*[.!?]*"
+                          r"|\bsim\s*(?:ou|/)\s*n[ãa]o\s*\?\s*comente\b[^.!?\n]*[.!?]*", re.I)
+
+
+def cta_legenda(legenda: str) -> str:
+    """Legenda do TikTok/Instagram sempre fecha com "Comente!" (aberto, a pessoa comenta o que quiser), nunca "sim ou não"."""
+    s = _CTA_BINARIO.sub("", legenda or "")
+    s = re.sub(r"\s+([.!?,])", r"\1", re.sub(r"\s{2,}", " ", s)).strip()
+    if not re.search(r"\bcomente!\s*$", s, re.I):
+        s = (s.rstrip() + " Comente!").strip()
+    return s
+
+
 def _sim_nao(v, padrao_resp: str, padrao_motivo: str) -> dict:
     if isinstance(v, dict):
         return {"resposta": _texto(v.get("resposta")) or padrao_resp, "motivo": _texto(v.get("motivo")) or padrao_motivo}
@@ -124,6 +139,7 @@ def normalizar_publicacao(pub: dict, roteiro: dict) -> dict:
     yt["sintetico"] = _sim_nao(yt.get("sintetico"), "Não", "animação claramente não realista; voz sintética genérica.")
     for k in ("legenda", "capa", "primeira_frase", "som", "horario"):
         tk[k] = _texto(tk.get(k))
+    tk["legenda"] = cta_legenda(tk["legenda"])
     tk["hashtags"] = _lista(tk.get("hashtags"))
     tk["rotulo_ia"] = _sim_nao(tk.get("rotulo_ia"), "Sim", "narração com voz sintética.")
     return {"youtube": yt, "tiktok": tk}

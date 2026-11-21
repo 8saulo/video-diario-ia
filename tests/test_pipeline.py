@@ -107,3 +107,13 @@ def test_sem_crivo_e_proibido_no_github(monkeypatch):
     with pytest.raises(SystemExit) as e:
         m.main(["run", "--sem-crivo"])
     assert "não é permitido no GitHub" in str(e.value)
+
+
+def test_legenda_tiktok_instagram_termina_com_comente():
+    """20/11/2026: a legenda saía com 'Comente Sim ou Não!'; agora sempre 'Comente!' (comentário aberto)."""
+    from videobot.publish import cta_legenda
+    assert cta_legenda("Quantas casas a IA consome por dia? Comente Sim ou Não!") == "Quantas casas a IA consome por dia? Comente!"
+    assert cta_legenda("A IA vai te substituir? Responda: sim ou não?") == "A IA vai te substituir? Comente!"
+    assert cta_legenda("Isso muda tudo. Comente!") == "Isso muda tudo. Comente!"
+    assert cta_legenda("Isso muda tudo.") == "Isso muda tudo. Comente!"
+    assert cta_legenda("Sim, a IA já faz isso hoje. Comente sim ou não") == "Sim, a IA já faz isso hoje. Comente!"

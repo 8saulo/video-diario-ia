@@ -103,7 +103,7 @@ PUBLICAÇÃO
 - youtube.abertura: 2 linhas com gancho e palavra-chave. topicos: 4 a 6 linhas começando com emoji. cta: pergunta de comentário. aviso: '' ou aviso de finanças/IA.
 - youtube.hashtags: 3 a 5. youtube.tags: 18 a 24 tags (PT-BR amplas e de cauda longa + 2 ou 3 em inglês), total até 480 caracteres.
 - youtube.comentario_fixado: pergunta binária. youtube.sintetico: {{"resposta":"Sim|Não","motivo":"..."}} (animação claramente não realista e voz genérica → Não, salvo se houver algo realista). categoria. horario (sugestão para o Brasil).
-- tiktok.legenda (até 150 caracteres visíveis, gancho + CTA, sem as hashtags), tiktok.hashtags (3 a 5: 1 ampla, 2 de nicho, 1 em alta), tiktok.capa (até 4 palavras), tiktok.primeira_frase,
+- tiktok.legenda (até 150 caracteres visíveis, gancho + termina exatamente com 'Comente!' (nunca 'sim ou não'), sem as hashtags), tiktok.hashtags (3 a 5: 1 ampla, 2 de nicho, 1 em alta), tiktok.capa (até 4 palavras), tiktok.primeira_frase,
   tiktok.rotulo_ia {{"resposta":"Sim","motivo":"narração com voz sintética"}}, tiktok.som, tiktok.horario.
 - thumb: {{"lines": [{{"text": "ATÉ 2 PALAVRAS"}}, {{"text": "ATÉ 2 PALAVRAS", "hl": true}}], "number": "um número dos fatos, com algarismos", "numberLabel": "até 4 palavras", "icon": ICONE}} — no máximo 4 palavras grandes no total.
 
