@@ -188,6 +188,38 @@ def _numeros_params(o) -> list[float]:
     return out
 
 
+def normalizar_cena(sc: dict) -> dict:
+    """Conserta tipos que os modelos às vezes devolvem trocados (no lugar, e devolve a cena).
+
+    Ex.: "template": {"name": "bars", "params": {...}} em vez de "template": "bars" (derrubou o longo de 22/11).
+    """
+    t = sc.get("template")
+    if isinstance(t, dict):
+        extra = t.get("params")
+        t = next((t[k] for k in ("name", "nome", "template", "type", "tipo", "id") if isinstance(t.get(k), str)), "")
+        if isinstance(extra, dict) and not sc.get("params"):
+            sc["params"] = extra
+    elif isinstance(t, list):
+        t = next((x for x in t if isinstance(x, str)), "")
+    sc["template"] = str(t or "").strip().lower()
+    if not isinstance(sc.get("params"), dict):
+        sc["params"] = {}
+    for k in ("id", "text", "emocao"):
+        if k in sc and not isinstance(sc[k], str):
+            sc[k] = "" if sc[k] is None else str(sc[k])
+    f = sc.get("fact_ids", [])
+    if not isinstance(f, list):
+        f = [f]
+    ids = []
+    for x in f:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            pass
+    sc["fact_ids"] = ids
+    return sc
+
+
 def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
     alvos = _alvos(cfg)
     err = []
@@ -209,6 +241,7 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
     por_id = {f["id"]: f for f in fatos["fatos"]}
     ids = set()
     for sc in cenas:
+        normalizar_cena(sc)
         sid = sc.get("id", "")
         if not sid or sid in ids:
             err.append(f"id de cena vazio ou repetido: '{sid}'")
