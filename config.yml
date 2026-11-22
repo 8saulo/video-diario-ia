@@ -256,9 +256,11 @@ pautas:
       narracao:
         gemini_voz: Charon
         direcao: >-
-          Narre como um apresentador brasileiro de telejornal de economia e tecnologia: voz grave, segura e serena; tom sério
-          e confiável; ritmo moderado e constante; dicção clara; entonação natural e humana, nunca robótica nem monótona;
-          ênfase sóbria nos números; pausas curtas entre as ideias; sem empolgação, sem sorriso na voz, sem dramatizar.
+          Narre como um apresentador brasileiro de telejornal de economia e tecnologia contando uma boa história: voz grave,
+          segura e calorosa; interesse genuíno pelo assunto; entonação expressiva e humana, com subidas e descidas naturais
+          (curiosidade nas perguntas, peso nos números, leve sorriso nas viradas positivas, gravidade nos riscos); ritmo que
+          varia com a ideia, com pausas curtas para o espectador absorver. Expressivo, mas sem exagero: nada teatral,
+          eufórico ou de locutor de propaganda; nunca robótico nem monótono.
         edge_voz: pt-BR-AntonioNeural
         edge_velocidade: "+0%"
       visual:

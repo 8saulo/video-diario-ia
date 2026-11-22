@@ -28,10 +28,10 @@ def _cfg_pauta(cfg):
 
 # ---------------------------------------------------------------- pauta e formatos do dia
 def test_pauta_do_dia_gera_curto_e_longo_mesmo_disparada_pelo_pc(cfg):
-    """O PC dispara a rotina sem tema (formato padrão 'curto'): no dia da pauta saem os dois formatos."""
+    """O PC dispara a rotina sem inputs (formato padrão vazio): no dia da pauta saem os dois formatos."""
     c = _cfg_pauta(cfg)
     assert pauta.formatos(c, DIA, "schedule") == ["curto", "longo"]
-    assert pauta.formatos(c, DIA, "workflow_dispatch", "curto") == ["curto", "longo"]
+    assert pauta.formatos(c, DIA, "workflow_dispatch", "") == ["curto", "longo"]
 
 
 def test_tema_ou_refazer_pedidos_na_execucao_ignoram_a_pauta(cfg):
@@ -73,7 +73,7 @@ def test_config_tem_a_pauta_do_ipo_da_anthropic_para_22_11():
     assert "Anthropic" in p["tema"] and p["formatos"] == ["curto", "longo"] and p["financas"] is True
     assert p["config"]["roteiro"]["estilo"] == "educativo"
     assert p["config"]["visual"] == {"paleta": "claude", "fundo": "terminal"}
-    assert "apresentador" in p["config"]["narracao"]["direcao"] and "robótica" in p["config"]["narracao"]["direcao"]
+    assert "apresentador" in p["config"]["narracao"]["direcao"] and "robótico" in p["config"]["narracao"]["direcao"]
     assert pauta.formatos(c, DIA, "schedule") == ["curto", "longo"]
 
 
@@ -238,3 +238,34 @@ def test_voz_fala_anthropic_ipo_e_claude_do_jeito_certo(cfg):
     assert txt == "A Antrópic, dona do Clód, prepara o aipiou. Os aipious de Antrópic e aipiou grandes."
     assert tts.falado("Tipos de chipotle e IPOD", pron) == "Tipos de chipotle e IPOD"  # só a palavra inteira
     assert tts.falado("GPON e ONU", pron) == "Gêpon e Ó-Ene-U"
+
+
+def test_disparo_manual_com_formato_gera_so_esse_formato():
+    """Refazer só o longo que falhou não pode republicar o curto do dia (22/11); vazio segue a pauta."""
+    import datetime as dt
+    import yaml
+    from videobot import pauta
+    cfg = yaml.safe_load(open("config.yml", encoding="utf-8"))
+    d = dt.date(2026, 11, 22)
+    assert pauta.formatos(cfg, d, "workflow_dispatch", "longo") == ["longo"]
+    assert pauta.formatos(cfg, d, "workflow_dispatch", "") == ["curto", "longo"]
+    assert pauta.formatos(cfg, d, "schedule", "") == ["curto", "longo"]
+
+
+def test_workflow_formato_padrao_vazio_para_o_pc_seguir_a_pauta():
+    """O PC dispara sem inputs: o formato padrão precisa ser vazio, senão a pauta de curto+longo vira só curto."""
+    import yaml
+    wf = yaml.safe_load(open(".github/workflows/video-diario.yml", encoding="utf-8"))
+    assert wf[True]["workflow_dispatch"]["inputs"]["formato"]["default"] == ""
+
+
+def test_voz_do_ipo_expressiva_sem_exagero():
+    """A voz de 22/11 saiu sem emoção: a direção pede expressividade, mas proíbe o teatral/eufórico."""
+    import yaml
+    from videobot.script import ESTILOS
+    cfg = yaml.safe_load(open("config.yml", encoding="utf-8"))
+    d = cfg["pautas"]["2026-11-22"]["config"]["narracao"]["direcao"]
+    assert "expressiv" in d and "sem exagero" in d and "eufórico" in d
+    assert "sem empolgação, sem sorriso" not in d
+    em = ESTILOS["educativo"]["emocoes"]
+    assert "VARIE" in em and "curioso" in em and "surpresa contida" in em and "Nunca eufórico" in em

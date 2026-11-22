@@ -66,9 +66,11 @@ Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme
   com o espectador ("você") com respeito. Frases curtas e completas (até 16 palavras), vocabulário preciso, sem gírias, sem ironia,
   sem exageros ("chocante", "inacreditável", "absurdo" estão proibidos). Pontuação sóbria: "?" só em perguntas reais, no máximo um
   "!" no vídeo todo, reticências só se a pausa for necessária (no máximo 2 no vídeo).""",
-        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras): sempre sóbria, de apresentador; varie só a intensidade.
-Use: "sério e claro", "didático, pausado", "firme, analítico", "neutro, informativo", "levemente enfático" (para o número mais
-importante), "reflexivo" (para a conclusão), "cordial e direto" (para o CTA). Nunca empolgado, irônico, urgente ou sorrindo.""",
+        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras): apresentador expressivo, com emoção contida e real;
+VARIE de cena para cena conforme o conteúdo (nunca a mesma emoção em mais de 2 cenas seguidas). Use: "curioso, intrigante" (gancho
+e perguntas), "didático, acolhedor", "interessado, explicativo", "firme, analítico", "enfático no número" (o dado mais importante),
+"surpresa contida" (a virada), "otimista, caloroso" (boa notícia), "grave, cauteloso" (riscos), "reflexivo" (conclusão),
+"cordial e direto" (CTA). Nunca eufórico, teatral, irônico ou urgente.""",
         "critico": "editor-chefe de um telejornal de economia e tecnologia",
     },
 }

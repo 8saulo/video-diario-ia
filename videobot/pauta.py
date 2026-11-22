@@ -57,6 +57,8 @@ def formatos(cfg: dict, data: dt.date, evento: str = "schedule", formato_in: str
     padrao = [formato_in or cfg.get("formato") or "curto"]
     if refazer.strip() or tema_in.strip():
         return padrao
+    if evento != "schedule" and formato_in:  # disparo manual escolhendo o formato: só ele (ex.: refazer o longo que falhou)
+        return padrao
     p = do_dia(cfg, data)
     if not p:
         return [cfg.get("formato") or "curto"] if evento == "schedule" else padrao
