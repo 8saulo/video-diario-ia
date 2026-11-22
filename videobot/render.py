@@ -135,7 +135,7 @@ def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     return {"w": W, "h": H, "fps": int(v.get("fps", 30)), "duration": round(t, 3), "segments": segs, "captions": caps,
             "showCaptions": bool(v.get("legendas", True)), "brand": v.get("marca", ""), **_logo(v), "scene3d": cena3d,
             "scale3d": float(v.get("escala3d_longo", v.get("escala3d", 0.75)) if longo else v.get("escala3d", 0.75)), "brandLogoPeriod": float(v.get("marca_troca_s", 9)),
-            "theme": _tema(v)}
+            "theme": _tema(v, roteiro.get("tema", ""))}
 
 
 # ---------------------------------------------------------------- navegador
@@ -218,10 +218,18 @@ def folha(thumbs, out: Path, cols: int):
     sheet.save(out)
 
 
-def _tema(v: dict) -> dict:
+def _tema(v: dict, titulo: str = "") -> dict:
     t = {"accent": v.get("acento") or "#ff4f12", "accent2": v.get("acento2") or "#d4ff3a"}
     if v.get("acento_suave"):
         t["accentSoft"] = v["acento_suave"]
+    tokens = v.get("tokens") or {}
+    if tokens:  # cores de base da paleta (fundo, cartões, textos): viram variáveis CSS do motor (--ink-900, --fog-50...)
+        t["vars"] = {("--" + str(k).lstrip("-")): str(c) for k, c in tokens.items()}
+    fundo = str(v.get("fundo") or "").strip().lower()
+    if fundo:
+        t["fundo"] = fundo  # "terminal" = tela de terminal (vibe code) no fundo de todas as cenas
+        if titulo:
+            t["termTitle"] = titulo
     return t
 
 

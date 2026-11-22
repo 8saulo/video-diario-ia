@@ -193,8 +193,9 @@ def alinhar(palavras: list[str], asr: list[dict] | None, dur: float):
 # ---------------------------------------------------------------- pronúncia
 def falado(texto: str, pron: dict | None) -> str:
     """Troca termos pela grafia que a voz pronuncia certo (ex.: GPON → Gêpon). A legenda continua com o original."""
+    # maiúscula/minúscula tanto faz e o plural vem junto ("IPOs" → "aipious"); o roteiro escreve do jeito que quiser
     for termo, como in (pron or {}).items():
-        texto = re.sub(r"(?<![\w])" + re.escape(termo) + r"(?![\w])", como, texto)
+        texto = re.sub(r"(?<![\w])" + re.escape(str(termo)) + r"(s?)(?![\w])", lambda m, c=str(como): c + m.group(1), texto, flags=re.I)
     return texto
 
 

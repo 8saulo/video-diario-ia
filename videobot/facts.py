@@ -295,6 +295,14 @@ def coletar(cand: dict, cfg: dict) -> dict:
     bcfg = cfg.get("busca") or {}
     plano, modelo = _plano(cand, cfg)
     buscas = [str(b) for b in plano.get("buscas", []) if str(b).strip()][:8]
+    tcfg = cfg.get("tema") or {}
+    fixas = [str(b) for b in (tcfg.get("buscas_fatos") or []) if str(b).strip()]  # pauta do dia: buscas garantidas
+    if fixas:
+        buscas = list(dict.fromkeys(fixas + buscas))[:max(8, len(fixas) + 4)]
+    if tcfg.get("angulo"):
+        plano["angulo"] = tcfg["angulo"]
+    if tcfg.get("financas") is not None:
+        plano["financas"] = bool(tcfg["financas"])
     # 1. buscar: as primeiras buscas olham notícias recentes; as outras, a web toda
     dias = int(bcfg.get("dias_noticias", 90)) or None
     achados, vistos = [], set()
@@ -308,6 +316,7 @@ def coletar(cand: dict, cfg: dict) -> dict:
             achados.append(dict(r, url=u, dominio=d))
     if not achados:
         return {"ok": False, "motivo": "a busca na web não devolveu páginas (Tavily sem chave ou sem cota)",
+                "tema": plano.get("tema_pt") or tema, "angulo": plano.get("angulo", ""), "financas": bool(plano.get("financas")),
                 "fatos": [], "cortados": []}
     achados.sort(key=lambda r: not _confiavel(r["url"]))  # fontes conhecidas primeiro
     achados = achados[: int(bcfg.get("max_paginas", 18))]

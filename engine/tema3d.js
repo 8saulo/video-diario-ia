@@ -663,7 +663,11 @@
     M.vidro = std(0xcfeaff, { metalness: 0, roughness: 0.02, transparent: true, opacity: 0.28, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 2.2, depthWrite: false });
     SOMBRA = canvasTex(128, 128, (c, w, h) => { const r = c.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(0,0,0,.75)'); r.addColorStop(0.5, 'rgba(0,0,0,.35)'); r.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = r; c.fillRect(0, 0, w, h); });
 
-    R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    // fundo "terminal": o 3D é desenhado sem fundo próprio, por cima da tela de terminal
+    const TERM = !!(data.theme && data.theme.fundo === 'terminal');
+    const corFundo = TERM ? (getComputedStyle(document.documentElement).getPropertyValue('--ink-900').trim() || '#141413') : 0x06080d;
+    R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance', alpha: TERM });
+    if (TERM) R.setClearColor(0x000000, 0);
     // o 3D só é desenhado na faixa onde aparece (no vertical, entre os cartões e a legenda; no horizontal,
     // à direita). O resto da tela fica sob o degradê escuro: menos pixels = render bem mais rápido em CPU.
     FX = PORT ? { x: 0, y: Math.round(H * 0.15), w: W, h: Math.round(H * 0.66) } : { x: Math.round(W * 0.3), y: 0, w: W - Math.round(W * 0.3), h: H };
@@ -672,7 +676,7 @@
     const cv = R.domElement; cv.id = 'gl3d'; stage.appendChild(cv);
     for (const [k, v] of [['left', FX.x], ['top', FX.y], ['width', FX.w], ['height', FX.h]]) cv.style.setProperty(k, v + 'px', 'important');
     stage.classList.add('faixa3d');
-    S = new THREE.Scene(); S.background = new THREE.Color(0x06080d); S.fog = new THREE.Fog(0x06080d, 16, 48);
+    S = new THREE.Scene(); S.background = TERM ? null : new THREE.Color(0x06080d); S.fog = new THREE.Fog(new THREE.Color(corFundo), 16, 48);
     if (window.THREEX && THREEX.RoomEnvironment) {  // reflexos de estúdio em metal, vidro e verniz
       const pm = new THREE.PMREMGenerator(R);
       S.environment = pm.fromScene(new THREEX.RoomEnvironment(R), 0.04).texture;
@@ -683,7 +687,8 @@
     if (PORT) C.setViewOffset(W, H, 0, -H * 0.02 + FX.y, W, FX.h);
     else C.setViewOffset(W, H, -W * 0.29 + FX.x, 0, FX.w, H);
 
-    const chao = mesh(new THREE.CircleGeometry(70, 64), std(0x0a0d13, { roughness: 0.95 })); chao.rotation.x = -Math.PI / 2; S.add(chao);
+    const chao = mesh(new THREE.CircleGeometry(70, 64), std(0x0a0d13, { roughness: 0.95 })); chao.rotation.x = -Math.PI / 2;
+    if (!TERM) S.add(chao);  // no terminal, só a grade no chão (o fundo de terminal aparece atrás)
     const grade = new THREE.GridHelper(90, 60, ACC, 0x1a2030); grade.material.transparent = true; grade.material.opacity = 0.22; grade.position.y = 0.01; S.add(grade);
     S.add(new THREE.HemisphereLight(0x9aa8d0, 0x0c0c12, 0.6));
     const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(6, 11, 9); S.add(key);

@@ -61,7 +61,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       pular: ${{ steps.c.outputs.pular }}
+      formatos: ${{ steps.f.outputs.formatos }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # pauta do dia (config.yml → pautas): o dia pode ter curto E longo; um job para cada
+      - id: f
+        env:
+          EV: ${{ github.event_name }}
+          IN_FORMATO: ${{ inputs.formato }}
+          IN_TEMA: ${{ inputs.tema }}
+          IN_REFAZER: ${{ inputs.refazer }}
+        run: |
+          pip install -q pyyaml
+          f=$(python -m videobot.pauta --evento "$EV" --formato "$IN_FORMATO" --tema "$IN_TEMA" --refazer "$IN_REFAZER")
+          echo "formatos do dia: $f"
+          echo "formatos=$f" >> "$GITHUB_OUTPUT"
       - id: c
         env:
           GH_TOKEN: ${{ github.token }}
@@ -78,6 +95,12 @@ jobs:
   video:
     needs: checar
     if: needs.checar.outputs.pular != '1'
+    strategy:
+      fail-fast: false      # se o longo falhar, o curto do dia sai mesmo assim
+      max-parallel: 1       # um de cada vez: as IAs grátis têm limite por minuto
+      matrix:
+        formato: ${{ fromJson(needs.checar.outputs.formatos) }}
+    name: vídeo ${{ matrix.formato }}
     runs-on: ubuntu-24.04   # fixo: o Playwright fixado suporta 24.04
     env:
       TEM_YOUTUBE: ${{ secrets.YT_REFRESH_TOKEN != '' }}   # secrets não podem ir direto num if de passo
@@ -114,7 +137,10 @@ jobs:
         run: |
           id=$(gh run list --workflow video-diario.yml --limit 300 --json number,databaseId -q ".[] | select(.number == $N) | .databaseId")
           test -n "$id" || { echo "execução #$N não encontrada"; exit 1; }
-          gh run download "$id" -n "video-$N" -D refazer
+          # curto em video-N, longo em video-N-longo (dia com os dois formatos); o roteiro.json diz qual é qual
+          gh run download "$id" -n "video-$N" -D refazer/a || true
+          gh run download "$id" -n "video-$N-longo" -D refazer/b || true
+          test -n "$(ls -A refazer 2>/dev/null)" || { echo "execução #$N sem artefato de vídeo"; exit 1; }
           ls refazer
 
       - name: Testes de regressão
@@ -137,8 +163,9 @@ jobs:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           IN_MODO: ${{ inputs.modo || 'completo' }}
           IN_TEMA: ${{ inputs.tema }}
-          IN_FORMATO: ${{ inputs.formato }}
-          IN_DURACAO: ${{ inputs.duracao }}
+          IN_FORMATO: ${{ matrix.formato }}
+          # a duração digitada vale para o formato digitado (70 = segundos do curto, nunca 70 minutos do longo)
+          IN_DURACAO: ${{ matrix.formato == inputs.formato && inputs.duracao || '' }}
           IN_NARRACAO: ${{ inputs.narracao }}
           IN_VOZ: ${{ inputs.voz }}
           IN_BUSCAS: ${{ inputs.buscas }}
@@ -152,7 +179,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: video-${{ github.run_number }}
+          name: video-${{ github.run_number }}${{ matrix.formato == 'longo' && '-longo' || '' }}
           path: saida/
           retention-days: 14
           if-no-files-found: ignore
@@ -206,5 +233,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add historico/temas.json historico/desempenho.json 2>/dev/null || git add historico/temas.json
-          git diff --cached --quiet || (git commit -m "Histórico: tema de $(date -u +%F)" && git push)
+          # curto e longo do mesmo dia partem do mesmo commit: junta com o que já foi enviado e tenta de novo
+          cp historico/temas.json "$RUNNER_TEMP/temas.json"
+          cp historico/desempenho.json "$RUNNER_TEMP/desempenho.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/desempenho.json"
+          for i in 1 2 3 4; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            python -m videobot.pauta --mesclar "$RUNNER_TEMP/temas.json" "$RUNNER_TEMP/desempenho.json"
+            git add historico/temas.json historico/desempenho.json
+            git diff --cached --quiet && break
+            git commit -q -m "Histórico: tema de $(date -u +%F) (${{ matrix.formato }})" && git push -q && break
+            sleep $((i * 7))
+          done

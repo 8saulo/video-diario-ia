@@ -216,8 +216,11 @@ Para CADA cena, decida o que aparece no quadro, sempre ligado ao que a fala DAQU
 - "manchete": 3 a 7 palavras em PT-BR, como manchete de jornal recortada, resumindo a revelação da cena (sem copiar a fala).
 - "nota": opcional, {{"valor": "número da fala com algarismos e unidade (ex.: '10 Gbps', '-40%')", "rotulo": "até 4 palavras"}}
   para um post-it; só se a fala tiver número.
-- "carimbo": opcional, até 2 palavras sobre o FATO, nunca sobre uma pessoa (ex.: "CONFIRMADO", "MITO", "RECORDE", "ALERTA").
-  Proibido acusar ou rotular pessoas (nada de "espiã", "golpe", "fraude", "mentira", "culpado", "criminoso").
+- "carimbo": opcional e RARO (no máximo 1 a cada 3 cenas), só um destes, e só quando a fala DAQUELA cena disser exatamente isso:
+  "CONFIRMADO"/"DADO OFICIAL" (fato verificado, número oficial), "RECORDE" (a fala diz recorde/maior da história),
+  "EM ALTA"/"EM QUEDA" (a fala diz que subiu/caiu), "ESTIMATIVA"/"PROJEÇÃO" (a fala fala de previsão, estimativa, expectativa),
+  "ALERTA" (a fala fala de risco, perigo, cuidado), "MITO" (SÓ se a fala desmente uma crença: "é mito", "não é verdade", "falso").
+  Na dúvida, "". Nunca sobre uma pessoa; proibido acusar ou rotular pessoas.
 - "etiqueta": até 4 palavras, estilo "DOSSIÊ · CASO NVDA" / "LAB · FIBRA ÓPTICA".
 - "destaque": a pessoa ou marca mais importante da cena (nome) ou "".
 - "buscas": 2 buscas curtas EM INGLÊS (2 a 4 palavras) da foto/vídeo REAL que mostra o assunto concreto DESTA frase
@@ -315,6 +318,35 @@ def encurtar(texto: str, n: int) -> str:
     return t[:n + 1].rsplit(" ", 1)[0].rstrip(" ,.;:-–—")
 
 
+# carimbo só vale se a fala da cena disser aquilo (20/11: "MITO" em cima de fatos e "ALERTA" em cena neutra)
+_CARIMBOS = {
+    "CONFIRMADO": None, "DADO OFICIAL": None,  # precisam de fato verificado na cena (fact_ids)
+    "RECORDE": r"recorde|maior (da|de toda a) hist|nunca antes|jamais|histori",
+    "EM ALTA": r"\bsub(iu|iram|ir|indo|ida)|\balta\b|cresc|dispar|dobr|tripl|aument|salt(ou|o)\b|avan[cç]",
+    "EM QUEDA": r"\bca(iu|íram|indo|ir)\b|queda|recu|despenc|encolh|diminu|perd(eu|a)\b|desaba",
+    "ESTIMATIVA": r"estim|proje|previs|prev[eê]|expect|espera-se|esperad|pode chegar|deve (chegar|ser|valer)|calcul",
+    "PROJEÇÃO": r"estim|proje|previs|prev[eê]|expect|espera-se|esperad|pode chegar|deve (chegar|ser|valer)|futur",
+    "ALERTA": r"risco|perig|cuidado|alert|amea[cç]|aten[cç][aã]o|preocup|golpe|vulner",
+    "MITO": r"\bmito|n[aã]o [eé] verdade|\bfals[oa]\b|lenda|engan(o|a)\b|ao contr[aá]rio do que|na verdade,? n[aã]o",
+}
+_SINONIMOS_CARIMBO = {"FATO": "CONFIRMADO", "VERDADE": "CONFIRMADO", "VERIFICADO": "CONFIRMADO", "OFICIAL": "DADO OFICIAL",
+                      "FALSO": "MITO", "MENTIRA": "MITO", "PREVISÃO": "PROJEÇÃO", "PREVISAO": "PROJEÇÃO",
+                      "PROJECAO": "PROJEÇÃO", "ATENÇÃO": "ALERTA", "ATENCAO": "ALERTA", "RISCO": "ALERTA", "ALTA": "EM ALTA",
+                      "QUEDA": "EM QUEDA", "ESTIMADO": "ESTIMATIVA"}
+
+
+def carimbo_coerente(carimbo: str, fala: str, tem_fato: bool) -> str:
+    """Devolve o carimbo só se ele bate com a fala da cena; senão, nenhum (melhor sem carimbo que com carimbo errado)."""
+    c = re.sub(r"\s+", " ", str(carimbo or "")).strip().upper()
+    c = _SINONIMOS_CARIMBO.get(c, c)
+    if c not in _CARIMBOS:
+        return ""
+    regra = _CARIMBOS[c]
+    if regra is None:
+        return c if tem_fato else ""
+    return c if re.search(regra, fala or "", re.I) else ""
+
+
 def carimbo_seguro(texto: str) -> str:
     """Carimbo nunca acusa ninguém (risco de difamação ao lado da foto de uma pessoa real)."""
     t = encurtar(texto, 24).upper()
@@ -370,6 +402,7 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
     logo("__carregar_lista__", dest)  # carrega o acervo (para apelidos e marcas escritas na fala)
     pessoas_cache, logos_cache, creditos, barrados = {}, {}, [], []
     anterior = ""
+    cenas_desde_carimbo = 9
     for sc in cenas:
         a = por_id.get(sc["id"]) or {}
         texto = _texto_cena(sc)
@@ -416,8 +449,12 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
         for it in itens:  # a pessoa/marca em destaque vai para o centro, maior
             if destaque and destaque in (it.get("nome") or "").lower():
                 it["destaque"] = True
+        carimbo = carimbo_coerente(carimbo_seguro(str(a.get("carimbo") or "")), sc.get("text", ""), bool(sc.get("fact_ids")))
+        if carimbo and cenas_desde_carimbo < 2:  # raro: no máximo 1 a cada 3 cenas, para o carimbo ter peso
+            carimbo = ""
+        cenas_desde_carimbo = 0 if carimbo else cenas_desde_carimbo + 1
         if itens:
-            prm["_quadro"] = {"itens": itens[:4], "carimbo": carimbo_seguro(str(a.get("carimbo") or "")),
+            prm["_quadro"] = {"itens": itens[:4], "carimbo": carimbo,
                               "etiqueta": encurtar(a.get("etiqueta") or roteiro.get("tema", ""), 40).upper(), "reais": reais}
         anterior = sc.get("text", "")
     # logos do Simple Icons (SVG de verdade) podem virar 3D extrudado

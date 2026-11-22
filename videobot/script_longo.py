@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 
 from .llm import gerar_json
-from .script import licoes_do_canal
+from .script import estilo, licoes_do_canal, nome_estilo, notas_da_pauta
 from .objetos3d import prompt_catalogo
 from .util import log, nota, slugify
 
@@ -26,6 +26,24 @@ REGRAS_VIRAL = """ESTRUTURA DE RETENÇÃO (YouTube, vídeo longo):
 - Tom de conversa com o espectador ("você"), frases curtas, verbos fortes, curiosidade e leve ironia; nada de linguagem de relatório.
 - É uma HISTÓRIA contínua, não uma sequência de manchetes: cada cena nasce da anterior com conectivos naturais ("só que...",
   "e aí...", "o problema é que...", "e foi aí que..."), e os fatos entram como provas dentro dela."""
+
+REGRAS_EDUCATIVO = """ESTRUTURA DE VÍDEO EXPLICATIVO (YouTube, vídeo longo, tom de apresentador de jornal financeiro e tecnológico):
+- GANCHO (primeiros 15 a 30 s): a pergunta central ou o fato mais relevante, dito com sobriedade; depois, o que o espectador vai
+  entender até o fim (a promessa). Nada de "olá", "neste vídeo", "fala pessoal", apresentação de canal.
+- INTRODUÇÃO (logo depois do gancho): contexto. Quem é, o que está acontecendo, por que importa. Todo termo técnico é explicado
+  em uma frase simples na primeira vez (IPO, valor de mercado, receita anual, rodada de investimento...).
+- DESENVOLVIMENTO (capítulos do meio): a história em ordem lógica (origem, crescimento, números, o que muda), com uma VIRADA que
+  muda a leitura do assunto e um capítulo honesto com riscos, críticas e incertezas. Cada capítulo abre com a pergunta que ele
+  responde e termina puxando o próximo ("e é aí que entra...").
+- CONCLUSÃO (último capítulo): responde a pergunta do gancho, resume o que o espectador aprendeu e diz o que observar daqui para a frente.
+- Os números são PROVAS dentro do raciocínio, sempre com contexto (comparação, escala, prazo); nunca uma sequência de manchetes.
+- Tom: sério, claro, seguro e didático, falando com o espectador ("você"). Frases curtas e completas, vocabulário preciso, sem gírias,
+  sem ironia, sem exageros ("chocante", "inacreditável", "absurdo" estão proibidos). No máximo um "!" no vídeo todo."""
+
+
+def regras_estrutura(cfg: dict) -> str:
+    return REGRAS_EDUCATIVO if nome_estilo(cfg) == "educativo" else REGRAS_VIRAL
+
 
 REGRAS_TEXTO = """REGRAS DE TEXTO
 - Narração em PT-BR falado. Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito");
@@ -52,7 +70,9 @@ Tema: "{fatos['tema']}". Ângulo: {fatos.get('angulo', '')}.
 FATOS VERIFICADOS (a base de tudo; cite os ids):
 {_fatos_txt(fatos)}
 
-{REGRAS_VIRAL}
+{regras_estrutura(cfg)}
+
+{notas_da_pauta(cfg)}
 
 {licoes_do_canal()}
 
@@ -117,7 +137,9 @@ Conte as palavras: frases curtas NÃO significam capítulo curto. Varie o templa
 FATOS VERIFICADOS (use SOMENTE estes números; prefira os do capítulo {ch.get('fact_ids', [])}):
 {_fatos_txt(fatos)}
 
-{REGRAS_VIRAL}
+{regras_estrutura(cfg)}
+
+{notas_da_pauta(cfg)}
 
 {REGRAS_TEXTO}
 {'- O tema é de finanças: inclua o aviso "não é recomendação de investimento" no capítulo final.' if fatos.get('financas') else ''}
@@ -126,8 +148,7 @@ FATOS VERIFICADOS (use SOMENTE estes números; prefira os do capítulo {ch.get('
 
 {prompt_catalogo()}
 
-DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras): a emoção que a frase pede, VARIANDO entre cenas
-(ex.: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme", "irônico, sorrindo", "urgente, acelerando", "caloroso").
+{estilo(cfg)["emocoes"]}
 
 Responda SOMENTE com JSON:
 {{"scenes": [{{"id": "slug_unico", "text": "narração", "template": "...", "params": {{...}}, "objetos3d": ["id do catálogo 3D"],

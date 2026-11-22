@@ -28,6 +28,67 @@ ICONE ∈ ia, chip, robot, rocket, satellite, globe, money, coin, bolt, warning,
 user, users, building, gov, lock, sun, fire, thermo, snow, cloud, code, phone, laptop, search, doc, scale, target, play, battery, leaf, heart,
 eye, signal, chat, water, car, game, music, shield, question, bubble, factory"""
 
+# Estilo do roteiro (config: roteiro.estilo). "viral" é o de sempre; "educativo" é o de apresentador de jornal
+# financeiro/tecnológico: explica, contextualiza e conta a história com calma (pauta do IPO da Anthropic, 22/11).
+ESTILOS = {
+    "viral": {
+        "narrativa": """NARRATIVA (o mais importante): conte uma HISTÓRIA, não uma lista de manchetes.
+- GANCHO (cena 1, no máximo 9 palavras, ~3 s): o ponto mais intrigante — um conflito, um mistério, uma consequência para quem assiste
+  ou uma pergunta que exige resposta. Ele cria uma pergunta na cabeça do espectador.
+- DESENVOLVIMENTO: cada cena nasce da anterior e abre a próxima, com conectivos naturais de quem conta um caso ("só que...",
+  "e aí...", "o problema é que...", "mas tem um detalhe...", "e foi aí que..."). Contexto rápido (quem/o quê, por que importa),
+  depois uma VIRADA no meio. Os fatos e números entram como PROVAS dentro da história, nunca em sequência solta.
+- DESFECHO: responde a pergunta do gancho (fecha o ciclo), traz a consequência para o espectador e só então o CTA.
+- Teste: lido em voz alta, tem que soar como um amigo contando um caso curioso, não como leitura de jornal.""",
+        "tom": """- Narração em PT-BR falado, como um criador de shorts conversando com o espectador ("você"): frases curtas (até 12 palavras),
+  ritmo de corte rápido, contraste e surpresa ("parece muito? espera."), perguntas retóricas, uma revelação por cena,
+  verbos fortes, nada de linguagem de relatório. Tom curioso, empolgado e levemente irônico. Use "!" e "?" para guiar a entonação
+  e reticências ("...") para uma pausa dramática antes de um número ou revelação (no máximo 1 por cena).""",
+        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras, para o narrador): escolha a emoção que a frase pede e VARIE entre cenas.
+Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme", "irônico, sorrindo", "urgente, acelerando",
+"surpreso", "caloroso, convidativo" (bom para o CTA). O gancho é sempre de alta energia.""",
+        "critico": "editor-chefe de vídeos curtos virais",
+    },
+    "educativo": {
+        "narrativa": """NARRATIVA (o mais importante): um vídeo EXPLICATIVO e EDUCATIVO com enredo, em quatro partes que fluem uma na outra.
+- GANCHO (cena 1, no máximo 9 palavras, ~3 s): a pergunta ou o fato central que o vídeo vai responder. Intrigante, mas sóbrio,
+  sem sensacionalismo.
+- INTRODUÇÃO: situe o espectador. Quem é, o que aconteceu ou vai acontecer, por que isso importa para ele. Explique em uma frase
+  simples todo termo técnico na primeira vez que aparecer (ex.: o que é um IPO, o que é valor de mercado, o que é receita anual).
+- DESENVOLVIMENTO: a história contada em ordem lógica (antes → agora → o que muda), cada cena nascendo da anterior com conectivos
+  de explicação ("para entender isso...", "o ponto é que...", "e aqui está a virada...", "na prática, isso significa..."). Os números
+  entram como PROVAS do raciocínio, sempre com o contexto que dá sentido a eles (comparação, escala, prazo). Há uma VIRADA no meio:
+  o detalhe que muda a leitura do assunto. Traga o outro lado (riscos, críticas, incertezas) de forma honesta.
+- CONCLUSÃO: responda a pergunta do gancho, resuma em uma frase o que o espectador aprendeu e o que observar daqui para a frente.
+- Teste: lido em voz alta, soa como um bom apresentador de telejornal de economia e tecnologia explicando com clareza, não como
+  leitura de manchetes em sequência.""",
+        "tom": """- Narração em PT-BR falado, no tom de um apresentador de jornal financeiro e tecnológico: sério, claro, seguro e didático, falando
+  com o espectador ("você") com respeito. Frases curtas e completas (até 16 palavras), vocabulário preciso, sem gírias, sem ironia,
+  sem exageros ("chocante", "inacreditável", "absurdo" estão proibidos). Pontuação sóbria: "?" só em perguntas reais, no máximo um
+  "!" no vídeo todo, reticências só se a pausa for necessária (no máximo 2 no vídeo).""",
+        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras): sempre sóbria, de apresentador; varie só a intensidade.
+Use: "sério e claro", "didático, pausado", "firme, analítico", "neutro, informativo", "levemente enfático" (para o número mais
+importante), "reflexivo" (para a conclusão), "cordial e direto" (para o CTA). Nunca empolgado, irônico, urgente ou sorrindo.""",
+        "critico": "editor-chefe de um telejornal de economia e tecnologia",
+    },
+}
+
+
+def nome_estilo(cfg: dict) -> str:
+    nome = str(((cfg.get("roteiro") or {}).get("estilo")) or "viral").strip().lower()
+    return nome if nome in ESTILOS else "viral"
+
+
+def estilo(cfg: dict) -> dict:
+    return ESTILOS[nome_estilo(cfg)]
+
+
+def notas_da_pauta(cfg: dict) -> str:
+    """Instruções extras do dia (config: roteiro.notas), ex.: o que explicar e o que não presumir."""
+    n = str(((cfg.get("roteiro") or {}).get("notas")) or "").strip()
+    return f"ORIENTAÇÕES DESTE VÍDEO (obrigatórias):\n{n}" if n else ""
+
+
 NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta"}
 
 
@@ -52,6 +113,7 @@ def _alvos(cfg):
 
 def _prompt(cand, fatos, cfg, hoje, alvos, erros=None, anterior=None):
     curto = cfg["formato"] == "curto"
+    est = estilo(cfg)
     fl = "\n".join(f'[{f["id"]}] {f["afirmacao"]} | números na fonte: {", ".join(f.get("numeros") or []) or "—"} | {f["fonte"]}, {f.get("data", "")} | lado: {f.get("lado", "")}'
                    for f in fatos["fatos"])
     regras_formato = (
@@ -70,21 +132,14 @@ FATOS VERIFICADOS (use SOMENTE estes números; cite os ids em fact_ids):
 
 {licoes_do_canal()}
 
-NARRATIVA (o mais importante): conte uma HISTÓRIA, não uma lista de manchetes.
-- GANCHO (cena 1, no máximo 9 palavras, ~3 s): o ponto mais intrigante — um conflito, um mistério, uma consequência para quem assiste
-  ou uma pergunta que exige resposta. Ele cria uma pergunta na cabeça do espectador.
-- DESENVOLVIMENTO: cada cena nasce da anterior e abre a próxima, com conectivos naturais de quem conta um caso ("só que...",
-  "e aí...", "o problema é que...", "mas tem um detalhe...", "e foi aí que..."). Contexto rápido (quem/o quê, por que importa),
-  depois uma VIRADA no meio. Os fatos e números entram como PROVAS dentro da história, nunca em sequência solta.
-- DESFECHO: responde a pergunta do gancho (fecha o ciclo), traz a consequência para o espectador e só então o CTA.
-- Teste: lido em voz alta, tem que soar como um amigo contando um caso curioso, não como leitura de jornal.
+{est["narrativa"]}
+
+{notas_da_pauta(cfg)}
 
 REGRAS DO ROTEIRO
 - {regras_formato}
-- Narração em PT-BR falado, como um criador de shorts conversando com o espectador ("você"): frases curtas (até 12 palavras),
-  ritmo de corte rápido, contraste e surpresa ("parece muito? espera."), perguntas retóricas, uma revelação por cena,
-  verbos fortes, nada de linguagem de relatório. Tom curioso, empolgado e levemente irônico. Use "!" e "?" para guiar a entonação
-  e reticências ("...") para uma pausa dramática antes de um número ou revelação (no máximo 1 por cena). Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito"); nada de algarismos na narração. Escreva "IA", nunca "I.A.".
+{est["tom"]}
+- Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito"); nada de algarismos na narração. Escreva "IA", nunca "I.A.".
 - Toda afirmação com número precisa vir de um fato da lista (fact_ids). Sem fato, sem número. Não invente nada.
 - Inclua o contraponto (o outro lado). {'O tema é de finanças: inclua o aviso "não é recomendação de investimento".' if fatos.get('financas') else ''}
 - Não diga que conteúdo sintético é real. Interfaces de chat são ilustrativas.
@@ -94,9 +149,7 @@ REGRAS DO ROTEIRO
 
 {prompt_catalogo()}
 
-DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras, para o narrador): escolha a emoção que a frase pede e VARIE entre cenas.
-Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme", "irônico, sorrindo", "urgente, acelerando",
-"surpreso", "caloroso, convidativo" (bom para o CTA). O gancho é sempre de alta energia.
+{est["emocoes"]}
 
 PUBLICAÇÃO
 - youtube.titulo: até 70 caracteres, palavra-chave no começo, número ou pergunta, no máximo 1 emoji{', terminando com #shorts' if curto else ''}. 3 alternativos para A/B.
@@ -216,9 +269,10 @@ def _sanear(r: dict, fatos: dict, cfg, hoje):
     return r
 
 
-def _prompt_critico(r: dict) -> str:
+def _prompt_critico(r: dict, cfg: dict | None = None) -> str:
+    est = estilo(cfg or {})
     cenas = "\n".join(f'{i + 1}. {sc.get("text", "")}' for i, sc in enumerate(sc for ch in r.get("chapters", []) for sc in ch.get("scenes", [])))
-    return f"""Você é editor-chefe de vídeos curtos virais. Avalie este roteiro (uma fala por cena, na ordem):
+    return f"""Você é {est["critico"]}. Avalie este roteiro (uma fala por cena, na ordem):
 {cenas}
 
 Dê notas de 0 a 10:
@@ -233,7 +287,7 @@ def revisar_narrativa(r, erros, cand, fatos, cfg, hoje, alvos):
     """Crítico (ideia do OpenReels): nota gancho/narrativa/fluidez; abaixo de 7, ou roteiro curto, uma reescrita dirigida.
     Também resolve o roteiro curto demais dizendo QUANTO e ONDE acrescentar (antes só se pedia 'corrija')."""
     try:
-        nota_c, _, _ = gerar_json(_prompt_critico(r), cfg, temperatura=0.2, max_tokens=1200)
+        nota_c, _, _ = gerar_json(_prompt_critico(r, cfg), cfg, temperatura=0.2, max_tokens=1200)
     except Exception:
         nota_c = {}
     notas = {k: float(nota_c.get(k) or 10) for k in ("gancho", "narrativa", "fluidez")}

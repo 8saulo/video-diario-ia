@@ -75,6 +75,9 @@ narracao:
   pronuncia:                        # só muda o que a voz fala; a legenda mantém o termo original
     GPON: Gêpon
     ONU: Ó-Ene-U                    # letra por letra
+    IPO: aipiou                     # sigla em inglês, como se fala no mercado
+    Anthropic: Antrópic             # an-THRÓ-pic
+    Claude: Clód                    # o modelo da Anthropic (inglês: "clód")
 
 # ---------------- VISUAL ----------------
 visual:
@@ -93,6 +96,26 @@ visual:
       acento: "#1f8bff"
       acento2: "#ff4fd8"
       acento_suave: "#6cb6ff"
+    claude:                         # cores da Claude / Anthropic / Claude Code (terracota, creme, grafite quente, azul)
+      rodizio: false                # só quando pedida (ex.: pauta); não entra no rodízio diário
+      acento: "#d97757"
+      acento2: "#6a9bcc"
+      acento_suave: "#e3a68a"
+      tokens:                       # cores de base: fundo, cartões e textos
+        ink-950: "#0e0e0d"
+        ink-900: "#141413"
+        ink-850: "#1a1a18"
+        ink-800: "#1f1e1d"
+        ink-700: "#2a2926"
+        ink-600: "#3a3935"
+        ink-500: "#4a4944"
+        ink-400: "#6b6a63"
+        fog-50: "#faf9f5"
+        fog-200: "#e8e6dc"
+        fog-400: "#b0aea5"
+        fog-600: "#87867f"
+        bg-rgb: "20,20,19"
+  fundo: ""                         # "" = estúdio escuro | terminal = sessão de terminal digitando no fundo (vibe code)
   acento: "#ff4f12"                 # laranja (cor principal; só vale com paleta: fixa)
   acento2: "#d4ff3a"                # volt (destaques e legenda ativa; só vale com paleta: fixa)
   marca: ""                         # texto discreto no canto (ex.: @seucanal); vazio = nada
@@ -192,3 +215,52 @@ midia:                              # fotos e vídeos reais por cena (Wikimedia 
 
 roteiro:
   critico: true                     # um editor (IA) dá nota a gancho/narrativa/fluidez; abaixo de 7 o roteiro é reescrito
+  estilo: viral                     # viral = shorts de conversa, ritmo rápido | educativo = apresentador de jornal financeiro/tecnológico
+  notas: ""                         # orientações extras para o roteiro (a pauta do dia costuma preencher)
+
+# ---------------- PAUTAS (tema marcado para um dia) ----------------
+# Vale para a rotina daquele dia (agendada ou disparada pelo PC) quando ela não traz tema próprio.
+# formatos: [curto, longo] gera os dois (um job do GitHub para cada). "config" sobrepõe o resto deste arquivo só nesse dia.
+pautas:
+  "2026-11-22":
+    tema: "O IPO da Anthropic"
+    formatos: [curto, longo]
+    angulo: >-
+      Explicar com fatos verificados o IPO da Anthropic, a empresa que criou o Claude e o Claude Code: em que pé ele está,
+      quanto a empresa vale e fatura, por que abrir capital agora e o que isso muda no mercado de IA.
+    financas: true
+    buscas_fatos:
+      - Anthropic IPO
+      - Anthropic IPO filing bankers
+      - Anthropic valuation 2026
+      - Anthropic annual revenue run rate
+      - Anthropic funding round investors
+      - Claude Code revenue growth
+      - OpenAI IPO plans
+    config:
+      duracao:
+        curto_seg: 75
+        longo_min: 9
+      roteiro:
+        estilo: educativo
+        notas: >-
+          - O tema é o IPO (oferta pública inicial de ações) da Anthropic, a empresa que criou o Claude e o Claude Code.
+          Explique o que é um IPO na introdução, em uma frase simples.
+          - Diga o status do IPO exatamente como os fatos mostram (rumor, preparação, pedido protocolado, data marcada ou já
+          realizado). Se os fatos não confirmam que ele aconteceu, não diga que aconteceu.
+          - Conte como enredo: a origem da empresa, como ela cresceu (Claude, Claude Code, clientes), quanto vale e fatura,
+          por que abrir capital agora, os riscos (custo de computação, concorrência com OpenAI e Google, regulação) e o que
+          observar daqui para a frente. Use só o que os fatos sustentam.
+          - Explique valor de mercado, receita anual e rodada de investimento quando aparecerem.
+          - Na conclusão, diga "isto não é recomendação de investimento".
+      narracao:
+        gemini_voz: Charon
+        direcao: >-
+          Narre como um apresentador brasileiro de telejornal de economia e tecnologia: voz grave, segura e serena; tom sério
+          e confiável; ritmo moderado e constante; dicção clara; entonação natural e humana, nunca robótica nem monótona;
+          ênfase sóbria nos números; pausas curtas entre as ideias; sem empolgação, sem sorriso na voz, sem dramatizar.
+        edge_voz: pt-BR-AntonioNeural
+        edge_velocidade: "+0%"
+      visual:
+        paleta: claude
+        fundo: terminal

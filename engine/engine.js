@@ -104,6 +104,8 @@
       if (!ST.theme.accentSoft) root.style.setProperty('--acc-soft', 'rgb(' + L(r) + ',' + L(g) + ',' + L(b) + ')');
     }
     if (ST.theme.accentSoft) root.style.setProperty('--acc-soft', ST.theme.accentSoft);
+    // cores de base da paleta (ex.: paleta "claude": fundo grafite quente, texto creme)
+    Object.entries(ST.theme.vars || {}).forEach(([k, v]) => root.style.setProperty(k, v));
   }
   // 3D: "gpon" = cena fixa de fibra óptica (scene3d.js); qualquer outro valor = objetos do tema por cena (tema3d.js)
   function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : window.W3T; }
@@ -636,13 +638,62 @@
   };
 
   // ---------- construção ----------
-  function buildBg(stage, port) {
+  // ---------- fundo "terminal" (vibe code): sessão de terminal digitando, bem apagada, atrás de todas as cenas ----------
+  // Tudo é função pura do tempo (o render quadro a quadro pode pular para qualquer t).
+  function linhasTerminal(titulo) {
+    const tt = String(titulo || 'pesquisa do dia').replace(/[<>&"]/g, '').slice(0, 60);
+    const slug = tt.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
+    return [
+      ['cmd', 'claude'], ['think', 'sessão iniciada · modo pesquisa'], ['cmd', 'explique: ' + tt],
+      ['tool', 'WebSearch("' + tt + '")'], ['out', 'fontes encontradas e conferidas'],
+      ['tool', 'Read(fontes/relatorio.md)'], ['out', 'fatos verificados, com data e fonte'],
+      ['think', 'pensando…'], ['code', 'const roteiro = await escrever({ gancho, introducao, desenvolvimento, conclusao })'],
+      ['tool', 'Write(roteiro/' + slug + '.md)'], ['out', 'gancho · introdução · desenvolvimento · conclusão'],
+      ['tool', 'Bash(npm run render -- --cenas)'], ['out', 'renderizando cenas em código…'],
+      ['code', 'for (const cena of roteiro.cenas) await animar(cena)'],
+      ['git', 'git commit -m "roteiro: ' + slug + '"'], ['out', 'pronto para publicar'],
+    ];
+  }
+  function buildTerminal(bg, port) {
+    const T = el('div', '', bg); T.id = 'term';
+    const bar = el('div', 'term-bar', T);
+    bar.innerHTML = '<i></i><i></i><i></i><span>~/' + 'dossie — claude</span>';
+    const body = el('div', 'term-body', T);
+    const linhas = linhasTerminal(ST.theme.termTitle);
+    // início de cada linha: comandos são digitados (≈34 caracteres/s); saídas aparecem de uma vez
+    let t = 0.6; const ini = [];
+    linhas.forEach(([k, s]) => { ini.push(t); t += (k === 'cmd' || k === 'git' || k === 'code' ? s.length / 34 : 0.35) + 0.9; });
+    BG.term = { body, linhas, ini, ciclo: t + 2.5, rows: port ? 26 : 17, html: '' };
+  }
+  const GLIFO = { cmd: '❯ ', git: '$ ', tool: '⏺ ', out: '  ⎿ ', think: '✻ ', code: '  ' };
+  function updateTerminal(t) {
+    const T = BG.term; if (!T) return;
+    const n = T.linhas.length, volta = Math.floor(t / T.ciclo), lt = t - volta * T.ciclo;
+    const out = [];
+    // as voltas anteriores continuam na tela, rolando para cima (como um terminal de verdade)
+    for (let v = Math.max(0, volta - 2); v <= volta; v++) {
+      T.linhas.forEach(([k, s], i) => {
+        const t0 = T.ini[i]; if (v === volta && lt < t0) return;
+        const dig = (k === 'cmd' || k === 'git' || k === 'code') && v === volta ? Math.min(s.length, Math.floor((lt - t0) * 34)) : s.length;
+        out.push('<div class="tl t-' + k + '"><b>' + GLIFO[k] + '</b>' + esc(s.slice(0, dig)) + '</div>');
+      });
+    }
+    const pisca = Math.floor(t * 1.6) % 2 === 0 ? '<span class="term-cur"></span>' : '';
+    const vis = out.slice(-T.rows);
+    if (vis.length) vis[vis.length - 1] = vis[vis.length - 1].replace(/<\/div>$/, pisca + '</div>');
+    const html = vis.join('');
+    if (html !== T.html) { T.body.innerHTML = html; T.html = html; }
+  }
+  function buildBg(stage, port, semTerminal) {
     const bg = el('div', '', stage); bg.id = 'bg';
     const W = ST.w, H = ST.h;
+    const term = ST.theme.fundo === 'terminal';
     const mk = (color, a, size) => { const o = el('div', 'orb', bg); css(o, { width: size + 'px', height: size + 'px', background: 'radial-gradient(circle, ' + color + ' 0%, transparent 62%)', opacity: a }); return { o, size }; };
-    BG.o1 = mk(ST.theme.accent, 0.34, Math.max(W, H) * 0.75);
-    BG.o2 = mk(ST.theme.accent2, 0.10, Math.max(W, H) * 0.6);
-    BG.o3 = mk('#4dc3ff', 0.10, Math.max(W, H) * 0.55);
+    BG.o1 = mk(ST.theme.accent, term ? 0.16 : 0.34, Math.max(W, H) * 0.75);
+    BG.o2 = mk(ST.theme.accent2, term ? 0.05 : 0.10, Math.max(W, H) * 0.6);
+    BG.o3 = mk(term ? ST.theme.accent : '#4dc3ff', term ? 0.06 : 0.10, Math.max(W, H) * 0.55);
+    BG.term = null;
+    if (term) { stage.classList.add('fundo-terminal'); if (!semTerminal) buildTerminal(bg, port); }
     BG.grid = el('div', '', bg); BG.grid.id = 'grid';
     BG.grain = el('div', '', bg); BG.grain.id = 'grain';
     css(BG.grain, { backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")" });
@@ -659,6 +710,7 @@
     P(BG.o2, 0.86, 0.78, 0.08, 0.1, 0.09, 0.12, 1.7);
     P(BG.o3, 0.75, 0.1, 0.1, 0.06, 0.07, 0.1, 3.1);
     BG.grid.style.transform = 'translate3d(' + (-(t * 9) % 46).toFixed(2) + 'px,' + (-(t * 5) % 46).toFixed(2) + 'px,0)';
+    updateTerminal(t);
   }
   function buildHud(stage) {
     const hud = el('div', '', stage); hud.id = 'hud';
@@ -874,7 +926,7 @@
     css(STAGE, { width: data.w + 'px', height: data.h + 'px' });
     STAGE.className = port ? 'port' : 'land';
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('60px Anton'); await document.fonts.ready;
-    buildBg(STAGE, port); updateBg(4.2);
+    buildBg(STAGE, port, true); updateBg(4.2);
     const M = 40, W = data.w, H = data.h;
     const icS = port ? 560 : Math.round(H * 0.6);
     const icX = port ? (W - icS) / 2 : W - M - icS - 30, icY = port ? 210 : (H - icS) / 2;

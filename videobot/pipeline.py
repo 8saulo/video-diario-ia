@@ -49,8 +49,10 @@ def escolher_paleta(cfg: dict, hist: list, data: dt.date) -> str:
         return "fixa"
     nomes = list(paletas)
     if pedido == "rodizio":
-        ultima = next((h.get("paleta") for h in reversed(hist) if h.get("paleta") in paletas), None)
-        nome = nomes[(nomes.index(ultima) + 1) % len(nomes)] if ultima else nomes[data.toordinal() % len(nomes)]
+        # paletas especiais (ex.: "claude", da pauta do IPO da Anthropic) ficam fora do rodízio diário
+        roda = [n for n in nomes if (paletas[n] or {}).get("rodizio", True) is not False] or nomes
+        ultima = next((h.get("paleta") for h in reversed(hist) if h.get("paleta") in roda), None)
+        nome = roda[(roda.index(ultima) + 1) % len(roda)] if ultima else roda[data.toordinal() % len(roda)]
     elif pedido in paletas:
         nome = pedido
     else:
@@ -61,6 +63,8 @@ def escolher_paleta(cfg: dict, hist: list, data: dt.date) -> str:
     v["acento2"] = p.get("acento2", v.get("acento2"))
     if p.get("acento_suave"):
         v["acento_suave"] = p["acento_suave"]
+    if p.get("tokens"):
+        v["tokens"] = dict(p["tokens"])
     log(f"paleta de cores: {nome} ({v['acento']} / {v['acento2']})")
     return nome
 
@@ -72,6 +76,12 @@ def _paleta_do_slug(cfg: dict, slug: str) -> None:
         cfg["visual"]["paleta"] = usada
 
 
+def roteiro_do_formato(achados: list[Path], formato: str) -> Path:
+    """Dia com curto e longo (pauta): o artefato do refazer traz os dois roteiros; fica com o do formato pedido."""
+    mesmo = [a for a in achados if (ler_json(a, {}) or {}).get("formato") == formato]
+    return (mesmo or achados)[0]
+
+
 def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     data_hoje = hoje()
     orig = None
@@ -81,7 +91,7 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
             achados = sorted(orig.rglob("roteiro.json"))
             if not achados:
                 falhar(f"Refazer: não achei roteiro.json em {orig}.")
-            orig = achados[0].parent
+            orig = roteiro_do_formato(achados, cfg.get("formato", "")).parent
         try:
             data_hoje = dt.date.fromisoformat(orig.name[:10])  # mesma data = mesma tag de Release
         except ValueError:

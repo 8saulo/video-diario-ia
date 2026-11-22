@@ -66,6 +66,11 @@ def main(argv=None):
 
     from pathlib import Path
     cfg = carregar_config(Path(a.config) if a.config else None)
+    if a.modo == "completo" and not a.tema.strip() and not a.refazer.strip():
+        from . import pauta
+        p = pauta.aplicar(cfg, pauta.hoje_brasilia())  # tema marcado para hoje em config.yml → pautas
+        if p:
+            print(f"pauta do dia: {p['tema']} ({', '.join(p.get('formatos') or [])})", flush=True)
     if a.tema.strip():
         cfg["tema"]["tema_fixo"] = a.tema.strip()
     if a.formato:
