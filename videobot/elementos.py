@@ -396,8 +396,10 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])]
     por_id = arte if arte is not None else dirigir(roteiro, cfg)
     if por_id is None:
-        nota("Quadro: sem direção de arte; cenas com o visual antigo.")
-        return []
+        # run #49 (IPO da Anthropic): a direção de arte caiu por cota e o vídeo saiu sem nenhum logo, nem em 3D.
+        # As marcas DITAS na fala (Anthropic, Claude...) são achadas em código; só pessoas e carimbos dependem da IA.
+        nota("Quadro: sem direção de arte; logos das marcas citadas saem pelo texto da fala (sem pessoas nem carimbos).")
+        por_id = {}
     dest = pasta / "quadro"
     logo("__carregar_lista__", dest)  # carrega o acervo (para apelidos e marcas escritas na fala)
     pessoas_cache, logos_cache, creditos, barrados = {}, {}, [], []
@@ -513,10 +515,12 @@ def preparar_3d(cenas: list[dict], logos_svg: dict[str, dict]) -> None:
             continue
         texto = _texto_cena(sc)
         extra = None
-        for nome, lg in logos_svg.items():
-            if citado(nome, texto, _apelidos(nome) + APELIDOS_EXTRA.get(_norm(nome), [])):
-                extra = {"svg": lg["texto"], "cor": lg["cor"]}
-                break
+        exatos = [n for n in logos_svg if citado(n, texto, [])]
+        por_apelido = [n for n in logos_svg if citado(n, texto, _apelidos(n) + APELIDOS_EXTRA.get(_norm(n), []))]
+        for nome in exatos + por_apelido:  # "Claude" dito na cena -> logo da Claude (não a da Anthropic pelo apelido)
+            lg = logos_svg[nome]
+            extra = {"svg": lg["texto"], "cor": lg["cor"]}
+            break
         if not extra:
             alvo = _numero_da_cena(prm) or _palavra_da_cena(prm)
             svg = svg_de_texto(alvo) if alvo else None

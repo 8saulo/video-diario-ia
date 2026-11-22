@@ -242,6 +242,8 @@
                                                    bevelSegments: 3, curveSegments: 10 });
     geo.center();
     const cor = new THREE.Color(ctx.cor || ACC);
+    // logo escura (ex.: Anthropic #191919) sumiria no fundo escuro/terminal: vira creme claro, como a marca usa no escuro
+    if (0.2126 * cor.r + 0.7152 * cor.g + 0.0722 * cor.b < 0.18) cor.set(0xf0eee6);
     const frente = std(cor, { metalness: 0.55, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, emissive: cor, emissiveIntensity: 0.12 });
     const lado = std(cor.clone().multiplyScalar(0.55), { metalness: 0.85, roughness: 0.3 });
     const m = new THREE.Mesh(geo, [frente, lado]);
@@ -309,13 +311,85 @@
     return { g, upd(t) { g.rotation.y = -0.45 + 0.3 * Math.sin(t * 0.4); } };
   };
 
-  KIT.moedas = (ctx) => {
+  // dinheiro: 3 variações de moedas (escolhidas pela semente da cena) + cédulas + cofre, para não repetir a mesma pilha
+  function faceMoeda() {
+    return canvasTex(256, 256, (c, w, h) => {
+      c.fillStyle = '#f2c14e'; c.fillRect(0, 0, w, h);
+      c.strokeStyle = '#b8862a'; c.lineWidth = 14; c.beginPath(); c.arc(w / 2, h / 2, w / 2 - 18, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#9a6d1c'; c.font = 'bold 150px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('$', w / 2, h / 2 + 6);
+    });
+  }
+  function moedasPilhas(ctx) {
     const g = new THREE.Group(), geo = new THREE.CylinderGeometry(0.7, 0.7, 0.14, 32), q = new THREE.Object3D();
     const alturas = [5, 9, 7], total = alturas.reduce((a, b) => a + b, 0), pilhas = new THREE.InstancedMesh(geo, M.ouro, total);
     let k = 0; alturas.forEach((n, p) => { for (let i = 0; i < n; i++) { q.position.set((p - 1) * 1.7 + (ctx.rnd() - 0.5) * 0.06, 0.07 + i * 0.15, (ctx.rnd() - 0.5) * 0.06); q.updateMatrix(); pilhas.setMatrixAt(k++, q.matrix); } });
     g.add(pilhas);
     const caindo = []; for (let i = 0; i < 3; i++) { const m = mesh(geo, M.ouro); m.scale.setScalar(0.75); g.add(m); caindo.push({ m, x: (i - 1) * 1.7, topo: 0.2 + alturas[i] * 0.15, f: i / 3, r: ctx.rnd() * 6 }); }
     return { g, upd(t) { caindo.forEach(o => { const u = (t * 0.5 + o.f) % 1; o.m.position.set(o.x, o.topo + 1.5 * (1 - u), 0); o.m.rotation.set(t * 3 + o.r, 0, t * 2 + o.r); o.m.visible = u < 0.97; }); g.rotation.y = 0.3 * Math.sin(t * 0.35); } };
+  }
+  function moedaGigante(ctx) {
+    // uma moeda grande de pé, girando devagar, com o cifrão em relevo e um brilho passando
+    const g = new THREE.Group(), moeda = new THREE.Group(); g.add(moeda);
+    const face = std(0xffffff, { map: faceMoeda(), metalness: 0.55, roughness: 0.28, emissive: 0x3a2a05, emissiveIntensity: 0.5 });
+    const corpo = mesh(new THREE.CylinderGeometry(2, 2, 0.36, 64), [M.ouro, face, face]); corpo.rotation.x = Math.PI / 2; moeda.add(corpo);
+    const aro = mesh(new THREE.TorusGeometry(2, 0.1, 12, 64), M.ouro); moeda.add(aro);
+    moeda.position.y = 2.3;
+    const brilho = glow(ACC2, 2.4, 0.5); brilho.position.set(0, 2.3, 0.4); g.add(brilho);
+    const f = ctx.rnd() * 6;
+    return { g, upd(t) { moeda.rotation.y = f + t * 0.9; moeda.position.y = 2.3 + 0.1 * Math.sin(t * 1.4); brilho.position.x = 1.6 * Math.sin(t * 1.1); } };
+  }
+  function moedasTorres(ctx) {
+    // torres de moedas crescendo em degraus (como um gráfico feito de moedas)
+    const g = new THREE.Group(), geo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 28), q = new THREE.Object3D();
+    const alturas = [3, 6, 10, 15], total = alturas.reduce((a, b) => a + b, 0), inst = new THREE.InstancedMesh(geo, M.ouro, total);
+    const pos = []; alturas.forEach((n, p) => { for (let i = 0; i < n; i++) pos.push({ x: (p - 1.5) * 1.35 + (ctx.rnd() - 0.5) * 0.05, y: 0.06 + i * 0.13, z: (ctx.rnd() - 0.5) * 0.05, i, p }); });
+    // posição final já na montagem: o enquadramento (caixa) é medido antes da animação começar
+    pos.forEach((o, k) => { q.position.set(o.x, o.y, o.z); q.updateMatrix(); inst.setMatrixAt(k, q.matrix); });
+    g.add(inst);
+    return { g, upd(t, lt) {
+      pos.forEach((o, k) => { const u = ease((lt - o.p * 0.25 - o.i * 0.03) / 0.35); q.position.set(o.x, o.y + (1 - u) * 1.2, o.z); q.scale.setScalar(u < 0.02 ? 0.001 : 1); q.updateMatrix(); inst.setMatrixAt(k, q.matrix); });
+      inst.instanceMatrix.needsUpdate = true; g.rotation.y = -0.3 + 0.15 * Math.sin(t * 0.4);
+    } };
+  }
+  KIT.moedas = (ctx) => [moedasPilhas, moedaGigante, moedasTorres][Math.floor(ctx.rnd() * 3) % 3](ctx);
+
+  KIT.cedulas = (ctx) => {
+    // maço de notas com cinta + notas soltas flutuando
+    const g = new THREE.Group();
+    const nota = canvasTex(256, 120, (c, w, h) => {
+      c.fillStyle = '#5f8f62'; c.fillRect(0, 0, w, h); c.strokeStyle = '#2f5a35'; c.lineWidth = 6; c.strokeRect(8, 8, w - 16, h - 16);
+      c.fillStyle = '#d9e8c9'; c.beginPath(); c.arc(w / 2, h / 2, 34, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#2f5a35'; c.font = 'bold 54px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('$', w / 2, h / 2 + 2);
+    });
+    const mat = std(0xffffff, { map: nota, roughness: 0.75, metalness: 0 });
+    const lado = std(0xcfdcc4, { roughness: 0.8, metalness: 0 });
+    const maco = mesh(new THREE.BoxGeometry(3.4, 0.9, 1.6), [lado, lado, mat, lado, lado, lado], 0, 0.45, 0); g.add(maco);
+    g.add(mesh(RB(0.5, 0.94, 1.64, 0.04), M.acc, 0, 0.45, 0));
+    const soltas = [];
+    for (let i = 0; i < 4; i++) { const m = mesh(new THREE.PlaneGeometry(1.7, 0.8), new THREE.MeshPhysicalMaterial({ map: nota, side: THREE.DoubleSide, roughness: 0.7 })); m.userData.nofit = true; g.add(m); soltas.push({ m, f: ctx.rnd() * 6, x: (ctx.rnd() - 0.5) * 2.6, z: (ctx.rnd() - 0.5) * 1.4 }); }
+    return { g, upd(t) {
+      soltas.forEach((o, i) => { const u = (t * 0.22 + i / 4) % 1; o.m.position.set(o.x + 0.3 * Math.sin(t + o.f), 1.1 + u * 1.9, o.z); o.m.rotation.set(0.6 * Math.sin(t * 1.3 + o.f), t * 0.8 + o.f, 0.4 * Math.cos(t + o.f)); o.m.material.opacity = 1; o.m.visible = u < 0.95; });
+      g.rotation.y = -0.4 + 0.25 * Math.sin(t * 0.35);
+    } };
+  };
+
+  KIT.cofre = (ctx) => {
+    // cofre com porta abrindo e moedas aparecendo dentro
+    const g = new THREE.Group();
+    // corpo com vão na frente (moldura + fundo escuro), para as moedas aparecerem quando a porta abre
+    g.add(mesh(RB(3.2, 3.2, 2.2, 0.22), M.escuro, 0, 1.6, -0.2));
+    [[0, 3.05, 3.2, 0.3], [0, 0.15, 3.2, 0.3]].forEach(([x, y, w, h]) => g.add(mesh(RB(w, h, 0.45, 0.06), M.escuro, x, y, 1.1)));
+    [[-1.45, 1.6], [1.45, 1.6]].forEach(([x, y]) => g.add(mesh(RB(0.3, 3.2, 0.45, 0.06), M.escuro, x, y, 1.1)));
+    g.add(mesh(new THREE.PlaneGeometry(2.6, 2.6), bas(0x0b0b0c), 0, 1.6, 0.91));
+    const porta = new THREE.Group(); porta.position.set(-1.35, 1.6, 1.32); g.add(porta);
+    porta.add(mesh(RB(2.7, 2.7, 0.22, 0.12), M.metal, 1.35, 0, 0));
+    const roda = mesh(new THREE.TorusGeometry(0.55, 0.08, 10, 32), M.acc, 1.35, 0, 0.16); porta.add(roda);
+    for (let i = 0; i < 3; i++) { const r = mesh(RB(1.1, 0.08, 0.08), M.acc, 1.35, 0, 0.16); r.rotation.z = i * Math.PI / 3; porta.add(r); }
+    const dentro = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.32, 0.32, 0.1, 20), M.ouro, 18), q = new THREE.Object3D();
+    for (let i = 0; i < 18; i++) { q.position.set(-0.8 + (i % 6) * 0.32, 0.42 + Math.floor(i / 6) * 0.11, 1.05 + (ctx.rnd() - 0.5) * 0.1); q.updateMatrix(); dentro.setMatrixAt(i, q.matrix); }
+    g.add(dentro);
+    const luz = glow(ACC2, 2.6, 0.0); luz.position.set(0, 1.2, 1.1); g.add(luz);
+    return { g, size: 3.3, upd(t, lt) { const u = ease((lt - 0.4) / 1.4); porta.rotation.y = -1.9 * u; roda.rotation.z = -lt * 2; luz.material.opacity = 0.55 * u; g.rotation.y = 0.35 + 0.15 * Math.sin(t * 0.4); } };
   };
 
   function grafico(ctx, alta) {

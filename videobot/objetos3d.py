@@ -25,7 +25,9 @@ CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
     "nuvem": ("nuvem de computação", ("nuvem", "cloud", "aws", "azure", "online", "software")),
     "celular": ("smartphone com tela acesa", ("celular", "smartphone", "iphone", "android", "app", "aplicativo", "telefone")),
     "notebook": ("notebook aberto", ("notebook", "laptop", "computador", "pc", "programador", "codigo", "programacao")),
-    "moedas": ("pilha de moedas caindo", ("dinheiro", "us$", "r$", "dolar", "dolares", "reais", "euro", "receita", "lucro", "custo", "preco", "investimento", "investir", "investidor", "faturamento", "salario")),
+    "moedas": ("moedas (pilhas, moeda gigante girando ou torres crescendo)", ("dinheiro", "us$", "r$", "dolar", "dolares", "reais", "euro", "receita", "lucro", "custo", "preco", "investimento", "investir", "investidor", "faturamento", "salario")),
+    "cedulas": ("maço de cédulas com notas voando", ("dinheiro", "nota", "notas", "cedula", "dolar", "dolares", "reais", "pagamento", "pagar", "pago", "salario", "gasto", "gastar", "bilhoes", "milhoes", "caixa")),
+    "cofre": ("cofre abrindo com moedas dentro", ("cofre", "reserva", "reservas", "caixa", "poupanca", "patrimonio", "fundo", "capital", "levantou", "levantar", "captou", "captar", "captacao", "rodada", "aporte", "arrecad", "serie")),
     "grafico_alta": ("gráfico de barras subindo com seta", ("cresce", "crescimento", "alta", "subiu", "aumento", "dobrou", "recorde", "valoriza", "avaliacao", "ipo", "acoes", "mercado")),
     "grafico_queda": ("gráfico de barras caindo com seta", ("queda", "caiu", "cairam", "caem", "cair", "prejuizo", "perda", "despenca", "crise", "bolha", "recua", "deficit", "reduz", "encolhe")),
     "cidade": ("cidade/arranha-céus à noite", ("cidade", "predio", "urbano", "empresa", "empresas", "big tech", "sede", "metropole")),
@@ -49,6 +51,27 @@ CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 CAMERAS = ("orbita", "aproxima", "sobe", "lateral")
+
+# Objetos "parentes": quando um já apareceu demais no vídeo, o parente entra no lugar (mesma ideia, outro visual)
+FAMILIAS = [("moedas", "cedulas", "cofre"), ("grafico_alta", "moedas"), ("servidor", "datacenter", "chip"),
+            ("rede_neural", "chip", "nuvem"), ("documento", "lupa"), ("pessoas", "cidade")]
+LIMITE_PRINCIPAL = 2   # o mesmo objeto principal aparece no máximo 2 vezes por vídeo (run #49: 4 pilhas de moedas)
+
+
+def diversificar(objs: list, usos: dict, limite: int = LIMITE_PRINCIPAL) -> list:
+    """Troca o objeto principal que já estourou o limite: primeiro por outro objeto da própria cena, depois por um
+    parente da família (moedas -> cédulas/cofre). Se nada servir, a cena fica sem 3D em vez de repetir de novo."""
+    if not objs or not isinstance(objs[0], str) or usos.get(objs[0], 0) < limite:
+        return objs
+    outros = [o for o in objs[1:] if isinstance(o, str) and usos.get(o, 0) < limite]
+    if outros:
+        return [outros[0]] + [o for o in objs if o != outros[0]]
+    for fam in FAMILIAS:
+        if objs[0] in fam:
+            livres = sorted((o for o in fam if o != objs[0] and usos.get(o, 0) < limite), key=lambda o: usos.get(o, 0))
+            if livres:
+                return [livres[0]] + objs[1:]
+    return []
 
 
 def prompt_catalogo() -> str:
@@ -137,7 +160,7 @@ def para_cenas(roteiro: dict) -> None:
     """Grava em cada cena params._3d = {objetos, camera} (usado pelo engine/tema3d.js).
     Usa a revisão dedicada quando existe; senão, só objetos cujas palavras aparecem na própria cena."""
     tema = roteiro.get("tema", "")
-    anterior, i = "", 0
+    anterior, i, usos = "", 0, {}
     for ch in roteiro.get("chapters", []):
         for sc in ch.get("scenes", []):
             prm = sc.get("params") or {}
@@ -151,6 +174,9 @@ def para_cenas(roteiro: dict) -> None:
                 objs = []
             else:
                 objs = escolher(sc, tema, anterior)
+            objs = diversificar(objs, usos)
+            if objs and isinstance(objs[0], str):
+                usos[objs[0]] = usos.get(objs[0], 0) + 1
             cam = sc.get("camera3d") if sc.get("camera3d") in CAMERAS else CAMERAS[i % len(CAMERAS)]
             sc.setdefault("params", {})["_3d"] = {"objetos": objs, "camera": cam}
             anterior, i = (objs[0] if objs and isinstance(objs[0], str) else ""), i + 1

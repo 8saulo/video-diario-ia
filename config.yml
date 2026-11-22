@@ -61,17 +61,21 @@ idioma: pt-BR
 narracao:
   provedor: auto                    # auto = Google AI Studio (Gemini TTS) e, só se falhar, edge-tts | gemini | edge
   gemini_voz: Charon                # Charon (masculina), Kore (feminina), Puck, Fenrir, Aoede, Orus...
-  direcao: >-                       # como o Gemini deve interpretar (vazio = leitura neutra); a emoção de cada cena vem do roteiro
-    Narre como um apresentador brasileiro de vídeos curtos de tecnologia: energia alta, sorriso na voz,
-    ritmo ágil, entonação que sobe e desce, ênfase forte nos números e nas palavras de impacto,
-    pausas curtas antes das revelações, tom de conversa com o espectador.
+  # voz padrão de TODOS os vídeos (aprovada no capítulo 2 do longo do IPO da Anthropic, 22/11); a emoção de cada cena
+  # vem da tag do roteiro (script.EMOCOES_PADRAO, conferida em código por emocoes_coerentes)
+  direcao: >-
+    Narre como um apresentador brasileiro de telejornal de economia e tecnologia contando uma boa história: voz grave,
+    segura e calorosa; interesse genuíno pelo assunto; entonação expressiva e humana, com subidas e descidas naturais
+    (curiosidade nas perguntas, peso nos números, leve sorriso nas viradas positivas, gravidade nos riscos); ritmo que
+    varia com a ideia, com pausas curtas para o espectador absorver. Expressivo, mas sem exagero: nada teatral,
+    eufórico ou de locutor de propaganda; nunca robótico nem monótono.
   gemini_modelos_preferidos:        # ordem de tentativa; o script também descobre os modelos TTS da sua chave
     - flash-preview-tts
     - flash-tts
     - pro-preview-tts
     - tts
   edge_voz: pt-BR-AntonioNeural     # alternativa: pt-BR-FranciscaNeural
-  edge_velocidade: "+10%"
+  edge_velocidade: "+0%"            # mesmo ritmo do Gemini (voz padrão)
   pronuncia:                        # só muda o que a voz fala; a legenda mantém o termo original
     GPON: Gêpon
     ONU: Ó-Ene-U                    # letra por letra

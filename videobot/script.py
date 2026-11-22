@@ -28,6 +28,25 @@ ICONE ∈ ia, chip, robot, rocket, satellite, globe, money, coin, bolt, warning,
 user, users, building, gov, lock, sun, fire, thermo, snow, cloud, code, phone, laptop, search, doc, scale, target, play, battery, leaf, heart,
 eye, signal, chat, water, car, game, music, shield, question, bubble, factory"""
 
+# Voz padrão de todos os vídeos (aprovada no capítulo 2 do longo do IPO da Anthropic, 22/11): apresentador expressivo,
+# com emoção contida e real. As tags de emoção de cada cena saem deste vocabulário e passam por emocoes_coerentes().
+EMOCOES_LISTA = ("curioso, intrigante", "didático, acolhedor", "interessado, explicativo", "firme, analítico",
+                 "enfático no número", "surpresa contida", "otimista, caloroso", "grave, cauteloso", "reflexivo",
+                 "cordial e direto")
+EMOCOES_PADRAO = """DIREÇÃO DE VOZ (campo "emocao" em cada cena, use EXATAMENTE uma destas tags): apresentador expressivo, com emoção
+contida e real; a tag precisa combinar com o que a frase diz e VARIAR de cena para cena (nunca a mesma em mais de 2 cenas seguidas):
+- "curioso, intrigante": gancho e perguntas ao espectador;
+- "didático, acolhedor": quando explica um conceito ou termo;
+- "interessado, explicativo": contexto e desenvolvimento da história;
+- "firme, analítico": argumentos, comparações e consequências;
+- "enfático no número": a cena do dado mais importante (no máximo 1 a cada 4 cenas);
+- "surpresa contida": a virada, o detalhe inesperado;
+- "otimista, caloroso": conquista ou boa notícia;
+- "grave, cauteloso": riscos, perdas, críticas, problemas;
+- "reflexivo": conclusão e o que observar daqui para a frente;
+- "cordial e direto": pedidos de comentário/inscrição (CTA).
+Nunca eufórico, teatral, irônico, urgente ou gritando."""
+
 # Estilo do roteiro (config: roteiro.estilo). "viral" é o de sempre; "educativo" é o de apresentador de jornal
 # financeiro/tecnológico: explica, contextualiza e conta a história com calma (pauta do IPO da Anthropic, 22/11).
 ESTILOS = {
@@ -44,9 +63,7 @@ ESTILOS = {
   ritmo de corte rápido, contraste e surpresa ("parece muito? espera."), perguntas retóricas, uma revelação por cena,
   verbos fortes, nada de linguagem de relatório. Tom curioso, empolgado e levemente irônico. Use "!" e "?" para guiar a entonação
   e reticências ("...") para uma pausa dramática antes de um número ou revelação (no máximo 1 por cena).""",
-        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras, para o narrador): escolha a emoção que a frase pede e VARIE entre cenas.
-Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme", "irônico, sorrindo", "urgente, acelerando",
-"surpreso", "caloroso, convidativo" (bom para o CTA). O gancho é sempre de alta energia.""",
+        "emocoes": EMOCOES_PADRAO,
         "critico": "editor-chefe de vídeos curtos virais",
     },
     "educativo": {
@@ -66,14 +83,65 @@ Exemplos: "empolgado, com espanto", "intrigado, baixando o tom", "sério e firme
   com o espectador ("você") com respeito. Frases curtas e completas (até 16 palavras), vocabulário preciso, sem gírias, sem ironia,
   sem exageros ("chocante", "inacreditável", "absurdo" estão proibidos). Pontuação sóbria: "?" só em perguntas reais, no máximo um
   "!" no vídeo todo, reticências só se a pausa for necessária (no máximo 2 no vídeo).""",
-        "emocoes": """DIREÇÃO DE VOZ (campo "emocao" em cada cena, 2 a 5 palavras): apresentador expressivo, com emoção contida e real;
-VARIE de cena para cena conforme o conteúdo (nunca a mesma emoção em mais de 2 cenas seguidas). Use: "curioso, intrigante" (gancho
-e perguntas), "didático, acolhedor", "interessado, explicativo", "firme, analítico", "enfático no número" (o dado mais importante),
-"surpresa contida" (a virada), "otimista, caloroso" (boa notícia), "grave, cauteloso" (riscos), "reflexivo" (conclusão),
-"cordial e direto" (CTA). Nunca eufórico, teatral, irônico ou urgente.""",
+        "emocoes": EMOCOES_PADRAO,
         "critico": "editor-chefe de um telejornal de economia e tecnologia",
     },
 }
+
+
+_NEGATIVO = re.compile(r"(?<!\w)(risco|riscos|perda|perdas|prejuízo|preju[ií]zos?|queda|caiu|caíram|crise|bolha|demiss|ameaça|multa|"
+                       r"processo|processad|crítica|críticas|problema|problemas|falha|falhou|déficit|dívida|incerte|alerta|cuidado)", re.I)
+_POSITIVO = {"otimista, caloroso", "surpresa contida", "enfático no número"}
+_SINONIMOS_EMO = {"empolg": "interessado, explicativo", "animad": "interessado, explicativo", "irôn": "firme, analítico",
+                  "ironi": "firme, analítico", "urgent": "firme, analítico", "acelerand": "firme, analítico",
+                  "espant": "surpresa contida", "surpres": "surpresa contida", "intrig": "curioso, intrigante",
+                  "curios": "curioso, intrigante", "sério": "firme, analítico", "seri": "firme, analítico", "neutr": "interessado, explicativo",
+                  "didát": "didático, acolhedor", "pausad": "didático, acolhedor", "caloros": "otimista, caloroso", "otimis": "otimista, caloroso",
+                  "convida": "cordial e direto", "cordial": "cordial e direto", "reflex": "reflexivo", "grave": "grave, cauteloso",
+                  "cautel": "grave, cauteloso", "preocup": "grave, cauteloso", "enfát": "enfático no número", "analít": "firme, analítico",
+                  "firme": "firme, analítico", "explica": "interessado, explicativo"}
+_ROTACAO = ("interessado, explicativo", "firme, analítico", "didático, acolhedor")
+
+
+def _emocao_da_lista(e: str) -> str:
+    e = str(e or "").strip().lower()
+    for x in EMOCOES_LISTA:
+        if e == x:
+            return x
+    for k, v in _SINONIMOS_EMO.items():
+        if k in e:
+            return v
+    return ""
+
+
+def emocoes_coerentes(r: dict) -> int:
+    """Põe a tag de emoção de cada cena no momento certo do roteiro (em código; o modelo erra). Devolve quantas mudou.
+    - só tags do vocabulário padrão (sinônimos viram a tag mais próxima; "empolgado"/"irônico" nunca passam);
+    - CTA = "cordial e direto"; pergunta sem tag = "curioso, intrigante";
+    - fala de risco/perda/crise com tag positiva = "grave, cauteloso";
+    - "enfático no número" sem número na tela vira "firme, analítico";
+    - nunca 3 cenas seguidas com a mesma tag."""
+    cenas = [sc for ch in (r.get("chapters") or []) for sc in (ch.get("scenes") or []) if isinstance(sc, dict)]
+    mudou, seguidas = 0, []
+    for sc in cenas:
+        antes = sc.get("emocao")
+        tx = str(sc.get("text") or "")
+        e = _emocao_da_lista(antes)
+        if sc.get("template") == "cta":
+            e = "cordial e direto"
+        elif not e:
+            e = "curioso, intrigante" if tx.rstrip().endswith("?") else "interessado, explicativo"
+        if e in _POSITIVO and _NEGATIVO.search(tx):
+            e = "grave, cauteloso"
+        if e == "enfático no número" and sc.get("template") not in ("bignumber", "kpis", "bars", "gauge", "compare"):
+            e = "firme, analítico"
+        if len(seguidas) >= 2 and seguidas[-1] == seguidas[-2] == e and sc.get("template") != "cta":
+            e = next(x for x in _ROTACAO if x != e)
+        seguidas.append(e)
+        if e != antes:
+            sc["emocao"] = e
+            mudou += 1
+    return mudou
 
 
 def nome_estilo(cfg: dict) -> str:
@@ -391,6 +459,9 @@ def escrever(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
                     vistos.add(f["fonte"]); partes.append(f"{f['fonte']}, {f.get('data', '')}".strip(", "))
             sc["source"] = "; ".join(partes[:2])
             sc["id"] = slugify(sc.get("id", "c"), 30)
+    n_emo = emocoes_coerentes(r)
+    if n_emo:
+        log(f"roteiro: {n_emo} tag(s) de emoção ajustada(s) ao conteúdo da cena")
     r["formato"] = cfg["formato"]
     r["tema"] = r.get("tema") or fatos["tema"]
     r["slug"] = slugify(r["tema"])

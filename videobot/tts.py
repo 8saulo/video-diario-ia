@@ -254,9 +254,11 @@ def buracos_de_fala(wav: Path, max_pausa: float = 2.5) -> list[tuple[float, floa
     return out
 
 
-DIRECAO_PADRAO = ("Narre como um apresentador brasileiro de vídeos curtos de tecnologia: energia alta, sorriso na voz, "
-                  "ritmo ágil, entonação que sobe e desce, ênfase forte nos números e nas palavras de impacto, "
-                  "pausas curtas antes das revelações, tom de conversa com o espectador.")
+DIRECAO_PADRAO = ("Narre como um apresentador brasileiro de telejornal de economia e tecnologia contando uma boa história: voz grave, "
+                  "segura e calorosa; interesse genuíno pelo assunto; entonação expressiva e humana, com subidas e descidas naturais "
+                  "(curiosidade nas perguntas, peso nos números, leve sorriso nas viradas positivas, gravidade nos riscos); ritmo que "
+                  "varia com a ideia, com pausas curtas para o espectador absorver. Expressivo, mas sem exagero: nada teatral, "
+                  "eufórico ou de locutor de propaganda; nunca robótico nem monótono.")
 
 
 def dirigido(tr: list[dict], pron: dict | None, direcao: str) -> str:

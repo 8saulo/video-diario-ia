@@ -268,4 +268,4 @@ def test_voz_do_ipo_expressiva_sem_exagero():
     assert "expressiv" in d and "sem exagero" in d and "eufórico" in d
     assert "sem empolgação, sem sorriso" not in d
     em = ESTILOS["educativo"]["emocoes"]
-    assert "VARIE" in em and "curioso" in em and "surpresa contida" in em and "Nunca eufórico" in em
+    assert "VARIAR" in em and "curioso" in em and "surpresa contida" in em and "Nunca eufórico" in em
