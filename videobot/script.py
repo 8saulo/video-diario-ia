@@ -5,7 +5,7 @@ import json
 import re
 
 from .facts import valores
-from .llm import gerar_json
+from .llm import gerar_json, objeto
 from .objetos3d import prompt_catalogo
 from .util import log, nota, slugify
 
@@ -225,8 +225,10 @@ def normalizar_cena(sc: dict) -> dict:
 def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
     alvos = _alvos(cfg)
     err = []
-    chs = r.get("chapters") or []
-    cenas = [sc for ch in chs for sc in ch.get("scenes", [])]
+    if not isinstance(r, dict):
+        return ['a resposta não veio como o objeto JSON pedido ({"tema": ..., "chapters": [...]}); devolva o objeto completo']
+    chs = [ch for ch in (r.get("chapters") or []) if isinstance(ch, dict)] if isinstance(r.get("chapters"), list) else []
+    cenas = [sc for ch in chs for sc in (ch.get("scenes") or []) if isinstance(sc, dict)]
     if not cenas:
         return ["roteiro sem cenas"]
     n_pal = sum(len(sc.get("text", "").split()) for sc in cenas)
@@ -325,6 +327,7 @@ def revisar_narrativa(r, erros, cand, fatos, cfg, hoje, alvos):
         nota_c, _, _ = gerar_json(_prompt_critico(r, cfg), cfg, temperatura=0.2, max_tokens=1200)
     except Exception:
         nota_c = {}
+    nota_c = objeto(nota_c)
     notas = {k: float(nota_c.get(k) or 10) for k in ("gancho", "narrativa", "fluidez")}
     problemas = [str(p) for p in (nota_c.get("problemas") or [])][:5]
     cenas = [sc for ch in r.get("chapters", []) for sc in ch.get("scenes", [])]

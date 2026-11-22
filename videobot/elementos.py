@@ -356,14 +356,14 @@ def carimbo_seguro(texto: str) -> str:
 def dirigir(roteiro: dict, cfg: dict) -> dict | None:
     """UMA chamada à IA decide, por cena: pessoas, marcas, manchete, número, carimbo, etiqueta, buscas de mídia e objetos 3D.
     Devolve {id_da_cena: {...}} ou None se falhar (aí cada etapa usa a própria chamada, como antes)."""
-    from .llm import gerar_json
+    from .llm import gerar_json, lista_de, objeto
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])]
     try:
         arte, _, _ = gerar_json(_prompt_arte(roteiro), cfg, temperatura=0.4, max_tokens=5000)
     except Exception as e:
         nota(f"Direção de arte falhou ({str(e)[:90]}); cada etapa visual decide sozinha.")
         return None
-    lst = [c for c in (arte.get("cenas") or []) if isinstance(c, dict)]
+    lst = lista_de(arte, "cenas")
     por_id = {str(c.get("id")): c for c in lst}
     if not any(sc["id"] in por_id for sc in cenas) and len(lst) == len(cenas):
         por_id = {sc["id"]: c for sc, c in zip(cenas, lst)}  # o modelo devolveu "0", "1"...: casa pela ordem

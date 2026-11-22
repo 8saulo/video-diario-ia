@@ -402,6 +402,21 @@ def _cache_arq(prompt: str, sistema: str, temperatura: float):
     return RAIZ / "saida" / "_cache_llm" / f"{h}.json"
 
 
+def objeto(x) -> dict:
+    """Resposta que deveria ser um objeto JSON: lista com um objeto vira ele; qualquer outra coisa vira {}."""
+    if isinstance(x, dict):
+        return x
+    if isinstance(x, list) and len(x) == 1 and isinstance(x[0], dict):
+        return x[0]
+    return {}
+
+
+def lista_de(x, chave: str) -> list:
+    """Itens de x[chave] (objetos); aceita também a lista solta que alguns modelos devolvem no lugar do objeto."""
+    v = x.get(chave) if isinstance(x, dict) else x
+    return [c for c in v if isinstance(c, dict)] if isinstance(v, list) else []
+
+
 def gerar_json(prompt: str, cfg: dict, temperatura: float = 0.5, sistema: str = "", max_tokens: int | None = None):
     """Devolve (objeto, {}, "provedor/modelo"). O {} mantém a assinatura antiga (metadados de busca).
     Respostas válidas ficam em cache por llm.cache_dias (o mesmo pedido, ex. ao refazer um vídeo, não gasta cota)."""

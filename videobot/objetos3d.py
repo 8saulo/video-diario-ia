@@ -113,7 +113,7 @@ Responda SOMENTE com JSON: {{"cenas": [{{"id": "...", "objetos": ["id do catálo
 def revisar(roteiro: dict, cfg: dict, todas: bool = False) -> int:
     """Revisão dedicada (uma chamada à IA): objetos ligados à fala de cada cena, ou nenhum.
     Cenas com foto/vídeo ficam de fora (a mídia cobre o 3D). Devolve quantas cenas foram revisadas."""
-    from .llm import gerar_json
+    from .llm import gerar_json, lista_de, objeto
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])
              if todas or not ((sc.get("params") or {}).get("_photo") or (sc.get("params") or {}).get("_video") or (sc.get("params") or {}).get("_quadro"))]
     if not cenas:
@@ -122,7 +122,7 @@ def revisar(roteiro: dict, cfg: dict, todas: bool = False) -> int:
         r, _, _ = gerar_json(_prompt_revisao(cenas), cfg, temperatura=0.1, max_tokens=2500)
     except Exception:
         return 0
-    por_id = {str(c.get("id")): c for c in (r.get("cenas") or []) if isinstance(c, dict)}
+    por_id = {str(c.get("id")): c for c in lista_de(r, "cenas")}
     n = 0
     for sc in cenas:
         c = por_id.get(sc["id"])

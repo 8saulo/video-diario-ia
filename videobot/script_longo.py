@@ -242,10 +242,27 @@ def embalar(r: dict, fatos: dict, cfg: dict) -> dict:
     return r
 
 
+def _cenas_de(r) -> list[dict]:
+    """Cenas válidas de uma resposta de capítulo, aceitando as variações dos modelos:
+    {"scenes": [...]}, {"cenas": [...]}, a lista de cenas solta, ou {"chapters": [{"scenes": [...]}]}.
+    (O longo de 22/11 caiu com a lista solta na correção do capítulo 7.)"""
+    if isinstance(r, dict):
+        bruto = r.get("scenes") or r.get("cenas")
+        if not bruto and isinstance(r.get("chapters"), list):
+            bruto = [sc for ch in r["chapters"] if isinstance(ch, dict) for sc in (ch.get("scenes") or [])]
+    else:
+        bruto = r
+    if not isinstance(bruto, list):
+        return []
+    return [sc for sc in bruto if isinstance(sc, dict) and sc.get("text")]
+
+
 def escrever_longo(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     from .script import _alvos, _sanear, validar
     alvos = _alvos(cfg)
     est, _, modelo = gerar_json(prompt_estrutura(cand, fatos, cfg, hoje, alvos), cfg, temperatura=0.7, max_tokens=6000)
+    if isinstance(est, list):  # estrutura veio como a lista de capítulos solta
+        est = {"capitulos": est}
     caps = [c for c in (est.get("capitulos") or []) if isinstance(c, dict) and c.get("title")]
     if len(caps) < alvos["caps"][0]:
         raise RuntimeError(f"a estrutura veio com {len(caps)} capítulos (mínimo {alvos['caps'][0]})")
@@ -259,13 +276,13 @@ def escrever_longo(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     chapters, anterior = [], ""
     for i, ch in enumerate(caps):
         r, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior), cfg, temperatura=0.75, max_tokens=7000)
-        cenas = [sc for sc in (r.get("scenes") or []) if isinstance(sc, dict) and sc.get("text")]
+        cenas = _cenas_de(r)
         erros = _erros_capitulo(cenas, fatos, cfg, hoje, orc[i])
         if erros:
             log(f"  capítulo {i + 1}: {len(erros)} problema(s); pedindo correção")
             r2, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior, erros, cenas), cfg,
                                   temperatura=0.4, max_tokens=7000)
-            c2 = [sc for sc in (r2.get("scenes") or []) if isinstance(sc, dict) and sc.get("text")]
+            c2 = _cenas_de(r2)
             e2 = _erros_capitulo(c2, fatos, cfg, hoje, orc[i])
             if c2 and len(e2) <= len(erros):
                 cenas, erros = c2, e2

@@ -401,7 +401,7 @@ def escolher_lote(cenas: list[dict], por_cena: dict, cfg: dict) -> dict:
 
 def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
     """Escolhe olhando as imagens (modelo de visão); sem visão disponível, decide pelo título/descrição."""
-    from .llm import gerar_json, gerar_visao_json
+    from .llm import gerar_json, gerar_visao_json, lista_de, objeto
     vis, imgs = [], []
     if (cfg.get("midia") or {}).get("visao", True):
         for c in cands:  # miniaturas baixadas aqui e enviadas embutidas (o provedor nem sempre consegue baixar da Wikimedia)
@@ -415,7 +415,7 @@ def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
         for tentativa in range(2):
             try:
                 esc, modelo = gerar_visao_json(_prompt_visao(sc, vis), [mosaico(imgs)], cfg)
-                k = int(esc.get("escolha", -1))
+                k = int(objeto(esc).get("escolha", -1))
                 log(f"  mídia [{sc['id']}]: visão ({modelo.split('/')[-1]}) -> {k} ({str(esc.get('motivo', ''))[:70]})")
                 return cands.index(vis[k]) if 0 <= k < len(vis) else -1
             except Exception as e:
@@ -435,7 +435,7 @@ def escolher(sc: dict, cands: list[dict], cfg: dict) -> int:
             return -1
     try:
         esc, _, _ = gerar_json(_prompt_escolha(sc, cands), cfg, temperatura=0.1, max_tokens=400)
-        return int(esc.get("escolha", -1))
+        return int(objeto(esc).get("escolha", -1))
     except Exception:
         return -1
 
@@ -480,7 +480,7 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
             plano_pronto: dict | None = None) -> list[dict]:
     """Escolhe e baixa mídia para as cenas; grava params._photo / params._video / params._credit.
     Devolve a lista de créditos (para a descrição e o relatório)."""
-    from .llm import gerar_json
+    from .llm import gerar_json, lista_de, objeto
     mcfg = cfg.get("midia") or {}
     if not mcfg.get("ativo", True):
         return []
@@ -496,7 +496,7 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
         except Exception as e:
             nota(f"Mídia: a IA não montou as buscas ({str(e)[:100]}); vídeo sem fotos.")
             return []
-    lst = [c for c in (plano.get("cenas") or []) if isinstance(c, dict)]
+    lst = lista_de(plano, "cenas")
     por_id = {str(c.get("id")): c for c in lst}
     if not any(sc["id"] in por_id for sc in alvo) and len(lst) == len(alvo):
         por_id = {sc["id"]: c for sc, c in zip(alvo, lst)}  # o modelo devolveu "0", "1"... em vez dos ids: casa pela ordem
