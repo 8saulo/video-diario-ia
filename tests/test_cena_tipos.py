@@ -88,3 +88,41 @@ def test_validar_aponta_resposta_em_lista_em_vez_de_quebrar(cfg):
     c = dict(cfg, formato="curto")
     assert "objeto JSON" in validar([{"id": "a", "text": "oi"}], FATOS, c, hoje)[0]
     assert validar({"chapters": ["x", {"scenes": ["y"]}]}, FATOS, c, hoje) == ["roteiro sem cenas"]
+
+
+def test_gerar_json_repete_o_mesmo_modelo_quando_nao_sobra_outro(monkeypatch, cfg):
+    """Run 45017798029: JSON quebrado do único modelo restante derrubava o longo; agora ele tenta de novo."""
+    from videobot import llm
+    respostas = iter(['{"a" 1}', '{"a": 1}'])
+
+    def gerar_falso(prompt, cfg, evitar=None, **k):
+        if evitar:
+            raise RuntimeError("nenhum modelo de texto respondeu")
+        return next(respostas), "groq/openai/gpt-oss-20b"
+
+    monkeypatch.setattr(llm, "gerar", gerar_falso)
+    obj, _, modelo = llm.gerar_json("pedido único de teste xyz", dict(cfg, llm={"cache_dias": 0}))
+    assert obj == {"a": 1} and modelo == "groq/openai/gpt-oss-20b"
+
+
+def test_falha_na_correcao_do_capitulo_mantem_o_rascunho(monkeypatch, cfg):
+    """Se a IA não responder na correção, o capítulo fica com o rascunho em vez de derrubar o vídeo."""
+    from videobot import script_longo
+    caps = [{"title": f"Cap {i}", "resumo": "x"} for i in range(6)]
+    n = {"c": 0}
+
+    def falso(prompt, cfg, **k):
+        n["c"] += 1
+        if n["c"] == 1:
+            return {"capitulos": caps}, "", "falso"
+        if "SEU RASCUNHO TEVE ESTES PROBLEMAS" in prompt:
+            raise RuntimeError("o modelo não devolveu JSON válido")
+        return {"scenes": [{"id": f"c{n['c']}", "text": "palavra " * 10, "template": "headline", "params": {"text": "Oi"}}]}, "", "falso"
+
+    monkeypatch.setattr(script_longo, "gerar_json", falso)
+    try:
+        script_longo.escrever_longo({"titulo": "t", "tema": "t"}, dict(FATOS, tema="t", angulo="a"), dict(cfg, formato="longo"),
+                                    datetime.date(2026, 11, 22))
+    except RuntimeError as e:
+        assert "JSON válido" not in str(e), "a falha da correção derrubou o roteiro"
+    assert n["c"] >= 1 + 6 * 2

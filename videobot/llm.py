@@ -430,13 +430,19 @@ def gerar_json(prompt: str, cfg: dict, temperatura: float = 0.5, sistema: str = 
         except Exception:
             pass
     ultimo, evitar = None, set()
-    for _ in range(3):
+    for _ in range(4):
         try:
             txt, modelo = gerar(prompt, cfg, temperatura=temperatura, sistema=sistema, max_tokens=max_tokens, evitar=evitar)
         except RuntimeError:
             if ultimo is None:
                 raise
-            break  # não sobrou outro modelo para tentar
+            if not evitar:
+                break
+            # run 45017798029: os outros modelos estavam fora (cota do dia) e o longo morreu no 1º JSON quebrado;
+            # sem alternativa, o mesmo modelo tenta de novo (JSON quebrado costuma ser acaso, não regra)
+            log(f"  nenhum outro modelo disponível; tentando de novo em {', '.join(sorted(evitar))}")
+            evitar = set()
+            continue
         try:
             obj = extrair_json(txt)
             if dias > 0:

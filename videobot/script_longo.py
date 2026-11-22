@@ -11,6 +11,7 @@ O vídeo curto continua com o roteiro de sempre (script.escrever).
 from __future__ import annotations
 
 import json
+import time
 
 from .llm import gerar_json
 from .script import estilo, licoes_do_canal, nome_estilo, notas_da_pauta
@@ -275,17 +276,26 @@ def escrever_longo(cand: dict, fatos: dict, cfg: dict, hoje) -> dict:
     orc = [round(total * w / sum(pesos)) for w in pesos]
     chapters, anterior = [], ""
     for i, ch in enumerate(caps):
-        r, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior), cfg, temperatura=0.75, max_tokens=7000)
+        try:
+            r, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior), cfg, temperatura=0.75, max_tokens=7000)
+        except RuntimeError as e:  # um capítulo não derruba o vídeo na 1ª falha: espera o limite por minuto e tenta de novo
+            log(f"  capítulo {i + 1}: falhou ({str(e)[:80]}); nova tentativa em 60s")
+            time.sleep(60)
+            r, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior), cfg, temperatura=0.6, max_tokens=7000)
         cenas = _cenas_de(r)
         erros = _erros_capitulo(cenas, fatos, cfg, hoje, orc[i])
         if erros:
             log(f"  capítulo {i + 1}: {len(erros)} problema(s); pedindo correção")
-            r2, _, m = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior, erros, cenas), cfg,
-                                  temperatura=0.4, max_tokens=7000)
+            try:
+                r2, _, m2 = gerar_json(prompt_capitulo(cand, fatos, cfg, hoje, est, i, orc[i], anterior, erros, cenas), cfg,
+                                       temperatura=0.4, max_tokens=7000)
+            except RuntimeError as e:  # a correção é melhoria: sem ela, fica o rascunho (com as pendências na nota)
+                log(f"  capítulo {i + 1}: a correção falhou ({str(e)[:80]}); mantenho o rascunho")
+                r2, m2 = {}, m
             c2 = _cenas_de(r2)
             e2 = _erros_capitulo(c2, fatos, cfg, hoje, orc[i])
             if c2 and len(e2) <= len(erros):
-                cenas, erros = c2, e2
+                cenas, erros, m = c2, e2, m2
         if not cenas:
             raise RuntimeError(f"o capítulo {i + 1} veio sem cenas")
         if erros:
