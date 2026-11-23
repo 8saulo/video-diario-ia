@@ -342,7 +342,11 @@
     const passo = (seg && seg.params && seg.params.passo) || (seg ? 'cta' : 'casa');
     const lt = seg ? Math.max(0, t - seg.start) : 0, d = seg ? Math.max(1, seg.dur) : 5, u = lt / d;
     let a2 = 1;  // opacidade da camada 2D por cima do 3D
-    if (window.WPL3 && WPL3.on && (TRES.has(passo) || passo === 'transicao')) {
+    const em3d = !!(window.WPL3 && WPL3.on && (TRES.has(passo) || passo === 'transicao'));
+    // run 45226402450: o render em partes (vários navegadores) deixava a última imagem 3D atrás da planta 2D;
+    // nos passos 2D a camada 3D fica escondida
+    if (window.WPL3 && WPL3.on) WPL3.cv.style.visibility = em3d ? 'visible' : 'hidden';
+    if (em3d) {
       WPL3.render(passo, t, lt, d);
       a2 = passo === 'transicao' ? ease((u - 0.62) / 0.33) : 0;
       if (passo === 'quarto_resolvido') a2 = 1 - ease(lt / 0.55);  // o celular 2D (com zoom) se dissolve no celular 3D

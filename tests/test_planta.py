@@ -141,3 +141,9 @@ def test_pauta_aponta_o_roteiro_fixo_e_o_pipeline_o_usa():
     assert (RAIZ / c["tema"]["roteiro_fixo"]).exists()
     pipe = (RAIZ / "videobot" / "pipeline.py").read_text(encoding="utf-8")
     assert 'elif (cfg.get("tema") or {}).get("roteiro_fixo"):' in pipe
+
+
+def test_camada_3d_some_nos_passos_2d_mesmo_com_render_em_partes():
+    """Run 45226402450: cada parte do render abre outro navegador; a última imagem 3D ficava atrás da planta 2D
+    (a pessoa aparecia atrás do mapa). Nos passos 2D a camada 3D é escondida a cada quadro."""
+    assert "WPL3.cv.style.visibility = em3d ? 'visible' : 'hidden';" in JS
