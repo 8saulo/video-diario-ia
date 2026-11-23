@@ -177,8 +177,65 @@ def test_video_avulso_de_wifi_usa_o_visual_de_redes_sem_ser_episodio():
     p = pauta.aplicar(c, dia)
     assert p and "mesh" in c["tema"]["tema_fixo"].lower()
     assert c["visual"]["paleta"] == "redes" and c["roteiro"]["estilo"] == "educativo"
-    assert script._alvos(c)["cenas"] == (11, 14)
-    assert "topologia" in c["roteiro"]["notas"] and "faixa" in c["roteiro"]["notas"]
+    # refeito no mesmo dia: o usuário pediu uma ilustração contínua (planta) no lugar de cenas soltas
+    assert c["visual"]["cena3d"] == "planta" and c["roteiro"]["so_planta"] is True
+    assert script._alvos(c)["cenas"] == (12, 15)
     assert not serie.dia_da_serie(c, dia), "23/11 não é dia de episódio"
     assert serie.aplicar(c, dia, []) is None and "_serie" not in c
     assert pauta.formatos(c, dia, "workflow_dispatch", "") == ["curto"]
+
+
+# ---------------------------------------------------------------- vídeo de Wi-Fi de 23/11 (FuYCu_Ki6p0)
+FATOS = {"fatos": [{"id": 1, "afirmacao": "Um nó mesh cobre de 1.500 pés quadrados; nós a até 30 pés", "numeros": ["1500", "30"], "fonte": "x"}]}
+
+
+def _valida(sc, minimo=0):
+    c = _cfg()
+    c["roteiro"]["cenas_tecnicas_min"] = minimo
+    return script.validar({"chapters": [{"title": "x", "scenes": [sc]}], "thumb": {"lines": [{"text": "x"}]},
+                           "publicacao": {"youtube": {"titulo": "x"}, "tiktok": {"x": 1}}}, FATOS, dict(c, formato="__"), dt.date(2026, 11, 23))
+
+
+def test_regua_da_faixa_e_rotulos_tecnicos_nao_sao_barrados_pela_checagem():
+    """A faixa de -30 a -90 dBm é a régua, não uma afirmação: antes ela era barrada e a cena virava título."""
+    faixa = {"id": "f", "text": "Perto do roteador o sinal é forte.", "template": "faixa", "fact_ids": [],
+             "params": {"min": -30, "max": -90, "zones": [{"from": -30, "to": -67, "label": "bom", "tone": "good"}], "unit": "dBm"}}
+    assert not [e for e in _valida(faixa) if "não está nos fatos" in e]
+    faixa["params"]["value"] = -72
+    assert [e for e in _valida(faixa) if "-72" in e], "o valor medido continua precisando de fonte"
+    topo = {"id": "t", "text": "O sinal vai do roteador ao nó.", "template": "topologia", "fact_ids": [],
+            "params": {"nodes": [{"id": "r", "label": "Roteador 5 GHz"}, {"id": "n", "label": "Nó 2"}], "links": [{"from": "r", "to": "n", "label": "9 m"}]}}
+    assert not [e for e in _valida(topo) if "não está nos fatos" in e]
+
+
+def test_unidades_imperiais_sao_recusadas_e_a_conversao_vale_como_fato():
+    """'50 pés' e '1 000 ft²' saíram no vídeo; o certo é metro: 9 m (30 pés) e 139 m² (1.500 pés²) batem com o fato."""
+    pes = {"id": "p", "text": "Os nós ficam a no máximo trinta pés.", "template": "bignumber", "fact_ids": [1], "params": {"value": 30, "suffix": " ft"}}
+    assert any("métricas" in e for e in _valida(pes))
+    metro = {"id": "m", "text": "Os nós ficam a no máximo nove metros.", "template": "bignumber", "fact_ids": [1], "params": {"value": 9, "suffix": " m"}}
+    area = {"id": "a", "text": "Um nó cobre cento e trinta e nove metros quadrados.", "template": "bignumber", "fact_ids": [1], "params": {"value": 139, "suffix": " m²"}}
+    cena = lambda sc: [e for e in _valida(sc) if e.startswith("cena ")]
+    assert cena(metro) == [] and cena(area) == []
+    libras = {"id": "l", "text": "O vídeo tem tradução em Libras.", "template": "headline", "fact_ids": [], "params": {"text": "Libras"}}
+    assert not any("métricas" in e for e in _valida(libras)), "Libras é a língua de sinais, não unidade"
+
+
+def test_cena_saneada_vira_titulo_da_propria_fala_e_nao_repete():
+    c = _cfg()
+    cenas = [{"id": f"s{i}", "text": t, "template": "bignumber", "fact_ids": [], "params": {"value": 77 + i}}
+             for i, t in enumerate(["Quanto maior a distância, maior a atenuação.", "Paredes de alvenaria absorvem o sinal."])]
+    r = {"chapters": [{"title": "Por que o Wi-Fi morre no quarto?", "scenes": cenas}]}
+    script._sanear(r, FATOS, c, dt.date(2026, 11, 23))
+    textos = [sc["params"]["text"] for sc in cenas]
+    assert textos == ["Quanto maior a distância", "Paredes de alvenaria absorvem o sinal"]
+
+
+def test_video_no_estilo_redes_exige_cenas_tecnicas():
+    sc = {"id": "h", "text": "O sinal enfraquece.", "template": "headline", "fact_ids": [], "params": {"text": "x"}}
+    assert not any("cena(s) técnica(s)" in e for e in _valida(sc, 0))
+    c = _cfg()
+    serie.aplicar(c, INICIO, [])
+    assert c["roteiro"]["cenas_tecnicas_min"] == 3
+    c2 = _cfg()
+    pauta.aplicar(c2, dt.date(2026, 11, 23))
+    assert c2["roteiro"]["so_planta"], "o vídeo de Wi-Fi é todo técnico: só cenas da planta"

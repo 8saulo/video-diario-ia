@@ -1,0 +1,48 @@
+{
+  "tema": "Wi-Fi em casa: do problema à solução com rede mesh",
+  "slug": "wifi_em_casa_rede_mesh",
+  "formato": "curto",
+  "cena3d": "planta",
+  "planta": {"nos": [[6.4, 3.9]]},
+  "chapters": [{"title": "Wi-Fi em casa", "scenes": [
+    {"id": "problema", "template": "planta", "emocao": "curioso, intrigante", "params": {"passo": "quarto_problema", "titulo": ""},
+     "text": "Você já passou por isso? O Wi-Fi funciona perfeitamente na sala..."},
+    {"id": "fraco", "template": "planta", "emocao": "interessado, explicativo", "params": {"passo": "quarto_fraco", "titulo": ""},
+     "text": "mas aqui no quarto o sinal fica fraco, e a página não carrega..."},
+    {"id": "sem_sinal", "template": "planta", "emocao": "surpresa contida", "params": {"passo": "quarto_sem_sinal", "titulo": ""},
+     "text": "ou simplesmente desaparece."},
+    {"id": "corredor", "template": "planta", "emocao": "interessado, explicativo", "params": {"passo": "corredor", "titulo": ""},
+     "text": "Para entender o motivo, vamos seguir o sinal até a origem: o roteador, lá na sala."},
+    {"id": "vista_de_cima", "template": "planta", "emocao": "didático, acolhedor", "params": {"passo": "transicao", "titulo": "Sua casa, vista de cima", "highlight": ["cima"]},
+     "text": "Vista de cima, a casa mostra o caminho que o sinal percorre."},
+    {"id": "ondas", "template": "planta", "emocao": "didático, acolhedor", "params": {"passo": "ondas", "titulo": "O sinal sai em ondas", "highlight": ["ondas"]},
+     "text": "O sinal sai do roteador em ondas. Perto dele, a cobertura é forte."},
+    {"id": "paredes", "template": "planta", "emocao": "firme, analítico", "params": {"passo": "paredes", "titulo": "Cada parede rouba sinal", "highlight": ["sinal"]},
+     "text": "Só que paredes, móveis e outros obstáculos interferem na propagação do sinal."},
+    {"id": "obstaculos", "template": "planta", "emocao": "firme, analítico", "params": {"passo": "obstaculos", "titulo": "Metal e espelho bloqueiam", "highlight": ["bloqueiam"]},
+     "text": "Metal, espelhos e eletrodomésticos bloqueiam ainda mais."},
+    {"id": "distancia", "template": "planta", "emocao": "didático, acolhedor", "params": {"passo": "distancia", "titulo": "Longe do roteador, o sinal cai", "highlight": ["cai"]},
+     "text": "E quanto mais distante do roteador, maior pode ser a perda de intensidade."},
+    {"id": "zona_morta", "template": "planta", "emocao": "grave, cauteloso", "params": {"passo": "zona_morta", "titulo": "A suíte vira zona morta", "highlight": ["morta"]},
+     "text": "Lá no fundo, a suíte vira uma zona morta."},
+    {"id": "mesh", "template": "planta", "emocao": "otimista, caloroso", "params": {"passo": "backhaul", "titulo": "Os nós conversam entre si", "highlight": ["nós"]},
+     "text": "Com uma rede mesh, você distribui pontos de conexão estrategicamente pela casa, e eles conversam entre si,"},
+    {"id": "cobertura", "template": "planta", "emocao": "otimista, caloroso", "params": {"passo": "cobertura", "titulo": "Cobertura em toda a casa", "highlight": ["toda"]},
+     "text": "ampliando a cobertura e eliminando as zonas mortas."},
+    {"id": "resolvido", "template": "planta", "emocao": "otimista, caloroso", "params": {"passo": "quarto_resolvido", "titulo": "Wi-Fi em todos os ambientes", "highlight": ["todos"]},
+     "text": "Wi-Fi de qualidade em toda a casa!"}
+  ]}],
+  "thumb": {"lines": [{"text": "WI-FI FRACO"}, {"text": "NO QUARTO?", "hl": true}], "icon": "wifi"},
+  "publicacao": {
+    "youtube": {
+      "titulo": "Wi-Fi fraco no quarto? Veja o sinal atravessando a casa",
+      "abertura": "Por que o Wi-Fi some no quarto e como a rede mesh resolve, mostrado na planta da casa.",
+      "topicos": ["📶 Como o sinal sai do roteador em ondas", "🧱 Paredes, metal e espelhos roubam sinal", "📍 Por que a suíte vira zona morta", "🛜 Como a rede mesh cobre a casa toda"],
+      "cta": "Na sua casa tem algum cômodo onde o Wi-Fi some? Comenta aí!",
+      "hashtags": ["#wifi", "#redemesh", "#internet"],
+      "tags": ["wi-fi", "wifi fraco", "rede mesh", "mesh wifi", "zona morta wifi", "sinal wifi", "roteador", "internet em casa", "wifi no quarto", "como melhorar o wifi", "onde colocar o roteador", "cobertura wifi", "internet lenta", "dicas de wifi", "tecnologia"],
+      "comentario_fixado": "Em qual cômodo o seu Wi-Fi mais falha?"
+    },
+    "tiktok": {"legenda": "Wi-Fi some no quarto? Olha o sinal atravessando a casa. Comente!", "hashtags": ["#wifi", "#redemesh", "#internet", "#tecnologia"], "capa": "Wi-Fi fraco no quarto?"}
+  }
+}

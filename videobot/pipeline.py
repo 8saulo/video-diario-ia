@@ -113,6 +113,11 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
             roteiro = embalar(roteiro, fatos, cfg)
         nota(f"Refazendo o vídeo de {data_hoje.isoformat()} ('{roteiro.get('tema', '')}') com o roteiro, os fatos e a "
              "pesquisa originais; só a narração, a animação e o render foram gerados de novo.")
+    elif (cfg.get("tema") or {}).get("roteiro_fixo"):
+        # storyboard e narração escritos pelo usuário (pauta.roteiro_fixo): narração, animação, render e publicação
+        roteiro = json.loads((RAIZ / cfg["tema"]["roteiro_fixo"]).read_text(encoding="utf-8"))
+        roteiro["formato"] = cfg["formato"]
+        nota(f"Roteiro fixo ({cfg['tema']['roteiro_fixo']}): storyboard e narração do usuário, sem pesquisa nem checagem de fatos.")
     elif modo == "demo":
         roteiro = json.loads((RAIZ / "exemplos" / "demo.json").read_text(encoding="utf-8"))
         roteiro["formato"] = cfg["formato"]
@@ -180,18 +185,20 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     from .render import CAUDA
     longo = roteiro["formato"] == "longo"
     durs = {sid: c["dur"] + CAUDA for sid, c in narr["cenas"].items()}
-    quadro = bool(cfg["visual"].get("quadro", True))
+    # "planta": o vídeo inteiro é uma ilustração contínua; sem fotos, recortes nem objetos 3D por cima
+    ilustrada = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") == "planta"
+    quadro = bool(cfg["visual"].get("quadro", True)) and not ilustrada
     # com o quadro de dossiê, foto/vídeo viram recortes (polaroide 4:3); sem ele, ocupam a tela inteira
     mw, mh = (800, 600) if quadro else ((1920, 1080) if longo else (1080, 1920))
     from . import elementos
     arte = elementos.dirigir(roteiro, cfg) if quadro else None  # uma chamada: quadro + buscas de mídia + objetos 3D
-    creditos = midia.aplicar(roteiro, cfg, pasta, durs, mw, mh, int(cfg["visual"].get("fps", 30)), plano_pronto=arte)
+    creditos = [] if ilustrada else midia.aplicar(roteiro, cfg, pasta, durs, mw, mh, int(cfg["visual"].get("fps", 30)), plano_pronto=arte)
     if longo and roteiro.get("thumb"):  # longo: thumb com foto real do assunto central
         capa = midia.foto_thumb(roteiro, cfg, pasta, creditos)
         if capa:
             roteiro["thumb"]["photo"] = capa["photo"]
             creditos = creditos + [{"cena": "thumb", "titulo": "foto da capa", "credito": capa["credito"], "pagina": capa["pagina"]}]
-    tem3d = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon")
+    tem3d = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon", "planta")
     if quadro:  # pessoas (foto da Wikipedia), logos das marcas, recortes de jornal, post-its e carimbos por cena
         if tem3d:  # objetos 3D ligados à fala: o quadro alterna com eles
             if arte is not None:

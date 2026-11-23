@@ -358,6 +358,7 @@ serie:
     roteiro:
       estilo: educativo
       cenas_curto: [11, 14]         # mais cenas e mais curtas: cada frase com o seu desenho
+      cenas_tecnicas_min: 3         # pelo menos 3 cenas de terminal/topologia/faixa por episódio
   episodios:
     - {titulo: "Potência óptica: o que é dBm", capa: ["O QUE É", "dBm?"], icone: fiber, proximo: "onde o sinal óptico se perde",
        tema: "Potência óptica em dBm: o que significa 0 dBm, por que o valor é negativo e a relação entre dBm e miliwatt", buscas: ["dBm optical power explained", "dBm to mW conversion fiber"]}
@@ -424,30 +425,32 @@ serie:
 # Vale para a rotina daquele dia (agendada ou disparada pelo PC) quando ela não traz tema próprio.
 # formatos: [curto, longo] gera os dois (um job do GitHub para cada). "config" sobrepõe o resto deste arquivo só nesse dia.
 pautas:
-  "2026-11-23":                     # vídeo avulso no visual da série de redes (sem número, título de série nem gancho)
-    tema: "Wi-Fi em casa: como o sinal se espalha pelos cômodos e como funciona a rede mesh"
+  "2026-11-23":                     # vídeo avulso de Wi-Fi: uma ilustração contínua da casa (engine/planta.js), fora da série
+    tema: "Wi-Fi em casa: do problema à solução com rede mesh"
     formatos: [curto]
+    roteiro_fixo: roteiros/2026-11-23_wifi_mesh.json   # storyboard do usuário (3D -> planta 2D -> 3D)
     buscas_fatos: ["wifi signal attenuation through walls dB", "2.4 GHz vs 5 GHz range walls", "how mesh wifi works backhaul", "mesh wifi node placement"]
     angulo: >-
-      Para o usuário comum, em casa: por que o Wi-Fi enfraquece de um cômodo para o outro (distância, paredes, lajes,
-      espelhos, água, micro-ondas), a diferença de 2,4 e 5 GHz, e como a rede mesh resolve com vários pontos
-      conversando entre si e um nome de rede só. Termine com a dica prática de onde colocar o roteador e os pontos.
+      Para o usuário comum, em casa: por que o Wi-Fi enfraquece de um cômodo para o outro (distância, paredes,
+      espelhos, metal, micro-ondas), a diferença de 2,4 e 5 GHz, e como a rede mesh resolve com vários pontos
+      conversando entre si e um nome de rede só. Termine com onde colocar o roteador e os pontos.
     config:
       tema:
         nicho: "Wi-Fi em casa"
       visual:
         paleta: redes
-        cena3d: tema
+        cena3d: planta
       roteiro:
         estilo: educativo
-        cenas_curto: [11, 14]
+        cenas_curto: [12, 15]
+        so_planta: true
         notas: >-
           Público: usuário residencial, sem jargão (explique o termo técnico na hora em que ele aparece).
-          CENAS FLUIDAS: uma ideia por cena, e a tela mostra EXATAMENTE o que a frase diz. Roteador, cômodos e pontos mesh
-          -> template topologia (roteador no centro, path do sinal, highlight no caminho bom, down no cômodo sem sinal);
-          força do sinal em dBm ou queda por parede -> faixa com zonas ótimo/bom/fraco (ex.: -30 a -90 dBm);
-          número -> bignumber/kpis; 2,4 x 5 GHz -> compare. Nada de marca de roteador. Vídeo avulso: não é episódio de
-          série; não diga "no próximo vídeo".
+          O vídeo inteiro é UMA ilustração contínua da casa vista de cima (template planta): cada cena escolhe o
+          passo que mostra exatamente o que a frase explica, na ordem em que a história avança. Sequência sugerida:
+          casa -> ondas -> paredes -> obstaculos -> distancia -> zona_morta -> bandas -> interferencia -> mesh ->
+          backhaul -> roaming -> posicionamento -> cta. O titulo de cada cena descreve o que aparece (até 7 palavras).
+          Nada de marca de roteador. Vídeo avulso: não é episódio de série; não diga "no próximo vídeo".
   "2026-11-22":
     tema: "O IPO da Anthropic"
     formatos: [curto, longo]

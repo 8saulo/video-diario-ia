@@ -108,7 +108,7 @@
     Object.entries(ST.theme.vars || {}).forEach(([k, v]) => root.style.setProperty(k, v));
   }
   // 3D: "gpon" = cena fixa de fibra óptica (scene3d.js); qualquer outro valor = objetos do tema por cena (tema3d.js)
-  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : window.W3T; }
+  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : ST && ST.scene3d === 'planta' ? window.WPL : window.W3T; }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
 
   // ---------- templates ----------
@@ -716,6 +716,24 @@
     if (lb) riseIn(c.tl, lb, 1.0 + segs.length * 0.15);
   };
 
+  /* Ilustração contínua (planta.js): a cena em si é desenhada no fundo; aqui só o título curto no alto
+     (e as 2 opções, no CTA). A ilustração muda conforme params.passo. */
+  T.planta = function (c, p) {
+    const top = el('div', 'abs', c.root);
+    const W = ST.w - (c.port ? 100 : 260);
+    css(top, { left: '50%', top: c.port ? '238px' : '70px', width: W + 'px', marginLeft: -W / 2 + 'px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px' });
+    const h = el('div', 'h1 chk', top); css(h, { width: W + 'px', textShadow: '0 4px 24px rgba(0,0,0,.8)' });
+    const spans = wordSpans(h, p.titulo || p.text || '', p.highlight);
+    fit(h, c.port ? 78 : 70, 36, W, c.port ? 170 : 150);
+    wordsIn(c.tl, spans, 0.05, 0.05);
+    hlColor(c.tl, spans, 0.05);
+    const opts = (p.options || []).slice(0, 2);
+    if (opts.length) {
+      const row = el('div', '', top); css(row, { display: 'flex', gap: '30px' });
+      opts.forEach((o, i) => { const b = el('div', 'pill chk', row); b.textContent = o; css(b, { fontSize: c.port ? '46px' : '42px', background: i ? 'var(--acc2)' : 'var(--acc)', color: 'var(--ink-950)' }); popIn(c.tl, b, 0.5 + i * 0.2); });
+    }
+  };
+
   T.cta = function (c, p) {
     const col = el('div', '', c.box); css(col, { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '46px' });
     const h = el('div', 'h1 chk', col); css(h, { width: c.cw + 'px' });
@@ -1044,7 +1062,7 @@
     if (!HUD.logo) return;
     const P = ST.brandLogoPeriod || 9, F = 0.45;
     const spots = ST.port
-      ? [{ right: 44, top: 54 }, { left: 44, top: 54 }, { left: 44, top: ST.scene3d ? 1170 : 1470 }]
+      ? [{ right: 44, top: 54 }, { left: 44, top: 54 }, { left: 44, top: ST.scene3d === 'planta' ? 1560 : ST.scene3d ? 1170 : 1470 }]
       : [{ right: 56, top: 40 }, { left: 56, top: 110 }, { right: 56, top: 880 }];
     const k = Math.floor(t / P) % spots.length, lt = t - Math.floor(t / P) * P;
     if (HUD.logoK !== k) { const s = spots[k]; css(HUD.logo, { left: s.left != null ? s.left + 'px' : 'auto', right: s.right != null ? s.right + 'px' : 'auto', top: s.top + 'px' }); HUD.logoK = k; }

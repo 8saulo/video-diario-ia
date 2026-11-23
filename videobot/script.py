@@ -26,6 +26,9 @@ TEMPLATES = """CATÁLOGO DE CENAS (campo "template" + "params"). Use variedade; 
 - cta: {"text": str, "highlight": [..], "options"?: [2 opções binárias], "kind"?: "comment"|"subscribe"}
 - terminal: {"title"?: str, "host": "SW1#"|"R1(config)#"|"PowerShell"|"Linux", "command": str (comando real), "lines": [até 8 linhas da saída real], "highlight"?: [trechos das linhas a destacar], "tone"?: "good"|"bad"|"warn", "note"?: str curto}  (comandos e saídas de equipamento/PC)
 - topologia: {"title"?: str, "nodes": [{"id": str, "label": str, "icon": ICONE, "sub"?: str}] (2 a 6), "links": [{"from": id, "to": id, "label"?: str, "highlight"?: bool, "down"?: bool}], "path"?: [ids por onde o pacote/sinal passa], "layout"?: "linha"|"anel", "note"?: str, "tone"?: ...}  (rede, caminho do sinal, enlace caído)
+- planta: {"passo": PASSO, "titulo": str (até 7 palavras, o que a ilustração mostra agora), "highlight": [palavras do titulo], "options"?: [2 opções, só no passo cta]}  (ilustração contínua da casa vista de cima: o Wi-Fi saindo do roteador em ondas, perdendo força nas paredes, mapa de sinal; o passo escolhe o que ela mostra)
+  PASSO ∈ casa (a planta se desenha), roteador, ondas (o sinal se espalha em ondas), paredes (perda em cada parede: alvenaria/drywall), obstaculos (geladeira, espelho, micro-ondas), distancia (celular se afastando, o dBm caindo), zona_morta (cômodo sem sinal), bandas (2,4 GHz alcança mais; 5 GHz é mais rápido e perde mais nas paredes), interferencia (redes dos vizinhos e micro-ondas), mesh (nós mesh espalhados, a casa fica coberta), backhaul (os nós conversam entre si), roaming (celular anda pela casa e troca de nó sem cair, mesma rede), posicionamento (roteador vai para o centro e para o alto), resumo, cta;
+  em 3D (pessoa na suíte): quarto_problema (frustrada com o celular), quarto_fraco (close no celular, 1 barra), quarto_sem_sinal ("Sem internet"), corredor (câmera vai até o roteador), transicao (sobe e a casa vira a planta), cobertura (planta toda verde e zoom no celular da suíte), quarto_resolvido (volta ao 3D: sinal cheio, pessoa feliz)
 - faixa: {"title"?: str, "value": número, "unit": "dBm"|"dB"|"Mbps"|"ms"..., "min": número, "max": número, "zones": [{"from": n, "to": n, "label": str, "tone": "good"|"warn"|"bad"}], "label"?: str}  (nível dentro de uma faixa: potência óptica, atenuação, latência)
 ICONE ∈ ia, chip, robot, rocket, satellite, globe, money, coin, bolt, warning, chart, trendup, trenddown, server, check, cross, clock, calendar,
 user, users, building, gov, lock, sun, fire, thermo, snow, cloud, code, phone, laptop, search, doc, scale, target, play, battery, leaf, heart,
@@ -131,7 +134,7 @@ def emocoes_coerentes(r: dict) -> int:
         antes = sc.get("emocao")
         tx = str(sc.get("text") or "")
         e = _emocao_da_lista(antes)
-        if sc.get("template") == "cta":
+        if sc.get("template") == "cta" or (sc.get("params") or {}).get("passo") == "cta":
             e = "cordial e direto"
         elif not e:
             e = "curioso, intrigante" if tx.rstrip().endswith("?") else "interessado, explicativo"
@@ -163,7 +166,7 @@ def notas_da_pauta(cfg: dict) -> str:
     return f"ORIENTAÇÕES DESTE VÍDEO (obrigatórias):\n{n}" if n else ""
 
 
-NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta", "terminal", "topologia", "faixa"}
+NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta", "terminal", "topologia", "faixa", "planta"}
 
 
 def licoes_do_canal() -> str:
@@ -214,6 +217,7 @@ FATOS VERIFICADOS (use SOMENTE estes números; cite os ids em fact_ids):
 REGRAS DO ROTEIRO
 - {regras_formato}
 {est["tom"]}
+- Unidades SEMPRE brasileiras/métricas (m, m², km, cm, °C, L, kg): converta pés, milhas, polegadas, galões, libras-peso e °F das fontes.
 - Escreva TODOS os números por extenso como se fala ("dois vírgula um trilhões", "dois mil e vinte e oito"); nada de algarismos na narração. Escreva "IA", nunca "I.A.".
 - Toda afirmação com número precisa vir de um fato da lista (fact_ids). Sem fato, sem número. Não invente nada.
 - Inclua o contraponto (o outro lado). {'O tema é de finanças: inclua o aviso "não é recomendação de investimento".' if fatos.get('financas') else ''}
@@ -261,6 +265,25 @@ def _numeros_params(o) -> list[float]:
         for v in o:
             out += _numeros_params(v)
     return out
+
+
+def numeros_checaveis(sc: dict) -> list[float]:
+    """Números da tela que precisam estar nos fatos. Nas cenas técnicas, a régua (min/max/zonas da faixa), os rótulos
+    do diagrama (topologia) e o comando/saída de exemplo (terminal) são referência didática, não afirmação de notícia:
+    só o valor medido da faixa é conferido. (Vídeo de Wi-Fi de 23/11: a faixa de -30 a -90 dBm foi barrada e 4 cenas
+    viraram o mesmo título.)"""
+    prm = sc.get("params") or {}
+    t = sc.get("template")
+    if t in ("terminal", "topologia", "planta"):  # diagrama/ilustração: sem checagem de fatos (pedido de 23/11)
+        return []
+    if t == "faixa":
+        return _numeros_params(prm.get("value")) if prm.get("value") is not None else []
+    return _numeros_params(prm)
+
+
+# fontes em inglês trazem pés, milhas, polegadas e °F; o vídeo mostra em métrico (o número convertido também vale)
+_IMPERIAL = re.compile(r"(?<![a-z])(p[ée]s|p[ée]s quadrados|ft²?|sq ?ft|polegadas?|milhas?|°\s?f|fahrenheit|galões?|jardas?)(?![a-z])", re.I)
+_CONVERSOES = (0.3048, 0.092903, 1.609344, 2.54, 0.0254, 0.453592, 3.78541, 0.9144)
 
 
 def normalizar_cena(sc: dict) -> dict:
@@ -313,6 +336,24 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
         n1 = len(cenas[0].get("text", "").split())
         if n1 > 12:  # o gancho precisa caber nos primeiros ~3 s
             err.append(f"a cena 1 (gancho) tem {n1} palavras; precisa ter no máximo 9 (cerca de 3 segundos) e prender na hora")
+        minimo = int((cfg.get("roteiro") or {}).get("cenas_tecnicas_min") or 0)
+        tecnicas = sum(1 for sc in cenas if sc.get("template") in ("terminal", "topologia", "faixa", "planta"))
+        if (cfg.get("roteiro") or {}).get("so_planta"):  # vídeo de uma ilustração só: toda cena é um passo da planta
+            fora = [sc.get("id") for sc in cenas if sc.get("template") != "planta"]
+            if fora:
+                err.append(f"cenas {fora}: neste vídeo TODAS as cenas usam o template planta (uma ilustração contínua); troque o template")
+            passos = [str((sc.get("params") or {}).get("passo") or "") for sc in cenas if sc.get("template") == "planta"]
+            from .planta import PASSOS
+            ruins = sorted({p for p in passos if p not in PASSOS})
+            if ruins:
+                err.append(f"passos inexistentes na planta: {ruins}; use só {', '.join(PASSOS)}")
+            if len(set(passos)) < 7:
+                err.append(f"a planta mostra só {len(set(passos))} passos diferentes; use pelo menos 7 para ilustrar cada explicação")
+            if passos and passos[-1] != "cta":
+                err.append("a última cena é o passo cta da planta, com options (2 opções)")
+        if tecnicas < minimo:
+            err.append(f"só {tecnicas} cena(s) técnica(s) (terminal, topologia ou faixa); este vídeo precisa de pelo menos {minimo}: "
+                       "mostre o caminho do sinal/rede com topologia, níveis com faixa e comandos com terminal")
     elif not alvos["caps"][0] <= len(chs) <= alvos["caps"][1]:
         err.append(f"o longo tem {len(chs)} capítulos; precisa de {alvos['caps'][0]} a {alvos['caps'][1]}")
     por_id = {f["id"]: f for f in fatos["fatos"]}
@@ -331,7 +372,9 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
             err.append(f"cena {sid}: escreva IA, não I.A.")
         if sc.get("template") not in NOMES:
             err.append(f"cena {sid}: template '{sc.get('template')}' não existe")
-        nums = _numeros_params(sc.get("params", {}))
+        nums = numeros_checaveis(sc)
+        if _IMPERIAL.search(tx + " " + json.dumps(sc.get("params") or {}, ensure_ascii=False)):
+            err.append(f"cena {sid}: use unidades métricas (metros, m², km, cm, °C); converta pés/milhas/polegadas/°F da fonte")
         if nums:
             base = set()
             for fid in sc.get("fact_ids", []):
@@ -342,6 +385,8 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
             for x in nums:
                 if not any(x == b or (b and abs(x - b) / abs(b) < 0.011) or (b and abs(x * 1e9 - b) / abs(b) < 0.011)
                            or (b and abs(x * 1e6 - b) / abs(b) < 0.011) or (b and abs(x * 1e12 - b) / abs(b) < 0.011) or (b and abs(x * 1e3 - b) / abs(b) < 0.011)
+                           or any(b and abs(x - b * k) / abs(b * k) < 0.06 for k in _CONVERSOES)  # convertido para métrico
+                           or (b and abs(x - (b - 32) * 5 / 9) < 0.6)  # °F -> °C
                            for b in base):
                     err.append(f"cena {sid}: o número {x:g} na tela não está nos fatos citados {sc.get('fact_ids', [])}")
     if not r.get("thumb", {}).get("lines"):
@@ -363,6 +408,13 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
     return err
 
 
+def titulo_da_fala(texto: str, maximo: int = 9) -> str:
+    """Título curto tirado da própria fala da cena: cada cena saneada fica diferente (antes todas viravam o título do capítulo)."""
+    frase = re.split(r"(?<=[.!?;:])\s+|,\s+", str(texto).strip())[0].strip(" .;:")
+    ws = frase.split()
+    return " ".join(ws[:maximo]) + ("…" if len(ws) > maximo else "")
+
+
 def _sanear(r: dict, fatos: dict, cfg, hoje):
     """Último recurso: cena com número fora dos fatos vira título sem número."""
     por_id = {f["id"]: f for f in fatos["fatos"]}
@@ -375,7 +427,8 @@ def _sanear(r: dict, fatos: dict, cfg, hoje):
                          "publicacao": {"youtube": {"titulo": "x"}, "tiktok": {"x": 1}}}, fatos, dict(cfg, formato="__"), hoje)
             if any("não está nos fatos" in x for x in e):
                 nota(f"Cena {sc['id']}: número na tela sem fato correspondente; troquei por título sem número.")
-                sc["template"], sc["params"] = "headline", {"text": ch["title"], "eyebrow": cfg["tema"].get("nicho", "")}
+                sc["template"], sc["params"] = "headline", {"text": titulo_da_fala(sc.get("text", "")) or ch["title"],
+                                                            "eyebrow": cfg["tema"].get("nicho", "")}
     return r
 
 

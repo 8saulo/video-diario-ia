@@ -47,6 +47,8 @@ def aplicar(cfg: dict, data: dt.date) -> dict | None:
         t["buscas_fatos"] = [str(b) for b in p["buscas_fatos"] if str(b).strip()]
     if p.get("angulo"):
         t["angulo"] = str(p["angulo"]).strip()
+    if p.get("roteiro_fixo"):  # roteiro pronto (storyboard do usuário): sem pesquisa, checagem nem IA escrevendo
+        t["roteiro_fixo"] = str(p["roteiro_fixo"]).strip()
     if p.get("financas") is not None:
         t["financas"] = bool(p["financas"])
     return p

@@ -10,7 +10,7 @@ import re
 from .util import sem_acento
 
 # Cenas que já são o próprio desenho técnico (comando, diagrama de rede, régua de nível): sem foto, quadro ou 3D por cima.
-DENSAS = frozenset({"terminal", "topologia", "faixa"})
+DENSAS = frozenset({"terminal", "topologia", "faixa", "planta"})
 
 # id: (descrição para o roteirista, palavras-chave em PT/EN sem acento)
 CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
