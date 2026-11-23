@@ -152,6 +152,9 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         pesquisa["vencedor"] = escolhido
         etapa("roteiro", "Roteiro")
         roteiro = script.escrever(escolhido, fatos, cfg, data_hoje)
+        if cfg.get("_serie"):  # série: título e capa numerados, gancho do próximo episódio
+            from . import serie
+            serie.finalizar(roteiro, cfg["_serie"])
 
     # números com escala já por extenso (value 14000 + " mi") consertados antes da direção de arte: o texto 3D sai do mesmo número
     for ch in roteiro.get("chapters", []):
@@ -239,7 +242,8 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         primeira = next((sc.get("text", "") for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])), "")
         registrar_tema({"data": data_hoje.isoformat(), "tema": roteiro["tema"],
                         "tema_pesquisa": ((pesquisa or {}).get("vencedor") or {}).get("tema", ""), "slug": slug, "paleta": paleta, "formato": cfg["formato"],
-                        "gancho": primeira[:120], "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
+                        "categoria": cfg["tema"].get("categoria", ""),
+                        **({"serie": roteiro["serie"]["id"], "episodio": roteiro["serie"]["n"]} if roteiro.get("serie") else {}), "gancho": primeira[:120], "referencia": (pesquisa or {}).get("vencedor", {}).get("url", "")})
     saida = {"pasta": str(pasta), "video": str(video), "previa": str(prev) if prev else "", "thumbs": [str(t) for t in th],
              "publicacao": str(pacote["publicacao"]), "relatorio": str(pacote["relatorio"]), "tag": (f"video-{data_hoje.isoformat()}-{slug}-{cfg['formato']}"[:90]
                     + (f"-r{os.environ.get('GITHUB_RUN_NUMBER') or dt.datetime.now().strftime('%H%M')}" if orig else "")),

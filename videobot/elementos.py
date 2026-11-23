@@ -405,7 +405,10 @@ def montar(roteiro: dict, cfg: dict, pasta: Path, arte: dict | None = None) -> l
     pessoas_cache, logos_cache, creditos, barrados = {}, {}, [], []
     anterior = ""
     cenas_desde_carimbo = 9
+    from .objetos3d import DENSAS
     for sc in cenas:
+        if sc.get("template") in DENSAS:  # terminal/topologia/faixa já mostram tudo; recortes por cima atrapalham a leitura
+            continue
         a = por_id.get(sc["id"]) or {}
         texto = _texto_cena(sc)
         itens = []

@@ -4,54 +4,168 @@
 
 # ---------------- TEMA E PESQUISA ----------------
 tema:
-  nicho: "IA e tecnologia"          # assunto geral do canal (vai no prompt do roteiro)
+  nicho: "tecnologia e TI"          # assunto geral do canal; no dia vira o rótulo da categoria sorteada
   tema_fixo: ""                     # se preencher, pula a pesquisa no YouTube e usa este tema
-  buscas:                           # mínimo 12 buscas em inglês (o prompt mestre pede ≥12)
-    - AI explained animation
-    - AI news
-    - kinetic typography tech
-    - Claude Motion
-    - Remotion
-    - motion graphics AI
-    - AI explained in 60 seconds
-    - AI bubble
-    - AI agents explained
-    - coding animation shorts
-    - tech news animated
-    - AI data center
-    - AI jobs
-    - OpenAI news this week
+  buscas:                           # buscas gerais de tecnologia (somadas às da categoria do dia; total ≥ 12)
+    - tech news this week
+    - new technology explained
+    - how it works animation
+    - tech explained in 60 seconds
+    - technology innovation 2026
+    - engineering explained animation
   buscas_extras: []                 # somadas às de cima (ex.: notícias do dia)
   janela_dias: 15                   # CRIVO 1: só vídeos publicados nos últimos N dias
   nao_repetir_dias: 7               # veta tema usado nos últimos N dias (historico/temas.json)
+  nao_repetir_categoria_dias: 2     # a categoria sorteada não pode ter saído nos últimos N dias
+  assuntos_cansados:                # assuntos que saturaram o canal: vetados por mais tempo
+    dias: 30
+    termos: [energia, energetico, eletricidade, "conta de luz", "data center", "data centers", "consumo de agua"]
   candidatos_por_busca: 20
-  temas_reserva:                    # usados se o YouTube e a API falharem no dia
-    - "Quanto de energia a IA realmente gasta"
-    - "Agentes de IA: o que já funciona de verdade"
-    - "Chips de IA: por que a Nvidia vale tanto"
-    - "IA e empregos: o que os dados mostram"
-    - "Modelos de IA abertos vs fechados"
-    - "Data centers e a conta de luz"
-    - "Robôs humanoides: promessa e realidade"
-    - "Deepfakes: como reconhecer um vídeo falso"
-    - "Alucinações: por que a IA inventa respostas"
-    - "IA na medicina: diagnósticos que já acertam"
-    - "Carros autônomos: quantos já rodam sozinhos"
-    - "Golpes com voz clonada por IA"
-    - "Quanto custa treinar um modelo de IA"
-    - "IA nas escolas: cola ou ferramenta"
-    - "Direitos autorais e imagens geradas por IA"
-    - "Computação quântica: o que já é real"
-    - "IA que programa: quanto código ela já escreve"
-    - "Regulação da IA na Europa e no Brasil"
-    - "Água: quanto a IA bebe para esfriar"
-    - "IA no celular: o que roda sem internet"
-    - "Startups de IA: quanto dinheiro está entrando"
-    - "IA e privacidade: o que fazem com seus dados"
-    - "Tradução por IA: o fim da barreira do idioma"
+  # Categorias sorteadas a cada dia (peso = chance relativa). A pesquisa do YouTube usa as buscas da
+  # categoria; a triagem descarta o que for de outra categoria; a reserva começa pelos temas dela.
+  categorias:
+    redes:
+      rotulo: "Redes e internet"
+      peso: 2
+      palavras: [rede, redes, internet, wifi, 5g, 6g, fibra, ftth, gpon, cabo, cabos, roteador, dns, bgp, ipv4, ipv6, tcp, udp, starlink, telecom, latencia, provedor, ping]
+      buscas: [computer networking explained, how the internet works animation, submarine internet cables, fiber optic internet explained, 5G explained, Wi-Fi 7 explained, DNS explained, Starlink satellites explained, network latency explained, how routers work]
+      temas_reserva:
+        - "Cabos submarinos: a internet passa pelo fundo do mar"
+        - "Como um pacote de dados atravessa o mundo"
+        - "DNS: a lista telefônica da internet"
+        - "Fibra óptica: como a luz carrega a internet"
+        - "Wi-Fi 7: o que muda na sua casa"
+        - "5G no Brasil: onde já funciona de verdade"
+        - "Starlink: como funciona a internet por satélite"
+        - "Ping e latência: por que o jogo trava"
+        - "IPv4 acabou: como a internet sobrevive"
+        - "O dia em que um erro de BGP derrubou o Facebook"
+        - "Como funciona um provedor de internet por dentro"
+        - "TCP e UDP: as duas formas de mandar dados"
+    robos:
+      rotulo: "Robôs"
+      peso: 2
+      palavras: [robo, robos, robotica, humanoide, humanoides, optimus, atlas, drone, drones, exoesqueleto]
+      buscas: [humanoid robots news, robotics explained, Boston Dynamics Atlas, Tesla Optimus update, warehouse robots, robot dog explained, surgical robots, delivery drones explained, robot hands dexterity]
+      temas_reserva:
+        - "Robôs humanoides nas fábricas: quantos já trabalham"
+        - "Robôs cirurgiões: como operam com precisão"
+        - "Robôs de armazém: como a Amazon entrega tão rápido"
+        - "Cães robôs: para que servem de verdade"
+        - "Drones de entrega: por que ainda são raros"
+        - "Mão robótica: por que segurar um ovo é difícil"
+        - "Exoesqueletos: robôs que fazem pessoas andar"
+        - "Robôs aspiradores: como mapeiam sua casa"
+    carros:
+      rotulo: "Carros autônomos e elétricos"
+      peso: 2
+      palavras: [carro, carros, autonomo, autonomos, waymo, tesla, veiculo, veiculos, eletrico, eletricos, bateria, baterias, lidar, robotaxi, robotaxis, byd]
+      buscas: [self-driving cars explained, Waymo robotaxi, Tesla FSD update, electric car battery explained, lidar explained, solid state battery, EV charging explained, autonomous trucks]
+      temas_reserva:
+        - "Robotáxis: quantas corridas já rodam sem motorista"
+        - "Lidar: como o carro autônomo enxerga"
+        - "Níveis de direção autônoma: do 0 ao 5"
+        - "Bateria de estado sólido: o que muda nos carros"
+        - "Carro elétrico: quanto tempo dura a bateria"
+        - "Caminhões autônomos nas estradas"
+        - "Recarga rápida: como encher a bateria em minutos"
+        - "Carros chineses: como a BYD cresceu tão rápido"
+    espaco:
+      rotulo: "Foguetes e espaço"
+      peso: 2
+      palavras: [foguete, foguetes, starship, spacex, nasa, espaco, espacial, orbita, lua, marte, satelite, satelites, artemis, telescopio]
+      buscas: [SpaceX Starship launch, rocket explained animation, reusable rockets explained, Artemis moon mission, Mars mission news, satellite constellation explained, James Webb telescope discovery, space station news]
+      temas_reserva:
+        - "Foguete reutilizável: como ele pousa de pé"
+        - "Starship: o maior foguete já construído"
+        - "Artemis: a volta do ser humano à Lua"
+        - "Quanto custa mandar 1 kg para a órbita"
+        - "Lixo espacial: o trânsito em volta da Terra"
+        - "Telescópio James Webb: o que já descobriu"
+        - "Quanto tempo leva uma viagem até Marte"
+        - "Brasil no espaço: Alcântara e os satélites nacionais"
+    novidades:
+      rotulo: "Notícias de tecnologia"
+      peso: 2
+      palavras: [lancamento, novidade, novidades, anuncio, apple, iphone, samsung, galaxy, google, microsoft, ces, gadget, gadgets, invencao, invencoes, oculos, dobravel]
+      buscas: [biggest tech news this week, new gadgets 2026, tech announcements, CES highlights, Apple event recap, Samsung new phone, weird new technology, inventions that will change the world]
+      temas_reserva:
+        - "As invenções de tecnologia mais curiosas do ano"
+        - "Tecnologias que prometiam e sumiram"
+        - "Óculos inteligentes: o próximo celular?"
+        - "Tela dobrável: quanto ela aguenta"
+        - "Impressão 3D de casas: já é real"
+        - "Como funciona o GPS"
+        - "Como o celular sabe onde você está"
+    ciberseguranca:
+      rotulo: "Cibersegurança"
+      peso: 1.5
+      palavras: [hacker, hackers, ataque, ataques, senha, senhas, golpe, golpes, ransomware, phishing, vazamento, vazamentos, seguranca, virus, malware, criptografia]
+      buscas: [cybersecurity explained, biggest hacks explained, ransomware attack explained, how hackers steal passwords, phishing explained, data breach news, encryption explained animation]
+      temas_reserva:
+        - "Ransomware: o sequestro de dados de empresas"
+        - "Como uma senha é quebrada"
+        - "Phishing: o golpe que começa num e-mail"
+        - "Criptografia de ponta a ponta: como funciona"
+        - "Os maiores vazamentos de dados da história"
+        - "Autenticação em dois fatores: por que importa"
+        - "Golpe do Pix: como os criminosos agem"
+    hardware:
+      rotulo: "Chips e hardware"
+      peso: 1.5
+      palavras: [chip, chips, processador, processadores, nvidia, intel, amd, tsmc, semicondutor, semicondutores, transistor, transistores, gpu, cpu, ssd]
+      buscas: [how computer chips are made, semiconductor explained, transistor explained animation, TSMC explained, CPU vs GPU explained, how SSD works, Moore law explained]
+      temas_reserva:
+        - "Como se fabrica um chip de 3 nanômetros"
+        - "CPU e GPU: qual a diferença de verdade"
+        - "TSMC: a fábrica de que o mundo depende"
+        - "Lei de Moore: ainda vale?"
+        - "SSD e HD: por que um é tão mais rápido"
+        - "Quantos transistores cabem num celular"
+    software:
+      rotulo: "Software e programação"
+      peso: 1
+      palavras: [software, programacao, programar, codigo, linux, windows, nuvem, cloud, app, apps, bug, bugs, open source]
+      buscas: [programming explained animation, how software works, Linux explained, cloud computing explained, biggest software bugs, open source explained, how apps make money]
+      temas_reserva:
+        - "Os bugs de software mais caros da história"
+        - "Linux: o sistema que roda o mundo sem você ver"
+        - "Nuvem: onde ficam suas fotos de verdade"
+        - "Open source: código grátis que move bilhões"
+        - "O bug do milênio: o que aconteceu de fato"
+        - "Como funciona o Pix por dentro"
+    quantica:
+      rotulo: "Computação quântica"
+      peso: 0.7
+      palavras: [quantica, quantico, quanticos, qubit, qubits]
+      buscas: [quantum computing explained, quantum computer news, qubits explained animation, quantum supremacy, quantum computer explained simply, IBM quantum news, Google quantum chip]
+      temas_reserva:
+        - "Computação quântica: o que já é real"
+        - "Qubit: como um bit pode ser 0 e 1 ao mesmo tempo"
+        - "Computador quântico quebra senhas?"
+    ia:
+      rotulo: "Inteligência artificial"
+      peso: 1.2
+      palavras: [ia, ias, inteligencia, chatgpt, openai, anthropic, claude, gemini, llm, agente, agentes, deepfake, deepfakes, altman]
+      buscas: [AI news, AI explained animation, AI agents explained, open source AI models, AI in medicine, AI breakthroughs explained]
+      temas_reserva:
+        - "Agentes de IA: o que já funciona de verdade"
+        - "Alucinações: por que a IA inventa respostas"
+        - "IA na medicina: diagnósticos que já acertam"
+        - "Golpes com voz clonada por IA"
+        - "IA que programa: quanto código ela já escreve"
+        - "Modelos de IA abertos vs fechados"
+        - "Direitos autorais e imagens geradas por IA"
+        - "Tradução por IA: o fim da barreira do idioma"
+  temas_reserva:                    # reserva geral (quando a da categoria do dia esgota)
+    - "O que acontece quando você aperta Enter numa busca"
+    - "QR Code: como ele guarda informação"
+    - "Bluetooth: como dois aparelhos se encontram"
+    - "Como funciona o reconhecimento facial do celular"
 
 # ---------------- FORMATO ----------------
 formato: curto                      # longo (16:9, capítulos) | curto (9:16, Shorts/TikTok)
+longo_semanal: domingo              # a rotina também faz um longo neste dia da semana ("" desliga)
 duracao:
   longo_min: 7                      # alvo em minutos (o prompt aceita 6 a 10)
   curto_seg: 65                     # alvo em segundos (55 a 75)
@@ -100,6 +214,11 @@ visual:
       acento: "#1f8bff"
       acento2: "#ff4fd8"
       acento_suave: "#6cb6ff"
+    redes:                          # série "Redes na Prática": ciano de fibra + verde de terminal (fixa; fora do rodízio)
+      rodizio: false
+      acento: "#19c3ff"
+      acento2: "#3dff9a"
+      acento_suave: "#7fdcff"
     claude:                         # cores da Claude / Anthropic / Claude Code (terracota, creme, grafite quente, azul)
       rodizio: false                # só quando pedida (ex.: pauta); não entra no rodízio diário
       acento: "#d97757"
@@ -221,6 +340,85 @@ roteiro:
   critico: true                     # um editor (IA) dá nota a gancho/narrativa/fluidez; abaixo de 7 o roteiro é reescrito
   estilo: viral                     # viral = shorts de conversa, ritmo rápido | educativo = apresentador de jornal financeiro/tecnológico
   notas: ""                         # orientações extras para o roteiro (a pauta do dia costuma preencher)
+
+# ---------------- SÉRIE (episódios em dias alternados) ----------------
+# Nos dias da série o curto do dia é o episódio (não sai outro curto); domingo ainda tem o longo semanal.
+# Título "Redes na Prática #NN | <título>", capa numerada, paleta fixa e gancho "No próximo vídeo, vamos aprender...".
+serie:
+  ativo: true
+  id: redes
+  nome: "Redes na Prática"
+  inicio: "2026-11-24"
+  intervalo_dias: 2                 # um dia sim, outro não
+  publico: "técnicos de telecom internos (NOC, suporte) e externos (instalação e manutenção em campo)"
+  config:                           # vale só nos episódios
+    visual:
+      paleta: redes
+      cena3d: tema
+    roteiro:
+      estilo: educativo
+      cenas_curto: [11, 14]         # mais cenas e mais curtas: cada frase com o seu desenho
+  episodios:
+    - {titulo: "Potência óptica: o que é dBm", capa: ["O QUE É", "dBm?"], icone: fiber, proximo: "onde o sinal óptico se perde",
+       tema: "Potência óptica em dBm: o que significa 0 dBm, por que o valor é negativo e a relação entre dBm e miliwatt", buscas: ["dBm optical power explained", "dBm to mW conversion fiber"]}
+    - {titulo: "Atenuação: onde o sinal se perde", capa: ["ONDE O SINAL", "SE PERDE"], icone: fiber, proximo: "a calcular o orçamento óptico",
+       tema: "Atenuação na fibra óptica: perda por km, emendas por fusão, conectores e splitters", buscas: ["fiber optic attenuation dB per km 1310 1490", "fusion splice loss typical dB"]}
+    - {titulo: "Orçamento óptico na prática", capa: ["ORÇAMENTO", "ÓPTICO"], icone: chart, proximo: "como o splitter divide o sinal",
+       tema: "Orçamento óptico (power budget) em redes GPON: classe B+ e C+, soma das perdas e margem", buscas: ["GPON optical budget class B+ C+", "optical power budget calculation"]}
+    - {titulo: "Splitter: 1:8, 1:16 e as perdas", capa: ["SPLITTER", "E PERDAS"], icone: splitter, proximo: "a diferença entre conector APC e UPC",
+       tema: "Splitter óptico PLC: razões 1:2 a 1:64 e a perda típica de cada uma", buscas: ["PLC splitter insertion loss 1x8 1x16 1x32", "fiber splitter loss table"]}
+    - {titulo: "Conector APC x UPC", capa: ["APC OU", "UPC?"], icone: fiber, proximo: "o que a curvatura faz com a fibra",
+       tema: "Conectores ópticos APC (verde) e UPC (azul): polimento, reflexão (return loss) e por que não misturar", buscas: ["APC vs UPC connector return loss", "SC APC green connector"]}
+    - {titulo: "Curvatura: o inimigo da fibra", capa: ["CURVATURA", "DA FIBRA"], icone: fiber, proximo: "a medir com o power meter",
+       tema: "Macrocurvatura e microcurvatura na fibra óptica: raio mínimo e por que a perda é maior em 1550 nm", buscas: ["fiber macrobending loss 1550 nm", "fiber minimum bend radius G.657"]}
+    - {titulo: "Medindo com power meter", capa: ["POWER", "METER"], icone: signal, proximo: "a ler o gráfico do OTDR",
+       tema: "Como medir potência óptica com power meter: comprimento de onda certo, valores de RX aceitáveis na ONU", buscas: ["optical power meter GPON ONU RX power range", "GPON ONU receive sensitivity -27 dBm"]}
+    - {titulo: "OTDR: lendo o gráfico", capa: ["OTDR", "NA PRÁTICA"], icone: chart, proximo: "o que os LEDs da ONU estão dizendo",
+       tema: "OTDR: como funciona e como ler eventos no gráfico (conector, emenda, quebra, fim da fibra)", buscas: ["OTDR trace events explained", "how OTDR works backscatter"]}
+    - {titulo: "ONU: LED PON e LOS", capa: ["LED LOS", "ACESO?"], icone: onu, proximo: "como a OLT organiza a rede PON",
+       tema: "LEDs da ONU: PON piscando, PON aceso e LOS vermelho, o que cada estado indica e o primeiro teste", buscas: ["ONU LOS light red meaning", "GPON ONU PON LED blinking"]}
+    - {titulo: "OLT e a árvore PON", capa: ["OLT E", "PON"], icone: olt, proximo: "a separar o tráfego com VLAN",
+       tema: "OLT, porta PON, splitters e ONUs: a árvore da rede GPON, 1490 nm na descida e 1310 nm na subida", buscas: ["GPON architecture OLT ONU splitter", "GPON 1490 nm downstream 1310 nm upstream"]}
+    - {titulo: "VLAN na prática", capa: ["VLAN", "NA PRÁTICA"], icone: switch, proximo: "por que o cabo de rede só dá 100 mega",
+       tema: "VLAN: porta access e trunk, tag 802.1Q e para que o provedor usa VLAN por serviço", buscas: ["802.1Q VLAN tagging explained", "access port vs trunk port"]}
+    - {titulo: "Cabo de rede: 100 ou 1 giga?", capa: ["100 OU", "1 GIGA?"], icone: cable, proximo: "a ler o status da porta do switch",
+       tema: "Cabo de rede que negocia 100 Mbps em vez de 1 Gbps: 4 pares, pares rompidos, categoria do cabo e crimpagem", buscas: ["gigabit ethernet uses 4 pairs 100BASE-TX 2 pairs", "ethernet negotiates 100 instead of 1000"]}
+    - {titulo: "Porta do switch não sobe", capa: ["PORTA", "NÃO SOBE"], icone: switch, proximo: "endereço IP e máscara sem mistério",
+       tema: "Status de porta de switch: connected, notconnect, disabled e err-disabled e o que fazer em cada um", buscas: ["switch port err-disabled causes", "show interfaces status notconnect"]}
+    - {titulo: "IP e máscara sem mistério", capa: ["IP E", "MÁSCARA"], icone: router, proximo: "como o DHCP entrega o IP",
+       tema: "Endereço IPv4, máscara de sub-rede, gateway e por que dois aparelhos na mesma rede precisam da mesma faixa", buscas: ["IPv4 subnet mask explained /24", "default gateway explained"]}
+    - {titulo: "DHCP: como o IP chega", capa: ["DHCP", "NA PRÁTICA"], icone: router, proximo: "por que sem DNS parece que a internet caiu",
+       tema: "DHCP: as 4 mensagens (DORA), concessão (lease) e o IP 169.254 quando o DHCP não responde", buscas: ["DHCP DORA process", "169.254 APIPA address meaning"]}
+    - {titulo: "Sem DNS, sem internet", capa: ["SEM DNS", "SEM INTERNET"], icone: globe, proximo: "a usar ping e traceroute",
+       tema: "DNS: como o nome vira IP e por que um DNS fora do ar parece queda de internet", buscas: ["how DNS resolution works", "DNS server down symptoms"]}
+    - {titulo: "Ping e traceroute", capa: ["PING E", "TRACEROUTE"], icone: terminal, proximo: "latência, jitter e perda de pacotes",
+       tema: "Ping e traceroute: o que medem, como ler tempo e TTL e onde o caminho trava", buscas: ["how traceroute works TTL", "ping round trip time explained"]}
+    - {titulo: "Latência, jitter e perda", capa: ["LATÊNCIA", "E JITTER"], icone: signal, proximo: "a diferença entre Wi-Fi 2,4 e 5 GHz",
+       tema: "Latência, jitter e perda de pacotes: valores bons para jogo e chamada de vídeo", buscas: ["latency jitter packet loss acceptable values VoIP", "jitter explained"]}
+    - {titulo: "Wi-Fi 2,4 GHz ou 5 GHz?", capa: ["2,4 OU", "5 GHz?"], icone: wifi, proximo: "como escolher o canal do Wi-Fi",
+       tema: "Wi-Fi 2,4 GHz x 5 GHz: alcance, velocidade, paredes e interferência", buscas: ["2.4 GHz vs 5 GHz range speed", "5 GHz wall attenuation"]}
+    - {titulo: "Canal de Wi-Fi congestionado", capa: ["CANAL", "CONGESTIONADO"], icone: wifi, proximo: "como o PPPoE autentica o cliente",
+       tema: "Canais de Wi-Fi: 1, 6 e 11 no 2,4 GHz, largura de canal e interferência entre vizinhos", buscas: ["wifi channels 1 6 11 non overlapping", "wifi channel width 20 40 80 MHz"]}
+    - {titulo: "PPPoE: o login do cliente", capa: ["PPPoE", "NA PRÁTICA"], icone: lock, proximo: "o que é NAT e CGNAT",
+       tema: "PPPoE: como o roteador do cliente autentica no provedor, usuário e senha e o MTU de 1492", buscas: ["PPPoE authentication explained", "PPPoE MTU 1492"]}
+    - {titulo: "NAT e CGNAT", capa: ["NAT E", "CGNAT"], icone: router, proximo: "IPv6 na rede do cliente",
+       tema: "NAT e CGNAT: IP público e privado, faixa 100.64.0.0/10 e por que o cliente não consegue abrir porta", buscas: ["CGNAT 100.64.0.0/10", "NAT vs CGNAT port forwarding"]}
+    - {titulo: "IPv6 sem medo", capa: ["IPv6", "SEM MEDO"], icone: globe, proximo: "o pacote que não passa por causa do MTU",
+       tema: "IPv6: tamanho do endereço, prefixo /64 para a casa do cliente e por que o IPv4 acabou", buscas: ["IPv6 address length 128 bits", "IPv6 /64 prefix delegation"]}
+    - {titulo: "MTU: o pacote que não passa", capa: ["MTU", "1500"], icone: terminal, proximo: "o que é loop de rede",
+       tema: "MTU: 1500 bytes, fragmentação e o teste com ping de tamanho fixo e bit DF", buscas: ["MTU 1500 explained", "ping test MTU do not fragment"]}
+    - {titulo: "Loop de rede e STP", capa: ["LOOP", "DE REDE"], icone: switch, proximo: "rota estática e rota dinâmica",
+       tema: "Loop de camada 2: tempestade de broadcast e como o Spanning Tree bloqueia a porta redundante", buscas: ["broadcast storm switching loop", "spanning tree protocol blocking port"]}
+    - {titulo: "Rota estática ou dinâmica?", capa: ["ROTA", "ESTÁTICA?"], icone: router, proximo: "como o OSPF escolhe o caminho",
+       tema: "Roteamento estático e dinâmico: tabela de rotas, rota padrão 0.0.0.0/0 e quando usar cada um", buscas: ["static vs dynamic routing", "default route 0.0.0.0/0"]}
+    - {titulo: "OSPF e o custo do enlace", capa: ["CUSTO", "OSPF"], icone: router, proximo: "como o provedor anuncia a rede com BGP",
+       tema: "OSPF: custo = banda de referência dividida pela banda do enlace e por que links de 1 e 10 giga empatam no padrão", buscas: ["OSPF cost reference bandwidth 100 Mbps", "OSPF auto-cost reference-bandwidth"]}
+    - {titulo: "BGP: como o provedor anuncia", capa: ["BGP", "DO PROVEDOR"], icone: globe, proximo: "a fazer um teste de velocidade correto",
+       tema: "BGP: sistemas autônomos (AS), prefixos anunciados e como o provedor se conecta à internet", buscas: ["BGP autonomous system explained", "ISP BGP prefix announcement"]}
+    - {titulo: "Teste de velocidade correto", capa: ["TESTE DE", "VELOCIDADE"], icone: signal, proximo: "o checklist da visita técnica",
+       tema: "Teste de velocidade: cabo x Wi-Fi, servidor, aparelho do cliente e por que o resultado engana", buscas: ["speed test wired vs wifi accuracy", "speedtest server selection"]}
+    - {titulo: "Checklist da visita técnica", capa: ["CHECKLIST", "DA VISITA"], icone: check,
+       tema: "Checklist de visita técnica em fibra: potência, conectores, ONU, roteador, Wi-Fi e teste final com o cliente", buscas: ["FTTH installation checklist", "fiber installation test optical power"]}
 
 # ---------------- PAUTAS (tema marcado para um dia) ----------------
 # Vale para a rotina daquele dia (agendada ou disparada pelo PC) quando ela não traz tema próprio.

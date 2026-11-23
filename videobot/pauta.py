@@ -52,6 +52,15 @@ def aplicar(cfg: dict, data: dt.date) -> dict | None:
     return p
 
 
+DIAS_SEMANA = {"segunda": 0, "terca": 1, "terça": 1, "quarta": 2, "quinta": 3, "sexta": 4, "sabado": 5, "sábado": 5, "domingo": 6}
+
+
+def dia_do_longo(cfg: dict, data: dt.date) -> bool:
+    """config.yml → longo_semanal: dia da semana em que a rotina também faz um vídeo longo ("" desliga)."""
+    d = str(cfg.get("longo_semanal") or "").strip().lower().split("-")[0]
+    return d in DIAS_SEMANA and data.weekday() == DIAS_SEMANA[d]
+
+
 def formatos(cfg: dict, data: dt.date, evento: str = "schedule", formato_in: str = "", tema_in: str = "", refazer: str = "") -> list[str]:
     """Formatos que a rotina do dia gera. Com pauta (e sem tema/refazer pedidos na execução): os da pauta."""
     padrao = [formato_in or cfg.get("formato") or "curto"]
@@ -61,7 +70,10 @@ def formatos(cfg: dict, data: dt.date, evento: str = "schedule", formato_in: str
         return padrao
     p = do_dia(cfg, data)
     if not p:
-        return [cfg.get("formato") or "curto"] if evento == "schedule" else padrao
+        base = [cfg.get("formato") or "curto"] if evento == "schedule" else padrao
+        if not formato_in and dia_do_longo(cfg, data) and "longo" not in base:
+            base.append("longo")  # um longo por semana, além do curto de todo dia
+        return base
     fs = [f for f in (p.get("formatos") or []) if f in ("curto", "longo")]
     return list(dict.fromkeys(fs)) or padrao
 

@@ -66,6 +66,7 @@ def main(argv=None):
 
     from pathlib import Path
     cfg = carregar_config(Path(a.config) if a.config else None)
+    p = None
     if a.modo == "completo" and not a.tema.strip() and not a.refazer.strip():
         from . import pauta
         p = pauta.aplicar(cfg, pauta.hoje_brasilia())  # tema marcado para hoje em config.yml → pautas
@@ -81,6 +82,10 @@ def main(argv=None):
             cfg["duracao"]["curto_seg"] = v
         else:
             cfg["duracao"]["longo_min"] = v
+    if a.modo == "completo" and not a.tema.strip() and not a.refazer.strip() and not p:
+        from . import pauta, serie  # dia da série (um sim, outro não): o curto do dia é o episódio
+        from .pipeline import historico
+        serie.aplicar(cfg, pauta.hoje_brasilia(), historico())
     if a.narracao:
         cfg["narracao"]["provedor"] = a.narracao
     if a.voz.strip():

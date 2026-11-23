@@ -521,6 +521,201 @@
     });
   };
 
+  // ---------- rede/telecom: terminal, topologia e faixa de nível ----------
+  const TOM = { good: 'var(--green, #3ddc84)', bad: 'var(--rec, #ff4d4d)', warn: '#ffb020', neutral: 'var(--acc)' };
+  function tomCor(t) { return TOM[t] || TOM.neutral; }
+  // cenas técnicas não têm objeto 3D: ocupam a caixa inteira mesmo no modo 3D (que reserva espaço para o objeto)
+  function caixaCheia(c) {
+    if (!STAGE.classList.contains('mode3d')) return;
+    css(c.box, c.port ? { top: '250px', bottom: '700px' } : { right: '130px' });
+    const r = c.box.getBoundingClientRect(); c.cw = r.width; c.ch = r.height;
+  }
+
+  /* Terminal: o comando é digitado letra a letra e a saída aparece linha a linha; as linhas que contêm
+     um dos trechos de "highlight" ganham uma faixa colorida (tone). */
+  T.terminal = function (c, p) {
+    caixaCheia(c);
+    const W = c.port ? c.cw : Math.min(1500, c.cw);
+    const col = el('div', '', c.box); css(col, { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '34px' });
+    let ttl = null;
+    if (p.title) { ttl = el('div', 'h2 chk', col); ttl.textContent = p.title; css(ttl, { width: W + 'px', textAlign: 'center' }); fit(ttl, c.port ? 64 : 62, 34, W, 150); }
+    const win = el('div', 'term-win chk', col); css(win, { width: W + 'px' });
+    const bar = el('div', 'term-bar', win);
+    ['#ff5f57', '#febc2e', '#28c840'].forEach(cor => css(el('span', 'term-dot', bar), { background: cor }));
+    el('span', 'term-host', bar, esc(p.host || 'terminal'));
+    const body = el('div', 'term-body', win);
+    const cmdL = el('div', 'term-line term-cmd', body);
+    el('span', 'term-prompt', cmdL, esc(p.prompt || ((p.host || '$') + (/[#>$]$/.test(p.host || '') ? '' : ' $'))));
+    cmdL.appendChild(document.createTextNode(' '));
+    const chars = [];
+    String(p.command || '').split('').forEach(ch => { const s = el('span', 'term-ch', cmdL); s.textContent = ch; chars.push(s); });
+    const cur = el('span', 'term-cursor', cmdL);
+    const H = (p.highlight || []).map(x => String(x).toLowerCase()).filter(Boolean);
+    const outs = (p.lines || []).slice(0, 9).map(t => {
+      const d = el('div', 'term-line', body); d.textContent = String(t);
+      const hot = H.some(h => String(t).toLowerCase().includes(h));
+      if (hot) d.classList.add('hot');
+      return { d, hot };
+    });
+    const fs = c.port ? Math.max(22, Math.min(38, Math.floor((W - 60) / Math.max(22, ...[p.command || ''].concat(p.lines || []).map(s => String(s).length + 4)) * 1.65))) : 34;
+    css(body, { fontSize: fs + 'px' });
+    let note = null;
+    if (p.note) {
+      note = el('div', 'term-note chk', col); note.textContent = p.note;
+      css(note, { borderColor: tomCor(p.tone), color: tomCor(p.tone), maxWidth: W + 'px' }); fit(note, c.port ? 44 : 42, 24, W, 140);
+    }
+    const tot = col.getBoundingClientRect().height;
+    if (tot > c.ch) css(col, { transform: 'scale(' + (c.ch / tot).toFixed(3) + ')' });
+    if (ttl) riseIn(c.tl, ttl, 0.02);
+    popIn(c.tl, win, 0.08, { from: { scale: 0.9, y: 40 } });
+    const tDig = Math.min(1.6, Math.max(0.4, chars.length * 0.045));
+    c.tl.set(chars, { autoAlpha: 0 }, 0);
+    chars.forEach((s, i) => c.tl.set(s, { autoAlpha: 1 }, 0.4 + (i / Math.max(1, chars.length)) * tDig));
+    c.tl.fromTo(cur, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.25, repeat: Math.max(1, Math.floor(c.d / 0.5)), yoyo: true, ease: 'steps(1)' }, 0);
+    const t0 = 0.55 + tDig;
+    const passo = Math.min(0.22, Math.max(0.08, (c.d * 0.45) / Math.max(1, outs.length)));
+    outs.forEach((o, i) => {
+      c.tl.fromTo(o.d, { autoAlpha: 0, x: -14 }, { autoAlpha: 1, x: 0, duration: 0.2, ease: 'power2.out' }, t0 + i * passo);
+      if (o.hot) c.tl.fromTo(o.d, { backgroundColor: 'rgba(0,0,0,0)', color: '#e8ecf2' },
+        { backgroundColor: p.tone === 'bad' ? 'rgba(255,77,77,.85)' : p.tone === 'warn' ? 'rgba(255,176,32,.85)' : 'rgba(var(--acc-rgb),.85)', color: '#0b0d12', duration: 0.3 },
+        t0 + outs.length * passo + 0.25);
+    });
+    if (note) popIn(c.tl, note, t0 + outs.length * passo + 0.5);
+  };
+
+  /* Topologia: equipamentos (nós) ligados por enlaces; um pacote percorre o caminho "path".
+     Enlace com highlight brilha na cor de destaque; enlace "down" fica vermelho tracejado com um X. */
+  T.topologia = function (c, p) {
+    caixaCheia(c);
+    const nodes = (p.nodes || []).slice(0, 6);
+    const links = (p.links || []).filter(l => l && l.from != null && l.to != null).slice(0, 8);
+    const W = c.cw, port = c.port;
+    const col = el('div', '', c.box); css(col, { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', width: W + 'px' });
+    let ttl = null;
+    if (p.title) { ttl = el('div', 'h2 chk', col); ttl.textContent = p.title; css(ttl, { width: W + 'px', textAlign: 'center' }); fit(ttl, port ? 64 : 62, 34, W, 150); }
+    const Hh = Math.max(380, c.ch - (ttl ? ttl.getBoundingClientRect().height + 24 : 0) - (p.note ? 150 : 0));
+    const area = el('div', '', col); css(area, { position: 'relative', width: W + 'px', height: Hh + 'px', flex: 'none' });
+    const ids = nodes.map((n, i) => String(n.id != null ? n.id : i));
+    const idx = id => ids.indexOf(String(id));
+    const n = nodes.length;
+    const cadeia = links.length === n - 1 && links.every((l, i) => idx(l.from) === i && idx(l.to) === i + 1);
+    const pos = [];
+    const nw = port ? 300 : 250, nh = port ? (n > 4 ? 170 : 200) : 180;
+    if (p.layout === 'linha' || (p.layout !== 'anel' && (cadeia || n <= 2))) {
+      // 9:16: a cadeia desce pela tela (reta até 4 nós, em zigue-zague com 5 ou 6), como o sinal descendo da OLT ao cliente
+      if (port) nodes.forEach((_, i) => pos.push([n > 4 ? W * (i % 2 ? 0.7 : 0.3) : W / 2, nh / 2 + (Hh - nh) * (n === 1 ? 0.5 : i / (n - 1))]));
+      else nodes.forEach((_, i) => pos.push([nw / 2 + (W - nw) * (n === 1 ? 0.5 : i / (n - 1)), Hh / 2]));
+    } else {
+      const rx = (W - nw) / 2, ry = (Hh - nh) / 2;
+      nodes.forEach((_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; pos.push([W / 2 + rx * Math.cos(a), Hh / 2 + ry * Math.sin(a)]); });
+    }
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + Hh);
+    css(svg, { position: 'absolute', left: '0', top: '0', width: W + 'px', height: Hh + 'px', overflow: 'visible' }); area.appendChild(svg);
+    const linkEls = links.map(l => {
+      const a = pos[idx(l.from)], b = pos[idx(l.to)];
+      if (!a || !b) return null;
+      const ln = document.createElementNS(svgNS, 'path');
+      ln.setAttribute('d', 'M' + a[0] + ' ' + a[1] + 'L' + b[0] + ' ' + b[1]);
+      const cor = l.down ? '#ff4d4d' : l.highlight ? getAcc() : '#56606f';
+      ln.setAttribute('stroke', cor); ln.setAttribute('stroke-width', l.highlight ? 10 : 7); ln.setAttribute('fill', 'none'); ln.setAttribute('stroke-linecap', 'round');
+      if (l.highlight) ln.style.filter = 'drop-shadow(0 0 12px ' + cor + ')';
+      svg.appendChild(ln);
+      let lab = null;
+      if (l.label) {
+        lab = el('div', 'topo-lab chk', area); lab.textContent = l.label;
+        const vert = Math.abs(b[0] - a[0]) < Math.abs(b[1] - a[1]);  // enlace em pé: rótulo ao lado da linha, não em cima
+        css(lab, { left: (a[0] + b[0]) / 2 + 'px', top: (a[1] + b[1]) / 2 + 'px', transform: vert ? 'translate(28px, -50%)' : '', color: l.down ? '#ff8080' : l.highlight ? 'var(--acc-soft)' : '#c6ccd6' });
+      }
+      let x = null;
+      if (l.down) { x = el('div', 'topo-x', area, '✕'); css(x, { left: (a[0] + b[0]) / 2 + 'px', top: (a[1] + b[1]) / 2 + 'px' }); }
+      return { ln, lab, x, down: !!l.down };
+    });
+    const nodeEls = nodes.map((nd, i) => {
+      const k = el('div', 'topo-node card chk', area);
+      css(k, { left: pos[i][0] - nw / 2 + 'px', top: pos[i][1] - nh / 2 + 'px', width: nw + 'px', height: nh + 'px' });
+      const ic = el('div', '', k, window.iconSVG(nd.icon || 'server', 3)); css(ic, { width: port ? '92px' : '88px', height: port ? '92px' : '88px', color: 'var(--acc)' });
+      const lb = el('div', 'topo-nome', k); lb.textContent = nd.label || ids[i]; fit(lb, port ? 40 : 34, 18, nw - 24, 60);
+      if (nd.sub) { const sb = el('div', 'topo-sub', k); sb.textContent = nd.sub; fit(sb, 24, 14, nw - 24, 34); }
+      return { k, ic };
+    });
+    let note = null;
+    if (p.note) { note = el('div', 'term-note chk', col); note.textContent = p.note; css(note, { borderColor: tomCor(p.tone), color: tomCor(p.tone), maxWidth: W + 'px' }); fit(note, port ? 42 : 40, 22, W, 130); }
+    if (ttl) riseIn(c.tl, ttl, 0.02);
+    nodeEls.forEach((o, i) => { popIn(c.tl, o.k, 0.12 + i * 0.12, { from: { scale: 0.6 } }); drawOn(c.tl, o.ic.querySelector('svg'), 0.2 + i * 0.12, 0.6); });
+    const tL = 0.25 + n * 0.12;
+    linkEls.forEach((o, i) => {
+      if (!o) return;
+      const L = o.ln.getTotalLength ? o.ln.getTotalLength() : 400;
+      o.ln.style.strokeDasharray = L + ' ' + L;
+      c.tl.fromTo(o.ln, { strokeDashoffset: L }, { strokeDashoffset: 0, duration: 0.45, ease: 'power2.inOut' }, tL + i * 0.1);
+      if (o.down) c.tl.set(o.ln, { strokeDasharray: '18 16' }, tL + i * 0.1 + 0.5);
+      if (o.lab) riseIn(c.tl, o.lab, tL + i * 0.1 + 0.3, 14);
+      if (o.x) popIn(c.tl, o.x, tL + i * 0.1 + 0.55);
+    });
+    // pacote: percorre os nós de "path" na ordem, em loop até o fim da cena
+    const caminho = (p.path || []).map(idx).filter(i => i >= 0);
+    if (caminho.length >= 2) {
+      const dot = el('div', 'topo-pkt', area);
+      const t0 = tL + links.length * 0.1 + 0.4, seg = 0.55;
+      const volta = caminho.length - 1;
+      const voltas = Math.max(1, Math.floor((c.d - t0) / (volta * seg + 0.3)));
+      for (let v = 0; v < voltas; v++) {
+        const base = t0 + v * (volta * seg + 0.3);
+        c.tl.set(dot, { autoAlpha: 1, x: pos[caminho[0]][0], y: pos[caminho[0]][1] }, base);
+        for (let j = 1; j < caminho.length; j++)
+          c.tl.to(dot, { x: pos[caminho[j]][0], y: pos[caminho[j]][1], duration: seg, ease: 'power1.inOut' }, base + (j - 1) * seg);
+        c.tl.to(dot, { autoAlpha: 0, duration: 0.2 }, base + volta * seg);
+      }
+      c.tl.set(dot, { autoAlpha: 0 }, 0);
+    }
+    if (note) popIn(c.tl, note, tL + links.length * 0.1 + 0.6);
+  };
+
+  /* Faixa de nível (ex.: potência óptica em dBm): régua com zonas coloridas e um marcador que desliza até o valor. */
+  T.faixa = function (c, p) {
+    caixaCheia(c);
+    const W = c.port ? c.cw : Math.min(1500, c.cw);
+    const lo = Number(p.min), hi = Number(p.max);
+    const ok = isFinite(lo) && isFinite(hi) && hi !== lo;
+    const a = ok ? lo : 0, b = ok ? hi : 100;
+    const frac = v => Math.max(0, Math.min(1, (Number(v) - a) / (b - a)));
+    const col = el('div', '', c.box); css(col, { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '40px', width: W + 'px' });
+    let ttl = null;
+    if (p.title) { ttl = el('div', 'h2 chk', col); ttl.textContent = p.title; css(ttl, { width: W + 'px', textAlign: 'center' }); fit(ttl, c.port ? 66 : 64, 34, W, 160); }
+    const val = Number(p.value);
+    const temV = isFinite(val);
+    let nb = null;
+    if (temV) {
+      nb = numBlock(col, { value: val, suffix: p.unit ? ' ' + p.unit : '', decimals: p.decimals, prefix: '' });
+      fit(nb.d, c.port ? 200 : 190, 70, W, 230);
+    }
+    const reg = el('div', 'faixa chk', col); css(reg, { width: W + 'px' });
+    const zonas = (p.zones || []).slice(0, 5);
+    const segs = zonas.map(z => {
+      const x0 = frac(z.from), x1 = frac(z.to), L = Math.min(x0, x1), R = Math.max(x0, x1);
+      const s = el('div', 'faixa-zona', reg); css(s, { left: L * 100 + '%', width: (R - L) * 100 + '%', background: tomCor(z.tone) });
+      if (z.label) { const t = el('div', 'faixa-rot', s); t.textContent = z.label; }
+      return s;
+    });
+    const esc0 = el('div', 'faixa-esc', reg); esc0.textContent = (ok ? fmt(a, 0) : '') + (p.unit ? ' ' + p.unit : '');
+    const esc1 = el('div', 'faixa-esc', reg); esc1.textContent = (ok ? fmt(b, 0) : '') + (p.unit ? ' ' + p.unit : ''); css(esc1, { left: 'auto', right: '0' });
+    const mk = el('div', 'faixa-mk', reg);
+    let lb = null;
+    if (p.label) { lb = el('div', 'sub chk', col); lb.textContent = p.label; css(lb, { width: W + 'px' }); fit(lb, c.port ? 46 : 44, 24, W, 150); }
+    const tot = col.getBoundingClientRect().height;
+    if (tot > c.ch) css(col, { transform: 'scale(' + (c.ch / tot).toFixed(3) + ')' });
+    if (ttl) riseIn(c.tl, ttl, 0.02);
+    popIn(c.tl, reg, 0.15, { from: { scale: 0.92 } });
+    segs.forEach((s, i) => c.tl.fromTo(s, { scaleX: 0, transformOrigin: '0 50%' }, { scaleX: 1, duration: 0.45, ease: 'power2.out' }, 0.25 + i * 0.15));
+    if (temV) {
+      c.tl.fromTo(mk, { left: '0%', autoAlpha: 0 }, { left: frac(val) * 100 + '%', autoAlpha: 1, duration: 1.2, ease: 'power3.out' }, 0.5 + segs.length * 0.15);
+      c.tl.fromTo(nb.d, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.45);
+      countUp(c, nb, { value: val }, 0.5 + segs.length * 0.15, 1.2);
+    } else c.tl.set(mk, { autoAlpha: 0 }, 0);
+    if (lb) riseIn(c.tl, lb, 1.0 + segs.length * 0.15);
+  };
+
   T.cta = function (c, p) {
     const col = el('div', '', c.box); css(col, { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '46px' });
     const h = el('div', 'h1 chk', col); css(h, { width: c.cw + 'px' });
@@ -938,6 +1133,17 @@
     css(tile.querySelector('svg'), { filter: 'drop-shadow(0 0 26px rgba(var(--acc-rgb),.8))' });
     const txW = port ? W - 2 * M : icX - M - 40;
     const col = el('div', 'abs', STAGE); css(col, { left: M + 'px', width: txW + 'px', display: 'flex', flexDirection: 'column', gap: port ? '22px' : '14px', alignItems: port ? 'center' : 'flex-start' });
+    if (data.serie) {  // série: nome da série no alto da coluna e o número do episódio colado no ícone (capa padronizada)
+      const sp = el('div', 'eyebrow chk', col, '<span class="dot"></span>' + esc(data.serie.nome));
+      css(sp, { fontSize: port ? '46px' : '30px', padding: port ? '16px 34px' : '10px 22px', background: 'rgba(var(--acc-rgb),.16)',
+                boxShadow: 'inset 0 0 0 3px var(--acc)', color: '#fff' });
+      const ep = el('div', 'abs', STAGE); ep.textContent = '#' + String(data.serie.ep).padStart(2, '0');
+      css(ep, { fontFamily: 'Anton', fontSize: (port ? 170 : 120) + 'px', lineHeight: 1, padding: port ? '10px 34px' : '6px 22px',
+                borderRadius: '28px', background: 'var(--acc2)', color: 'var(--ink-950)', transform: 'rotate(5deg)',
+                boxShadow: '0 20px 50px rgba(0,0,0,.55), 0 0 60px rgba(61,255,154,.35)' });
+      const er = ep.getBoundingClientRect();
+      css(ep, { left: Math.min(W - M - er.width, icX + icS * 0.78 - er.width / 2) + 'px', top: Math.min(H - M - er.height, icY + icS * 0.80 - er.height / 2) + 'px' });
+    }
     const lines = (data.lines || []).slice(0, 2);
     const lineEls = lines.map((ln, i) => {
       const d = el('div', 'thumbtxt chk', col);

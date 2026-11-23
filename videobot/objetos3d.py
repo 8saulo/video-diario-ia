@@ -9,6 +9,9 @@ import re
 
 from .util import sem_acento
 
+# Cenas que já são o próprio desenho técnico (comando, diagrama de rede, régua de nível): sem foto, quadro ou 3D por cima.
+DENSAS = frozenset({"terminal", "topologia", "faixa"})
+
 # id: (descrição para o roteirista, palavras-chave em PT/EN sem acento)
 CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
     "foguete": ("foguete decolando com chama", ("foguete", "rocket", "lancamento", "lancar", "starship", "falcon", "spacex", "decol")),
@@ -39,6 +42,10 @@ CATALOGO: dict[str, tuple[str, tuple[str, ...]]] = {
     "raio": ("raio de energia", ("raio", "potencia", "eletric", "choque", "rapido", "velocidade")),
     "carro": ("carro elétrico", ("carro", "veiculo", "tesla", "autonomo", "transito", "motorista")),
     "drone": ("drone com hélices", ("drone", "militar", "defesa", "entrega", "vigilancia")),
+    "switch": ("switch de rede com portas e LEDs de link", ("switch", "porta do switch", "vlan", "trunk", "spanning tree", "stp ", "loop de rede", "ethernet", "rj45", "cabo de rede")),
+    "roteador": ("roteador Wi-Fi com antenas e ondas", ("roteador", "router", "wi-fi", "wifi", "wireless", "2,4 ghz", "5 ghz", "dhcp", "nat ", "cgnat", "pppoe", "gateway")),
+    "onu": ("ONU de fibra com LEDs PON/LOS e cabo amarelo", ("onu ", "onu,", "onu.", "ont ", "modem", "led los", "los aceso", "led pon", "gpon")),
+    "fibra": ("feixe de fibras ópticas com pulsos de luz", ("fibra", "optica", "optico", "dbm", "atenuacao", "splitter", "olt", "conector", "apc", "upc", "otdr", "nanometro", "curvatura", "emenda", "fusao")),
     "cadeado": ("cadeado/segurança", ("seguranca", "privacidade", "hacker", "ataque", "senha", "criptografia", "golpe", "vazamento", "regulacao")),
     "documento": ("pilha de documentos/relatório", ("relatorio", "estudo", "pesquisa", "documento", "lei", "contrato", "paper", "artigo", "faa", "regra", "norma")),
     "lupa": ("lupa investigando", ("investiga", "analise", "verdade", "mito", "busca", "detalhe", "auditoria")),
@@ -54,7 +61,8 @@ CAMERAS = ("orbita", "aproxima", "sobe", "lateral")
 
 # Objetos "parentes": quando um já apareceu demais no vídeo, o parente entra no lugar (mesma ideia, outro visual)
 FAMILIAS = [("moedas", "cedulas", "cofre"), ("grafico_alta", "moedas"), ("servidor", "datacenter", "chip"),
-            ("rede_neural", "chip", "nuvem"), ("documento", "lupa"), ("pessoas", "cidade")]
+            ("rede_neural", "chip", "nuvem"), ("documento", "lupa"), ("pessoas", "cidade"),
+            ("fibra", "onu", "switch", "roteador"), ("switch", "roteador", "servidor")]
 LIMITE_PRINCIPAL = 2   # o mesmo objeto principal aparece no máximo 2 vezes por vídeo (run #49: 4 pilhas de moedas)
 
 
@@ -164,7 +172,7 @@ def para_cenas(roteiro: dict) -> None:
     for ch in roteiro.get("chapters", []):
         for sc in ch.get("scenes", []):
             prm = sc.get("params") or {}
-            if prm.get("_photo") or prm.get("_video") or prm.get("_quadro"):
+            if prm.get("_photo") or prm.get("_video") or prm.get("_quadro") or sc.get("template") in DENSAS:
                 objs = []  # foto/vídeo ou o quadro de dossiê ocupam a área do 3D
             elif sc.get("objetos_revisados"):
                 objs = list(sc["objetos_revisados"])

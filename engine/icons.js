@@ -49,7 +49,17 @@ window.ICONS = {
   shield: '<path d="M24 4l17 6v12c0 11-7 18-17 22C14 40 7 33 7 22V10z"/><path d="M16 24l6 6 10-11"/>',
   question: '<circle cx="24" cy="24" r="19"/><path d="M18.5 18a6 6 0 1 1 8.5 5.4c-1.9.9-3 2.4-3 4.4v1.2M24 35v.01"/>',
   bubble: '<circle cx="24" cy="24" r="17"/><path d="M15 19a10 10 0 0 1 7-6"/>',
-  factory: '<path d="M4 43V22l11 7v-7l11 7v-7l11 7V5h7v38z"/><path d="M11 36h4M21 36h4M31 36h4"/>'
+  factory: '<path d="M4 43V22l11 7v-7l11 7v-7l11 7V5h7v38z"/><path d="M11 36h4M21 36h4M31 36h4"/>',
+  // rede e telecom (série de redes)
+  router: '<rect x="5" y="26" width="38" height="13" rx="3"/><path d="M12 26l-3-15M36 26l3-15M12 32.5h.01M18 32.5h.01M24 32.5h.01M31 32.5h6"/><path d="M17 15a10 10 0 0 1 14 0M20.5 19a5 5 0 0 1 7 0"/>',
+  switch: '<rect x="3" y="15" width="42" height="18" rx="3"/><path d="M8 21h4v5H8zM15 21h4v5h-4zM22 21h4v5h-4zM29 21h4v5h-4zM37 22h.01M41 22h.01"/>',
+  onu: '<rect x="7" y="9" width="34" height="30" rx="5"/><path d="M13 31h.01M19 31h.01M25 31h.01M31 31h.01M14 18h20"/><path d="M24 39v5"/>',
+  olt: '<rect x="4" y="6" width="40" height="36" rx="3"/><path d="M4 18h40M4 30h40M9 12h4M9 24h4M9 36h4M19 12h.01M23 12h.01M27 12h.01M31 12h.01M19 24h.01M23 24h.01M27 24h.01M31 24h.01M19 36h.01M23 36h.01M27 36h.01M31 36h.01"/>',
+  fiber: '<path d="M3 30c8 0 8-12 16-12s8 12 16 12 6-6 10-6"/><path d="M3 24c8 0 8-12 16-12s8 12 16 12"/><circle cx="43" cy="24" r="2.5"/>',
+  splitter: '<path d="M4 24h14"/><path d="M18 24l10-14h16M18 24l10-5h16M18 24l10 5h16M18 24l10 14h16"/><rect x="14" y="19" width="8" height="10" rx="2"/>',
+  wifi: '<path d="M5 18a27 27 0 0 1 38 0M11 25a18 18 0 0 1 26 0M17 32a9 9 0 0 1 14 0"/><path d="M24 39v.01"/>',
+  cable: '<rect x="15" y="4" width="18" height="16" rx="2"/><path d="M19 4v6M22 4v6M26 4v6M29 4v6M20 20v6h8v-6M24 26v18"/>',
+  terminal: '<rect x="4" y="8" width="40" height="32" rx="4"/><path d="M11 18l6 6-6 6M21 31h12"/>'
 };
 window.iconSVG = function (name, sw) {
   const body = window.ICONS[name] || window.ICONS.ia;

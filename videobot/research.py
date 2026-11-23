@@ -3,12 +3,14 @@
 Caminho principal: YouTube Data API v3 (secret YOUTUBE_API_KEY).
 Alternativa: leitura das páginas públicas (busca com sp=CAMSAggE + página /watch).
 Se as duas falharem: tema da lista de reserva (respeitando o veto de 7 dias).
+A cada dia é sorteada uma categoria de TI (config tema.categorias): buscas, triagem e reserva seguem a categoria.
 """
 from __future__ import annotations
 
 import datetime as dt
 import json
 import math
+import random
 import re
 from concurrent.futures import ThreadPoolExecutor
 
@@ -214,6 +216,92 @@ def _ultimo_uso(tema: str, hist: list) -> str:
     return max(datas) if datas else ""
 
 
+def _tem_termo(texto: str, termos) -> bool:
+    """O texto cita algum dos termos? Palavra inteira (aceita 1 letra de gênero/plural no fim); termo com espaço = expressão."""
+    tk = tokens(texto)
+    junto = " " + " ".join(tk) + " "
+    for w in termos or []:
+        w = " ".join(tokens(str(w)))
+        if not w:
+            continue
+        if " " in w:
+            if f" {w} " in junto:
+                return True
+        elif any(t == w or (len(w) >= 5 and len(t) in (len(w), len(w) + 1) and t[:len(w) - 1] == w[:-1]) for t in tk):
+            return True
+    return False
+
+
+def categoria_de(tema: str, cats: dict) -> str:
+    """Categoria de um tema pelas palavras de cada uma (a de mais acertos; '' se nenhuma bate)."""
+    melhor, n = "", 0
+    for nome, c in (cats or {}).items():
+        k = sum(_tem_termo(tema, [w]) for w in (c or {}).get("palavras") or [])
+        if k > n:
+            melhor, n = nome, k
+    return melhor
+
+
+def _cansado(tema: str, tcfg: dict, hist: list, hoje: dt.date) -> bool:
+    """Assunto saturado no canal (ex.: energia/data center): vetado por `assuntos_cansados.dias` se já saiu nesse período."""
+    ac = tcfg.get("assuntos_cansados") or {}
+    termos = ac.get("termos") or []
+    if not termos or not _tem_termo(tema, termos):
+        return False
+    dias = int(ac.get("dias", 30))
+    for h in hist:
+        try:
+            d = dt.date.fromisoformat(h["data"])
+        except Exception:
+            continue
+        if (hoje - d).days <= dias and any(_tem_termo(h.get(k) or "", termos) for k in ("tema", "tema_pesquisa")):
+            return True
+    return False
+
+
+def vetado(tema: str, tcfg: dict, hist: list, hoje: dt.date) -> bool:
+    return _repetido(tema, hist, hoje, int(tcfg.get("nao_repetir_dias", 7))) or _cansado(tema, tcfg, hist, hoje)
+
+
+def escolher_categoria(cfg: dict, hist: list, hoje: dt.date, rnd: random.Random | None = None) -> str:
+    """Sorteia a categoria do dia (pelos pesos), fora das que saíram nos últimos `nao_repetir_categoria_dias`."""
+    tcfg = cfg["tema"]
+    cats = tcfg.get("categorias") or {}
+    if not cats:
+        return ""
+    rnd = rnd or random.Random(f"{hoje.isoformat()}-{cfg.get('formato', '')}")
+    dias = int(tcfg.get("nao_repetir_categoria_dias", 2))
+    recentes = set()
+    for h in hist:
+        try:
+            d = dt.date.fromisoformat(h["data"])
+        except Exception:
+            continue
+        if 0 <= (hoje - d).days <= dias:
+            recentes.add(h.get("categoria") or categoria_de(h.get("tema_pesquisa") or h.get("tema") or "", cats))
+    livres = [n for n in cats if n not in recentes] or list(cats)
+    pesos = [max(float((cats[n] or {}).get("peso", 1)), 0.01) for n in livres]
+    return rnd.choices(livres, weights=pesos)[0]
+
+
+def aplicar_categoria(cfg: dict, nome: str, rnd: random.Random | None = None) -> None:
+    """Põe a categoria em cfg: rótulo vira o nicho do dia, buscas dela + gerais, reserva dela (embaralhada) antes das outras."""
+    tcfg = cfg["tema"]
+    cats = tcfg.get("categorias") or {}
+    c = cats.get(nome) or {}
+    rnd = rnd or random.Random(nome)
+    base_b = tcfg.setdefault("_buscas_base", list(tcfg.get("buscas") or []))
+    base_r = tcfg.setdefault("_reserva_base", list(tcfg.get("temas_reserva") or []))
+    propria = list(c.get("temas_reserva") or [])
+    rnd.shuffle(propria)
+    outras = [t for n, o in cats.items() if n != nome for t in ((o or {}).get("temas_reserva") or [])]
+    rnd.shuffle(outras)
+    tcfg["categoria"] = nome
+    tcfg["nicho"] = c.get("rotulo") or nome
+    tcfg["buscas"] = list(dict.fromkeys(list(c.get("buscas") or []) + base_b))
+    tcfg["temas_reserva"] = list(dict.fromkeys(propria + base_r + outras))
+
+
 def temas_novos(cfg: dict, hist: list, hoje: dt.date, dias: int) -> list:
     """Sem referência do YouTube e com a reserva esgotada: a IA sugere temas inéditos (fora dos últimos 30 dias)."""
     tcfg = cfg["tema"]
@@ -227,7 +315,8 @@ Responda SOMENTE um array JSON de strings."""
     except Exception as e:
         nota(f"A IA não sugeriu temas novos ({str(e)[:100]}).")
         return []
-    return [t.strip() for t in lst if isinstance(t, str) and t.strip() and not _repetido(t, hist, hoje, dias)]
+    return [t.strip() for t in lst if isinstance(t, str) and t.strip() and not _repetido(t, hist, hoje, dias)
+            and not _cansado(t, tcfg, hist, hoje)]
 
 
 def temas_reserva(cfg: dict, hist: list, hoje: dt.date) -> list:
@@ -236,13 +325,15 @@ def temas_reserva(cfg: dict, hist: list, hoje: dt.date) -> list:
     tcfg = cfg["tema"]
     dias = int(tcfg.get("nao_repetir_dias", 7))
     todos = list(dict.fromkeys(tcfg.get("temas_reserva") or []))
-    livres = [t for t in todos if not _repetido(t, hist, hoje, dias)]
+    livres = [t for t in todos if not _repetido(t, hist, hoje, dias) and not _cansado(t, tcfg, hist, hoje)]
+    if livres and tcfg.get("categoria"):  # a ordem já vem sorteada pela categoria do dia
+        return livres
     if livres:
         idx = hoje.toordinal() % len(livres)
         return livres[idx:] + livres[:idx]
     nota(f"Todos os temas de reserva foram usados nos últimos {dias} dias; pedi temas novos à IA.")
     novos = temas_novos(cfg, hist, hoje, dias)
-    return novos + sorted(todos, key=lambda t: _ultimo_uso(t, hist))
+    return novos + sorted([t for t in todos if not _cansado(t, tcfg, hist, hoje)] or todos, key=lambda t: _ultimo_uso(t, hist))
 
 
 def _fmt(n):
@@ -267,6 +358,11 @@ def pesquisar(cfg: dict, hist: list, hoje: dt.date) -> dict:
         nota(f"Pesquisa no YouTube pulada: tema fixo \"{t}\" escolhido na execução.")
         return {"ranking": [{"tema": t, "titulo": "", "url": "", "fixo": True}], "md": f"# Pesquisa\n\nTema fixo: {t}\n",
                 "md_vencedor": f"**Tema fixo:** {t}"}
+    cat = escolher_categoria(cfg, hist, hoje)
+    if cat:
+        aplicar_categoria(cfg, cat, random.Random(f"{hoje.isoformat()}-{cfg.get('formato', '')}-{cat}"))
+        log(f"categoria do dia: {tcfg['nicho']} ({cat})")
+        nota(f"Categoria sorteada hoje: {tcfg['nicho']}.")
     buscas = list(dict.fromkeys(list(tcfg.get("buscas", [])) + list(tcfg.get("buscas_extras") or [])))
     if len(buscas) < 12:
         nota(f"Só {len(buscas)} buscas configuradas (o prompt mestre pede pelo menos 12).")
@@ -312,7 +408,7 @@ Temas usados nos últimos {dias} dias (não podem repetir): {json.dumps(recentes
 Para CADA vídeo abaixo, responda um objeto JSON com:
 id; marca_empresa (true se o canal é de marca/empresa/veículo corporativo: Google, OpenAI, Anthropic, BBC, CNBC, etc.);
 filme_trailer_infantil (true se é filme, trailer, desenho ou conteúdo infantil); titulo_ingles (true se o título está em inglês);
-fora_do_nicho (true se não é sobre {tcfg.get('nicho', 'IA e tecnologia')}); tema_pt (o tema em até 8 palavras em PT-BR);
+fora_do_nicho (true se o assunto principal não é {tcfg.get('nicho', 'IA e tecnologia')}); tema_pt (o tema em até 8 palavras em PT-BR);
 tema_repetido (true se é o mesmo assunto de algum tema usado); formato_bate (true se é vídeo explicativo/animado/motion graphics, o nosso formato);
 verificavel (true se o tema pode ser recontado com números checáveis em fontes confiáveis);
 d (0-10: facilidade de recontar em PT-BR, tema universal, sem trocadilho intraduzível, sem depender de rosto ou cena real) e motivo_d (uma linha);
@@ -342,6 +438,8 @@ Vídeos:
                 motivo = "fora do nicho"
             elif x.get("tema_repetido") or _repetido(c.get("tema_pt") or c["titulo"], hist, hoje, dias):
                 motivo = f"tema repetido (últimos {dias} dias)"
+            elif _cansado(c.get("tema_pt") or c["titulo"], tcfg, hist, hoje):
+                motivo = "assunto saturado no canal (energia/data center)"
             if motivo:
                 excluidos.append((c, motivo))
                 continue

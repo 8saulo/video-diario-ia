@@ -524,6 +524,83 @@
     return { g, lift: 0.3, upd(t) { d.position.y = 0.3 * Math.sin(t * 1.5); d.rotation.y = t * 0.3; d.rotation.z = 0.06 * Math.sin(t * 1.1); helices.forEach(h => { h.rotation.y = t * 30; }); } };
   };
 
+  // ---------- rede/telecom (série "Redes na Prática") ----------
+  KIT.switch = (ctx) => {
+    // switch de rack: 24 portas RJ45 com LED de link piscando e 4 portas SFP com fibra
+    const g = new THREE.Group(), c = new THREE.Group(); g.add(c);
+    c.add(mesh(RB(6.2, 0.9, 2.6), M.escuro, 0, 0.45, 0));
+    c.add(mesh(RB(6.2, 0.04, 0.04), M.acc, 0, 0.88, 1.3));
+    const leds = [];
+    for (let i = 0; i < 24; i++) {
+      const col = i % 12, lin = Math.floor(i / 12), x = -2.75 + col * 0.36 + (col >= 6 ? 0.18 : 0), y = 0.62 - lin * 0.34;
+      c.add(mesh(RB(0.27, 0.22, 0.06), M.cinzaEscuro, x, y, 1.31));
+      const l = mesh(RB(0.06, 0.04, 0.03), bas(ACC2), x - 0.08, y + 0.14, 1.33); c.add(l);
+      leds.push({ l, f: ctx.rnd() * 9, v: 4 + ctx.rnd() * 8, on: ctx.rnd() > 0.25 });
+    }
+    for (let k = 0; k < 4; k++) {
+      c.add(mesh(RB(0.3, 0.2, 0.06), M.metal, 1.95 + k * 0.38, 0.45, 1.31));
+      const cabo = mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 8), std(0xf2d14b, { roughness: 0.5 }), 1.95 + k * 0.38, 0.45, 2.1); cabo.rotation.x = Math.PI / 2; c.add(cabo);
+    }
+    c.position.y = 0.6;
+    return { g, size: 4.6, upd(t) { leds.forEach(o => { o.l.visible = o.on && Math.sin(t * o.v + o.f) > -0.3; }); c.rotation.y = -0.35 + 0.22 * Math.sin(t * 0.4); c.rotation.x = 0.18; } };
+  };
+
+  KIT.roteador = () => {
+    // roteador Wi-Fi com antenas e ondas saindo
+    const g = new THREE.Group(), c = new THREE.Group(); g.add(c);
+    c.add(mesh(RB(3.4, 0.55, 2.2), M.branco, 0, 0.3, 0));
+    for (let i = 0; i < 5; i++) c.add(mesh(new THREE.SphereGeometry(0.05, 10, 8), bas(i ? ACC2 : ACC), -1.1 + i * 0.35, 0.36, 1.11));
+    for (const s of [-1, 1]) {
+      const a = mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.0, 12), M.escuro, s * 1.35, 1.5, -0.8); a.rotation.z = s * -0.18; c.add(a);
+    }
+    const ondas = [0, 1, 2].map(i => {
+      const o = mesh(new THREE.TorusGeometry(0.7 + i * 0.55, 0.045, 8, 48, Math.PI * 0.7), bas(ACC, { transparent: true, opacity: 0.8 }), 0, 0.9, -0.2);
+      o.rotation.z = Math.PI * 0.15; c.add(o); return o;
+    });
+    return { g, upd(t) {
+      c.rotation.y = -0.4 + 0.3 * Math.sin(t * 0.45);
+      ondas.forEach((o, i) => { const u = (t * 0.8 + i / 3) % 1; o.scale.setScalar(0.6 + u * 0.9); o.material.opacity = 0.9 * (1 - u); });
+    } };
+  };
+
+  KIT.onu = (ctx) => {
+    // ONU/ONT de fibra (caixa branca, LEDs POWER/PON/LOS/LAN) com o cabo de fibra amarelo e o pulso de luz chegando
+    const g = new THREE.Group(), c = new THREE.Group(); g.add(c);
+    c.add(mesh(RB(3.0, 0.6, 2.2), M.branco, 0, 0.32, 0));
+    const tex = canvasTex(256, 64, (k, w, h) => { k.fillStyle = '#e9edf3'; k.fillRect(0, 0, w, h); k.fillStyle = '#7d8592'; k.font = 'bold 20px sans-serif'; k.textAlign = 'center';
+      ['PWR', 'PON', 'LOS', 'LAN', 'WLAN'].forEach((s, i) => k.fillText(s, 26 + i * 51, 52)); });
+    c.add(mesh(new THREE.PlaneGeometry(2.8, 0.5), bas(0xffffff, { map: tex }), 0, 0.33, 1.111));
+    const cores = [0x30d158, 0x30d158, 0xff3b5c, 0x30d158, 0x30d158];
+    const leds = cores.map((cor, i) => { const l = mesh(new THREE.SphereGeometry(0.055, 10, 8), bas(cor), -1.12 + i * 0.56, 0.5, 1.12); c.add(l); return l; });
+    const pts = []; for (let i = 0; i <= 24; i++) { const u = i / 24; pts.push(new THREE.Vector3(1.2 + u * 3.2, 0.32 + Math.sin(u * 3) * 0.5 * (1 - u), -0.6 - u * 1.2)); }
+    const curva = new THREE.CatmullRomCurve3(pts);
+    c.add(new THREE.Mesh(new THREE.TubeGeometry(curva, 48, 0.06, 8, false), std(0xf2d14b, { roughness: 0.45 })));
+    const pulso = glow(ACC2, 0.6); c.add(pulso);
+    const los = ctx.rnd() > 0.5;  // metade das cenas mostra LOS aceso (fibra com problema), metade sem LOS
+    return { g, upd(t) {
+      c.rotation.y = -0.5 + 0.25 * Math.sin(t * 0.4);
+      const u = 1 - (t * 0.6) % 1; pulso.position.copy(curva.getPoint(u)); pulso.visible = !los;
+      leds[1].visible = los ? Math.sin(t * 10) > 0 : true;
+      leds[2].visible = los && Math.sin(t * 4) > -0.5;
+      leds[3].visible = Math.sin(t * 13) > -0.4;
+    } };
+  };
+
+  KIT.fibra = (ctx) => {
+    // feixe de fibras ópticas com pulsos de luz correndo (a informação viajando como luz)
+    const g = new THREE.Group(), n = 5, fibras = [];
+    for (let i = 0; i < n; i++) {
+      const pts = [], fase = ctx.rnd() * 6;
+      for (let k = 0; k <= 30; k++) { const u = k / 30; pts.push(new THREE.Vector3(-3.4 + u * 6.8, 1.5 + (i - 2) * 0.28 + 0.35 * Math.sin(u * 5 + fase), (i - 2) * 0.15)); }
+      const curva = new THREE.CatmullRomCurve3(pts);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curva, 80, 0.07, 10, false), std([0x2f7bff, 0xff8a1f, 0x30d158, 0x9b6b3d, 0xe9edf3][i], { roughness: 0.35, transparent: true, opacity: 0.85 })));
+      const luz = glow(i % 2 ? ACC2 : ACC, 0.55); g.add(luz);
+      fibras.push({ curva, luz, v: 0.35 + ctx.rnd() * 0.3, f: ctx.rnd() });
+    }
+    const pon = mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 16), M.metal, 3.5, 1.5, 0); pon.rotation.z = Math.PI / 2; g.add(pon);
+    return { g, size: 5.6, upd(t) { fibras.forEach(o => { o.luz.position.copy(o.curva.getPoint((t * o.v + o.f) % 1)); }); g.rotation.y = 0.25 * Math.sin(t * 0.3); } };
+  };
+
   KIT.cadeado = () => {
     const g = new THREE.Group(), c = new THREE.Group(); g.add(c);
     c.add(mesh(RB(2.4, 2.0, 0.9), std(ACC, { metalness: 0.7, roughness: 0.3 }), 0, 1.0, 0));

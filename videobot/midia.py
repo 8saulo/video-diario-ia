@@ -485,7 +485,8 @@ def aplicar(roteiro: dict, cfg: dict, pasta: Path, durs: dict[str, float], w: in
     if not mcfg.get("ativo", True):
         return []
     cenas = [sc for ch in roteiro.get("chapters", []) for sc in ch.get("scenes", [])]
-    alvo = [sc for sc in cenas if sc.get("template") != "cta"]  # o CTA fica limpo (pergunta + opções)
+    from .objetos3d import DENSAS
+    alvo = [sc for sc in cenas if sc.get("template") != "cta" and sc.get("template") not in DENSAS]  # CTA e cenas técnicas ficam limpos
     if not alvo:
         return []
     if plano_pronto is not None:  # buscas já decididas na direção de arte (uma chamada a menos)

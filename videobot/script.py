@@ -24,9 +24,13 @@ TEMPLATES = """CATÁLOGO DE CENAS (campo "template" + "params"). Use variedade; 
 - gauge: {"value": 0-100, "label": str, "sub"?: str}
 - flow: {"title"?: str, "steps": [{"label": str, "icon"?: ICONE}] (2 a 4)}
 - cta: {"text": str, "highlight": [..], "options"?: [2 opções binárias], "kind"?: "comment"|"subscribe"}
+- terminal: {"title"?: str, "host": "SW1#"|"R1(config)#"|"PowerShell"|"Linux", "command": str (comando real), "lines": [até 8 linhas da saída real], "highlight"?: [trechos das linhas a destacar], "tone"?: "good"|"bad"|"warn", "note"?: str curto}  (comandos e saídas de equipamento/PC)
+- topologia: {"title"?: str, "nodes": [{"id": str, "label": str, "icon": ICONE, "sub"?: str}] (2 a 6), "links": [{"from": id, "to": id, "label"?: str, "highlight"?: bool, "down"?: bool}], "path"?: [ids por onde o pacote/sinal passa], "layout"?: "linha"|"anel", "note"?: str, "tone"?: ...}  (rede, caminho do sinal, enlace caído)
+- faixa: {"title"?: str, "value": número, "unit": "dBm"|"dB"|"Mbps"|"ms"..., "min": número, "max": número, "zones": [{"from": n, "to": n, "label": str, "tone": "good"|"warn"|"bad"}], "label"?: str}  (nível dentro de uma faixa: potência óptica, atenuação, latência)
 ICONE ∈ ia, chip, robot, rocket, satellite, globe, money, coin, bolt, warning, chart, trendup, trenddown, server, check, cross, clock, calendar,
 user, users, building, gov, lock, sun, fire, thermo, snow, cloud, code, phone, laptop, search, doc, scale, target, play, battery, leaf, heart,
-eye, signal, chat, water, car, game, music, shield, question, bubble, factory"""
+eye, signal, chat, water, car, game, music, shield, question, bubble, factory,
+router, switch, onu, olt, fiber, splitter, wifi, cable, terminal"""
 
 # Voz padrão de todos os vídeos (aprovada no capítulo 2 do longo do IPO da Anthropic, 22/11): apresentador expressivo,
 # com emoção contida e real. As tags de emoção de cada cena saem deste vocabulário e passam por emocoes_coerentes().
@@ -133,7 +137,7 @@ def emocoes_coerentes(r: dict) -> int:
             e = "curioso, intrigante" if tx.rstrip().endswith("?") else "interessado, explicativo"
         if e in _POSITIVO and _NEGATIVO.search(tx):
             e = "grave, cauteloso"
-        if e == "enfático no número" and sc.get("template") not in ("bignumber", "kpis", "bars", "gauge", "compare"):
+        if e == "enfático no número" and sc.get("template") not in ("bignumber", "kpis", "bars", "gauge", "compare", "faixa"):
             e = "firme, analítico"
         if len(seguidas) >= 2 and seguidas[-1] == seguidas[-2] == e and sc.get("template") != "cta":
             e = next(x for x in _ROTACAO if x != e)
@@ -159,7 +163,7 @@ def notas_da_pauta(cfg: dict) -> str:
     return f"ORIENTAÇÕES DESTE VÍDEO (obrigatórias):\n{n}" if n else ""
 
 
-NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta"}
+NOMES = {"headline", "statement", "bignumber", "compare", "list", "bars", "quote", "timeline", "kpis", "chat", "icons", "question", "gauge", "flow", "cta", "terminal", "topologia", "faixa"}
 
 
 def licoes_do_canal() -> str:
@@ -174,7 +178,8 @@ def _alvos(cfg):
     if cfg["formato"] == "curto":
         s = float(cfg["duracao"].get("curto_seg", 65))
         alvo = int(s * 2.6)
-        return {"palavras": (max(120, alvo - 25), alvo + 15), "cenas": (8, 10), "caps": (1, 1), "seg": s}
+        cenas = tuple((cfg.get("roteiro") or {}).get("cenas_curto") or (8, 10))  # série de redes: mais cenas, mais curtas
+        return {"palavras": (max(120, alvo - 25), alvo + 15), "cenas": (int(cenas[0]), int(cenas[1])), "caps": (1, 1), "seg": s}
     m = float(cfg["duracao"].get("longo_min", 7))
     alvo = int(m * 155)
     lo, hi = max(900, alvo - 120), min(1400, alvo + 120) if m <= 9 else 1400
