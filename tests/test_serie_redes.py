@@ -168,3 +168,17 @@ def test_objetos_de_rede_nao_aparecem_por_palavra_parecida():
     assert not {"switch", "roteador", "onu"} & set(objetos3d.escolher(sc, ""))
     sc = {"text": "A ONU acendeu o LOS e o roteador perdeu o DHCP.", "params": {}}
     assert {"onu", "roteador"} <= set(objetos3d.escolher(sc, ""))
+
+
+def test_video_avulso_de_wifi_usa_o_visual_de_redes_sem_ser_episodio():
+    """23/11: vídeo avulso para usuário residencial no estilo da série (paleta, cenas técnicas), mas fora da série."""
+    c = _cfg()
+    dia = dt.date(2026, 11, 23)
+    p = pauta.aplicar(c, dia)
+    assert p and "mesh" in c["tema"]["tema_fixo"].lower()
+    assert c["visual"]["paleta"] == "redes" and c["roteiro"]["estilo"] == "educativo"
+    assert script._alvos(c)["cenas"] == (11, 14)
+    assert "topologia" in c["roteiro"]["notas"] and "faixa" in c["roteiro"]["notas"]
+    assert not serie.dia_da_serie(c, dia), "23/11 não é dia de episódio"
+    assert serie.aplicar(c, dia, []) is None and "_serie" not in c
+    assert pauta.formatos(c, dia, "workflow_dispatch", "") == ["curto"]

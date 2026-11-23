@@ -424,6 +424,30 @@ serie:
 # Vale para a rotina daquele dia (agendada ou disparada pelo PC) quando ela não traz tema próprio.
 # formatos: [curto, longo] gera os dois (um job do GitHub para cada). "config" sobrepõe o resto deste arquivo só nesse dia.
 pautas:
+  "2026-11-23":                     # vídeo avulso no visual da série de redes (sem número, título de série nem gancho)
+    tema: "Wi-Fi em casa: como o sinal se espalha pelos cômodos e como funciona a rede mesh"
+    formatos: [curto]
+    buscas_fatos: ["wifi signal attenuation through walls dB", "2.4 GHz vs 5 GHz range walls", "how mesh wifi works backhaul", "mesh wifi node placement"]
+    angulo: >-
+      Para o usuário comum, em casa: por que o Wi-Fi enfraquece de um cômodo para o outro (distância, paredes, lajes,
+      espelhos, água, micro-ondas), a diferença de 2,4 e 5 GHz, e como a rede mesh resolve com vários pontos
+      conversando entre si e um nome de rede só. Termine com a dica prática de onde colocar o roteador e os pontos.
+    config:
+      tema:
+        nicho: "Wi-Fi em casa"
+      visual:
+        paleta: redes
+        cena3d: tema
+      roteiro:
+        estilo: educativo
+        cenas_curto: [11, 14]
+        notas: >-
+          Público: usuário residencial, sem jargão (explique o termo técnico na hora em que ele aparece).
+          CENAS FLUIDAS: uma ideia por cena, e a tela mostra EXATAMENTE o que a frase diz. Roteador, cômodos e pontos mesh
+          -> template topologia (roteador no centro, path do sinal, highlight no caminho bom, down no cômodo sem sinal);
+          força do sinal em dBm ou queda por parede -> faixa com zonas ótimo/bom/fraco (ex.: -30 a -90 dBm);
+          número -> bignumber/kpis; 2,4 x 5 GHz -> compare. Nada de marca de roteador. Vídeo avulso: não é episódio de
+          série; não diga "no próximo vídeo".
   "2026-11-22":
     tema: "O IPO da Anthropic"
     formatos: [curto, longo]
