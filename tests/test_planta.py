@@ -86,7 +86,7 @@ def test_cta_da_planta_fica_cordial():
 
 def test_pipeline_sem_foto_quadro_nem_3d_na_ilustracao():
     pipe = (RAIZ / "videobot" / "pipeline.py").read_text(encoding="utf-8")
-    assert 'ilustrada = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") == "planta"' in pipe
+    assert 'ilustrada = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") in ("planta", "rota")' in pipe  # 24/11: + cenário rota
     assert "creditos = [] if ilustrada else midia.aplicar(" in pipe
     r = {"formato": "curto", "tema": "Wi-Fi", "chapters": [{"title": "x", "scenes": [_cena(1, "ondas")]}]}
     c = copy.deepcopy(CFG); c["visual"]["cena3d"] = "planta"

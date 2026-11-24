@@ -29,6 +29,10 @@ TEMPLATES = """CATÁLOGO DE CENAS (campo "template" + "params"). Use variedade; 
 - planta: {"passo": PASSO, "titulo": str (até 7 palavras, o que a ilustração mostra agora), "highlight": [palavras do titulo], "options"?: [2 opções, só no passo cta]}  (ilustração contínua da casa vista de cima: o Wi-Fi saindo do roteador em ondas, perdendo força nas paredes, mapa de sinal; o passo escolhe o que ela mostra)
   PASSO ∈ casa (a planta se desenha), roteador, ondas (o sinal se espalha em ondas), paredes (perda em cada parede: alvenaria/drywall), obstaculos (geladeira, espelho, micro-ondas), distancia (celular se afastando, o dBm caindo), zona_morta (cômodo sem sinal), bandas (2,4 GHz alcança mais; 5 GHz é mais rápido e perde mais nas paredes), interferencia (redes dos vizinhos e micro-ondas), mesh (nós mesh espalhados, a casa fica coberta), backhaul (os nós conversam entre si), roaming (celular anda pela casa e troca de nó sem cair, mesma rede), posicionamento (roteador vai para o centro e para o alto), resumo, cta;
   em 3D (pessoa na suíte): quarto_problema (frustrada com o celular), quarto_fraco (close no celular, 1 barra), quarto_sem_sinal ("Sem internet"), corredor (câmera vai até o roteador), transicao (sobe e a casa vira a planta), cobertura (planta toda verde e zoom no celular da suíte), quarto_resolvido (volta ao 3D: sinal cheio, pessoa feliz)
+- params.local (só em vídeos com o cenário "rota"): em TODA cena, o lugar do caminho da internet onde a câmera está ∈ origem
+  (data center), submarino (cabo no fundo do mar), estacao (ancoragem no litoral), operadora (operadoras + PTT), isp (provedor),
+  concentrador (BNG/PPPoE), cgnat, switch_borda, olt, dio, ceo (caixa de emenda, splitter primário), cto (splitter secundário, drop),
+  casa (casa do cliente), onu (ONU e roteador Wi-Fi), mapa (vista de cima do caminho todo). Escolha o lugar de que a frase fala.
 - faixa: {"title"?: str, "value": número, "unit": "dBm"|"dB"|"Mbps"|"ms"..., "min": número, "max": número, "zones": [{"from": n, "to": n, "label": str, "tone": "good"|"warn"|"bad"}], "label"?: str}  (nível dentro de uma faixa: potência óptica, atenuação, latência)
 ICONE ∈ ia, chip, robot, rocket, satellite, globe, money, coin, bolt, warning, chart, trendup, trenddown, server, check, cross, clock, calendar,
 user, users, building, gov, lock, sun, fire, thermo, snow, cloud, code, phone, laptop, search, doc, scale, target, play, battery, leaf, heart,
@@ -338,6 +342,23 @@ def validar(r: dict, fatos: dict, cfg: dict, hoje) -> list[str]:
             err.append(f"a cena 1 (gancho) tem {n1} palavras; precisa ter no máximo 9 (cerca de 3 segundos) e prender na hora")
         minimo = int((cfg.get("roteiro") or {}).get("cenas_tecnicas_min") or 0)
         tecnicas = sum(1 for sc in cenas if sc.get("template") in ("terminal", "topologia", "faixa", "planta"))
+        if (cfg.get("roteiro") or {}).get("locais_rota"):  # cenário contínuo "rota": toda cena diz onde a câmera está
+            from .rota import LOCAIS
+            locs = [str((sc.get("params") or {}).get("local") or "") for sc in cenas]
+            ruins = sorted({l for l in locs if l not in LOCAIS})
+            if ruins:
+                err.append(f"params.local inválido ou faltando {ruins}; toda cena precisa de params.local ∈ {', '.join(LOCAIS)}")
+            if len(set(locs) - {""}) < 4:
+                err.append("use pelo menos 4 lugares diferentes do cenário (params.local) para a câmera percorrer o caminho")
+        lim = int((cfg.get("roteiro") or {}).get("max_numero_repetido") or 0)
+        if lim:  # episódio 1 da série (24/11): 0 dBm e -10 dBm repetidos em quase todas as cenas
+            vistos = {}
+            for sc in cenas:
+                for x in set(numeros_checaveis(sc) if sc.get("template") not in ("terminal", "topologia") else _numeros_params(sc.get("params") or {})):
+                    vistos[x] = vistos.get(x, 0) + 1
+            rep = sorted(x for x, n in vistos.items() if n > lim and x != float(hoje.year))
+            if rep:
+                err.append(f"os números {[f'{x:g}' for x in rep]} aparecem na tela em mais de {lim} cenas; cada cena mostra uma informação nova")
         if (cfg.get("roteiro") or {}).get("so_planta"):  # vídeo de uma ilustração só: toda cena é um passo da planta
             fora = [sc.get("id") for sc in cenas if sc.get("template") != "planta"]
             if fora:

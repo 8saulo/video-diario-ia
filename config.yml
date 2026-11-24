@@ -354,11 +354,21 @@ serie:
   config:                           # vale só nos episódios
     visual:
       paleta: redes
-      cena3d: tema
+      cena3d: rota                  # cenário contínuo do caminho da internet (engine/rede3d.js): a câmera percorre as estações
     roteiro:
       estilo: educativo
-      cenas_curto: [11, 14]         # mais cenas e mais curtas: cada frase com o seu desenho
-      cenas_tecnicas_min: 3         # pelo menos 3 cenas de terminal/topologia/faixa por episódio
+      cenas_curto: [12, 16]         # mais cenas e mais curtas: cada frase com o seu desenho
+      cenas_tecnicas_min: 4         # pelo menos 4 cenas de terminal/topologia/faixa por episódio
+      locais_rota: true             # toda cena diz params.local (onde a câmera está no cenário)
+      max_numero_repetido: 2        # o mesmo número na tela em no máximo 2 cenas (ep. 1: 0 e -10 dBm o tempo todo)
+  referencias: >-                   # valores de referência corretos (entram nas instruções de todo episódio)
+    GPON (ITU-T G.984, classe B+): OLT transmite de +1,5 a +5 dBm em 1490 nm (descida); ONU transmite de +0,5 a +5 dBm em
+    1310 nm (subida); 1550 nm é vídeo/RF. Potência recebida na ONU: bom entre -8 e -25 dBm (o ideal na prática fica entre
+    -15 e -24), atenção entre -25 e -27, crítico abaixo de -27 (sensibilidade -28); acima de -8 satura. -30 dBm na ONU é
+    péssimo (quase sem sinal). 0 dBm = 1 mW; -10 dBm = 0,1 mW; -20 dBm = 0,01 mW; cada -3 dB = metade da potência.
+    Perdas típicas: splitter 1:2 3,5 dB; 1:4 7,2; 1:8 10,5; 1:16 13,8; 1:32 17,1; 1:64 20,5. Fibra 0,35 dB/km em 1310 e
+    0,25 dB/km em 1490/1550. Emenda por fusão 0,05 a 0,1 dB; conector 0,3 a 0,5 dB. Orçamento classe B+: 28 dB; C+: 32 dB.
+    Wi-Fi (é outra escala, não misture com fibra): -30 a -50 dBm excelente, -67 bom para vídeo, -70 limite, abaixo de -80 ruim.
   episodios:
     - {titulo: "Potência óptica: o que é dBm", capa: ["O QUE É", "dBm?"], icone: fiber, proximo: "onde o sinal óptico se perde",
        tema: "Potência óptica em dBm: o que significa 0 dBm, por que o valor é negativo e a relação entre dBm e miliwatt", buscas: ["dBm optical power explained", "dBm to mW conversion fiber"]}
@@ -425,6 +435,16 @@ serie:
 # Vale para a rotina daquele dia (agendada ou disparada pelo PC) quando ela não traz tema próprio.
 # formatos: [curto, longo] gera os dois (um job do GitHub para cada). "config" sobrepõe o resto deste arquivo só nesse dia.
 pautas:
+  "2026-11-24":                     # vídeo avulso pedido pelo usuário: o caminho da internet (modelo do resto da série)
+    tema: "O caminho da internet até a casa do cliente"
+    formatos: [curto]
+    roteiro_fixo: roteiros/2026-11-24_caminho_da_internet.json
+    config:
+      tema:
+        nicho: "Caminho da internet"
+      visual:
+        paleta: redes
+        cena3d: rota
   "2026-11-23":                     # vídeo avulso de Wi-Fi: uma ilustração contínua da casa (engine/planta.js), fora da série
     tema: "Wi-Fi em casa: do problema à solução com rede mesh"
     formatos: [curto]

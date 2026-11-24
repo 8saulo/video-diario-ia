@@ -93,7 +93,7 @@ def final_seguir(cfg: dict, t: float, longo: bool) -> dict | None:
 def montar_timeline(roteiro: dict, narr: dict, cfg: dict) -> dict:
     longo = roteiro["formato"] == "longo"
     cena3d = roteiro.get("cena3d") or cfg["visual"].get("cena3d") or ""
-    if cena3d and cena3d not in ("gpon", "planta"):  # 3D temático: objetos de cada cena (params._3d); "planta" é a ilustração contínua
+    if cena3d and cena3d not in ("gpon", "planta", "rota"):  # 3D temático: objetos de cada cena (params._3d); "planta" é a ilustração contínua
         from .objetos3d import para_cenas
         para_cenas(roteiro)
     W, H = (1920, 1080) if longo else (1080, 1920)

@@ -1,0 +1,576 @@
+{
+  "tema": "O caminho da internet até a casa do cliente",
+  "slug": "caminho_da_internet_ate_a_casa",
+  "formato": "curto",
+  "cena3d": "rota",
+  "chapters": [
+    {
+      "title": "O caminho da internet",
+      "scenes": [
+        {
+          "id": "gancho",
+          "template": "headline",
+          "emocao": "curioso, intrigante",
+          "params": {
+            "local": "casa",
+            "eyebrow": "Caminho da internet",
+            "text": "De onde vem a sua internet?",
+            "highlight": [
+              "internet?"
+            ]
+          },
+          "text": "Você aperta o play e o vídeo começa na hora. Mas que caminho esses dados fazem até a sua casa?"
+        },
+        {
+          "id": "origem",
+          "template": "headline",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "origem",
+            "eyebrow": "1 · Origem",
+            "text": "O vídeo mora num data center",
+            "highlight": [
+              "data",
+              "center"
+            ]
+          },
+          "text": "Tudo começa num data center, onde o vídeo fica guardado em servidores."
+        },
+        {
+          "id": "submarino",
+          "template": "headline",
+          "emocao": "surpresa contida",
+          "params": {
+            "local": "submarino",
+            "eyebrow": "2 · Cabo submarino",
+            "text": "Fibra no fundo do mar",
+            "highlight": [
+              "mar"
+            ]
+          },
+          "text": "Se o servidor está em outro continente, os dados atravessam o oceano como luz, por cabos submarinos de fibra óptica."
+        },
+        {
+          "id": "ancoragem",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "local": "estacao",
+            "eyebrow": "3 · Litoral",
+            "text": "O cabo chega à estação de ancoragem",
+            "highlight": [
+              "ancoragem"
+            ]
+          },
+          "text": "O cabo chega ao litoral numa estação de ancoragem e entra na rede das grandes operadoras."
+        },
+        {
+          "id": "ptt",
+          "template": "topologia",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "operadora",
+            "title": "Troca de tráfego",
+            "layout": "linha",
+            "nodes": [
+              {
+                "id": "op",
+                "label": "Operadora",
+                "icon": "globe",
+                "sub": "trânsito IP"
+              },
+              {
+                "id": "ix",
+                "label": "PTT / IX",
+                "icon": "switch",
+                "sub": "ponto de troca"
+              },
+              {
+                "id": "isp",
+                "label": "Provedor",
+                "icon": "router",
+                "sub": "sua cidade"
+              }
+            ],
+            "links": [
+              {
+                "from": "op",
+                "to": "ix",
+                "highlight": true
+              },
+              {
+                "from": "ix",
+                "to": "isp",
+                "highlight": true
+              }
+            ],
+            "path": [
+              "op",
+              "ix",
+              "isp"
+            ]
+          },
+          "text": "As operadoras gigantes trocam tráfego entre si e com os provedores menores nos pontos de troca de tráfego, os PTTs."
+        },
+        {
+          "id": "bgp",
+          "template": "terminal",
+          "emocao": "firme, analítico",
+          "params": {
+            "local": "isp",
+            "title": "O provedor anuncia a rede",
+            "host": "BORDA#",
+            "command": "show bgp summary",
+            "lines": [
+              "Neighbor        AS     State   PfxRcd",
+              "198.51.100.1   64500   Estab   985120",
+              "203.0.113.9    64511   Estab      412"
+            ],
+            "highlight": [
+              "Estab"
+            ],
+            "tone": "good",
+            "note": "BGP: a rota até o seu provedor"
+          },
+          "text": "O provedor da sua cidade compra trânsito dessas operadoras e anuncia a sua própria rede para o mundo pelo protocolo BGP."
+        },
+        {
+          "id": "bng",
+          "template": "terminal",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "concentrador",
+            "title": "Concentrador (BNG)",
+            "host": "BNG#",
+            "command": "show subscriber sessions",
+            "lines": [
+              "Usuario        Tipo    IP              Estado",
+              "cliente1234    PPPoE   100.64.12.34    UP",
+              "cliente5678    PPPoE   100.64.12.35    UP"
+            ],
+            "highlight": [
+              "cliente1234"
+            ],
+            "tone": "good",
+            "note": "Login PPPoE autenticado"
+          },
+          "text": "Dentro do provedor, o concentrador autentica o login PPPoE do seu roteador e entrega um endereço IP."
+        },
+        {
+          "id": "cgnat",
+          "template": "terminal",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "local": "cgnat",
+            "title": "CGNAT",
+            "host": "CGNAT#",
+            "command": "show nat translations",
+            "lines": [
+              "Interno               Publico",
+              "100.64.12.34:51000 -> 203.0.113.7:20480",
+              "100.64.12.35:49152 -> 203.0.113.7:20481",
+              "100.64.12.36:50211 -> 203.0.113.7:20482"
+            ],
+            "highlight": [
+              "100.64.12.34"
+            ],
+            "tone": "neutral",
+            "note": "Vários clientes, um IP público"
+          },
+          "text": "Como os endereços IP versão quatro acabaram, o CGNAT faz vários clientes dividirem o mesmo IP público, trocando o endereço e a porta de cada conexão."
+        },
+        {
+          "id": "switch",
+          "template": "terminal",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "switch_borda",
+            "title": "Switch de borda",
+            "host": "SW-BORDA#",
+            "command": "show vlan brief",
+            "lines": [
+              "VLAN  Nome       Portas",
+              "100   INTERNET   Te1/1, Te1/2",
+              "200   IPTV       Te1/1",
+              "300   VOIP       Te1/2"
+            ],
+            "highlight": [
+              "INTERNET"
+            ],
+            "tone": "good"
+          },
+          "text": "O switch de borda separa os serviços em VLANs e entrega o tráfego de internet para a OLT."
+        },
+        {
+          "id": "olt",
+          "template": "kpis",
+          "emocao": "enfático no número",
+          "params": {
+            "local": "olt",
+            "title": "A OLT transforma dados em luz",
+            "items": [
+              {
+                "value": "1490",
+                "suffix": " nm",
+                "label": "descida: OLT → cliente"
+              },
+              {
+                "value": "1310",
+                "suffix": " nm",
+                "label": "subida: cliente → OLT"
+              }
+            ]
+          },
+          "text": "Na OLT, os dados viram luz: ela transmite para os clientes em mil quatrocentos e noventa nanômetros e escuta a resposta em mil trezentos e dez."
+        },
+        {
+          "id": "dio",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "local": "dio",
+            "eyebrow": "Distribuidor óptico",
+            "text": "O DIO organiza as fibras que vão para a rua",
+            "highlight": [
+              "DIO"
+            ]
+          },
+          "text": "Os cordões ópticos da OLT passam pelo DIO, o distribuidor interno óptico, que organiza as fibras que saem para a rua."
+        },
+        {
+          "id": "ceo",
+          "template": "topologia",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "ceo",
+            "title": "CEO: splitter primário",
+            "layout": "linha",
+            "nodes": [
+              {
+                "id": "dio",
+                "label": "DIO",
+                "icon": "olt",
+                "sub": "provedor"
+              },
+              {
+                "id": "ceo",
+                "label": "CEO",
+                "icon": "splitter",
+                "sub": "splitter 1:8"
+              },
+              {
+                "id": "cto",
+                "label": "8 CTOs",
+                "icon": "splitter",
+                "sub": "uma por rua"
+              }
+            ],
+            "links": [
+              {
+                "from": "dio",
+                "to": "ceo",
+                "label": "cabo aéreo",
+                "highlight": true
+              },
+              {
+                "from": "ceo",
+                "to": "cto",
+                "label": "8 fibras"
+              }
+            ],
+            "path": [
+              "dio",
+              "ceo",
+              "cto"
+            ]
+          },
+          "text": "Na rua, a fibra chega na CEO, a caixa de emenda óptica, onde um splitter primário divide o sinal em oito."
+        },
+        {
+          "id": "cto",
+          "template": "topologia",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "cto",
+            "title": "CTO: splitter secundário",
+            "layout": "linha",
+            "nodes": [
+              {
+                "id": "ceo",
+                "label": "CEO",
+                "icon": "splitter",
+                "sub": "1:8"
+              },
+              {
+                "id": "cto",
+                "label": "CTO",
+                "icon": "splitter",
+                "sub": "1:8"
+              },
+              {
+                "id": "casa",
+                "label": "Sua casa",
+                "icon": "onu",
+                "sub": "cabo drop"
+              }
+            ],
+            "links": [
+              {
+                "from": "ceo",
+                "to": "cto",
+                "highlight": true
+              },
+              {
+                "from": "cto",
+                "to": "casa",
+                "label": "drop",
+                "highlight": true
+              }
+            ],
+            "path": [
+              "ceo",
+              "cto",
+              "casa"
+            ]
+          },
+          "text": "Perto da sua casa, a CTO tem mais um splitter, que divide de novo e entrega o cabo drop até a sua ONU."
+        },
+        {
+          "id": "potencia",
+          "template": "terminal",
+          "emocao": "firme, analítico",
+          "params": {
+            "local": "olt",
+            "title": "Quanto de luz chega na ONU",
+            "host": "OLT#",
+            "command": "show ont optical-info 0/1/3 12",
+            "lines": [
+              "ONT-ID      : 12",
+              "OLT Tx      : 3.0 dBm",
+              "ONU Rx      : -20.3 dBm",
+              "ONU Tx      : 2.1 dBm",
+              "OLT Rx      : -22.8 dBm"
+            ],
+            "highlight": [
+              "ONU Rx"
+            ],
+            "tone": "good",
+            "note": "Splitters, emendas e km de fibra custam potência"
+          },
+          "text": "Cada divisão, emenda e quilômetro de fibra custa potência. A OLT sai com cerca de mais três dBm, e na ONU chegam menos vinte."
+        },
+        {
+          "id": "faixa",
+          "template": "faixa",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "local": "casa",
+            "title": "Potência na ONU (GPON)",
+            "value": -20.3,
+            "unit": "dBm",
+            "decimals": 1,
+            "min": -5,
+            "max": -30,
+            "zones": [
+              {
+                "from": -8,
+                "to": -25,
+                "label": "bom",
+                "tone": "good"
+              },
+              {
+                "from": -25,
+                "to": -27,
+                "label": "atenção",
+                "tone": "warn"
+              },
+              {
+                "from": -27,
+                "to": -30,
+                "label": "crítico",
+                "tone": "bad"
+              }
+            ],
+            "label": "O ideal fica entre −8 e −25 dBm"
+          },
+          "text": "Para o GPON, o bom fica entre menos oito e menos vinte e cinco dBm. Abaixo de menos vinte e sete, a conexão começa a cair."
+        },
+        {
+          "id": "onu",
+          "template": "headline",
+          "emocao": "otimista, caloroso",
+          "params": {
+            "local": "onu",
+            "eyebrow": "Na sua casa",
+            "text": "A ONU volta a luz para elétrico, e o Wi-Fi espalha",
+            "highlight": [
+              "ONU",
+              "Wi-Fi"
+            ]
+          },
+          "text": "Na sua casa, a ONU transforma a luz em sinal elétrico de novo, e o roteador espalha a internet pelo Wi-Fi."
+        },
+        {
+          "id": "mapa",
+          "template": "topologia",
+          "emocao": "reflexivo",
+          "params": {
+            "local": "mapa",
+            "title": "O caminho completo",
+            "layout": "linha",
+            "nodes": [
+              {
+                "id": "o",
+                "label": "Origem",
+                "icon": "server"
+              },
+              {
+                "id": "m",
+                "label": "Cabo submarino",
+                "icon": "fiber"
+              },
+              {
+                "id": "op",
+                "label": "Operadoras",
+                "icon": "globe"
+              },
+              {
+                "id": "p",
+                "label": "Provedor",
+                "icon": "router",
+                "sub": "BNG · CGNAT"
+              },
+              {
+                "id": "olt",
+                "label": "OLT",
+                "icon": "olt",
+                "sub": "DIO · CEO · CTO"
+              },
+              {
+                "id": "c",
+                "label": "Sua casa",
+                "icon": "onu"
+              }
+            ],
+            "links": [
+              {
+                "from": "o",
+                "to": "m",
+                "highlight": true
+              },
+              {
+                "from": "m",
+                "to": "op",
+                "highlight": true
+              },
+              {
+                "from": "op",
+                "to": "p",
+                "highlight": true
+              },
+              {
+                "from": "p",
+                "to": "olt",
+                "highlight": true
+              },
+              {
+                "from": "olt",
+                "to": "c",
+                "highlight": true
+              }
+            ],
+            "path": [
+              "o",
+              "m",
+              "op",
+              "p",
+              "olt",
+              "c"
+            ]
+          },
+          "text": "Esse é o caminho inteiro, percorrido em milésimos de segundo toda vez que você aperta o play."
+        },
+        {
+          "id": "cta",
+          "template": "cta",
+          "emocao": "cordial e direto",
+          "params": {
+            "local": "casa",
+            "text": "Você sabia desse caminho?",
+            "highlight": [
+              "caminho?"
+            ],
+            "options": [
+              "Sabia",
+              "Não sabia"
+            ]
+          },
+          "text": "E aí, você já sabia que a sua internet fazia todo esse caminho? Comenta aí!"
+        }
+      ]
+    }
+  ],
+  "thumb": {
+    "lines": [
+      {
+        "text": "O CAMINHO"
+      },
+      {
+        "text": "DA INTERNET",
+        "hl": true
+      }
+    ],
+    "icon": "globe"
+  },
+  "publicacao": {
+    "youtube": {
+      "titulo": "O caminho da internet até a sua casa, do cabo submarino à ONU",
+      "abertura": "Da origem no data center até a ONU da sua casa: cabo submarino, operadoras, PTT, provedor, BNG, CGNAT, OLT, DIO, CEO e CTO.",
+      "topicos": [
+        "🌊 Cabos submarinos de fibra óptica",
+        "🔀 Operadoras e PTT trocando tráfego",
+        "🔐 Concentrador PPPoE e CGNAT",
+        "💡 OLT em 1490 e 1310 nm",
+        "🧰 DIO, CEO e CTO com splitters",
+        "📶 A potência que chega na ONU"
+      ],
+      "cta": "Você sabia que a sua internet fazia todo esse caminho? Comenta aí!",
+      "hashtags": [
+        "#internet",
+        "#fibraoptica",
+        "#redes"
+      ],
+      "tags": [
+        "caminho da internet",
+        "como a internet chega",
+        "cabo submarino",
+        "PTT",
+        "provedor de internet",
+        "BNG",
+        "PPPoE",
+        "CGNAT",
+        "OLT",
+        "DIO",
+        "CEO",
+        "CTO",
+        "splitter",
+        "GPON",
+        "FTTH",
+        "fibra óptica",
+        "ONU",
+        "redes"
+      ],
+      "comentario_fixado": "Qual parte desse caminho você não conhecia?"
+    },
+    "tiktok": {
+      "legenda": "O caminho da internet do data center até a sua casa. Comente!",
+      "hashtags": [
+        "#internet",
+        "#fibraoptica",
+        "#redes",
+        "#tecnologia"
+      ],
+      "capa": "O caminho da internet"
+    }
+  }
+}

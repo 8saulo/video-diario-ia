@@ -108,7 +108,7 @@
     Object.entries(ST.theme.vars || {}).forEach(([k, v]) => root.style.setProperty(k, v));
   }
   // 3D: "gpon" = cena fixa de fibra óptica (scene3d.js); qualquer outro valor = objetos do tema por cena (tema3d.js)
-  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : ST && ST.scene3d === 'planta' ? window.WPL : window.W3T; }
+  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : ST && ST.scene3d === 'planta' ? window.WPL : ST && ST.scene3d === 'rota' ? window.WRT : window.W3T; }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
 
   // ---------- templates ----------
@@ -527,7 +527,8 @@
   // cenas técnicas não têm objeto 3D: ocupam a caixa inteira mesmo no modo 3D (que reserva espaço para o objeto)
   function caixaCheia(c) {
     if (!STAGE.classList.contains('mode3d')) return;
-    css(c.box, c.port ? { top: '250px', bottom: '700px' } : { right: '130px' });
+    // no cenário "rota" o cartão técnico fica no alto e a estação 3D continua visível embaixo
+    css(c.box, c.port ? { top: '250px', bottom: ST.scene3d === 'rota' ? '880px' : '700px' } : { right: ST.scene3d === 'rota' ? '760px' : '130px' });
     const r = c.box.getBoundingClientRect(); c.cw = r.width; c.ch = r.height;
   }
 
@@ -697,6 +698,9 @@
       const s = el('div', 'faixa-zona', reg); css(s, { left: L * 100 + '%', width: (R - L) * 100 + '%', background: tomCor(z.tone) });
       if (z.label) { const t = el('div', 'faixa-rot', s); t.textContent = z.label; }
       return s;
+    });
+    segs.forEach(s => {  // zona estreita: o rótulo não cabe e invadia a vizinha ("ATENÇÃ|CRÍTICO"); a cor já diz
+      const t = s.querySelector('.faixa-rot'); if (t && t.scrollWidth > s.clientWidth - 8) t.style.display = 'none';
     });
     const esc0 = el('div', 'faixa-esc', reg); esc0.textContent = (ok ? fmt(a, 0) : '') + (p.unit ? ' ' + p.unit : '');
     const esc1 = el('div', 'faixa-esc', reg); esc1.textContent = (ok ? fmt(b, 0) : '') + (p.unit ? ' ' + p.unit : ''); css(esc1, { left: 'auto', right: '0' });

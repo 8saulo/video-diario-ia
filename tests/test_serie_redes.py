@@ -64,13 +64,13 @@ def test_aplicar_poe_tema_cores_estilo_e_gancho():
     assert info["n"] == 2 and info["titulo"] == ep2["titulo"]
     assert c["tema"]["tema_fixo"] == ep2["tema"]
     assert c["tema"]["buscas_fatos"] == ep2["buscas"]
-    assert c["visual"]["paleta"] == "redes" and c["visual"]["cena3d"] == "tema"
+    assert c["visual"]["paleta"] == "redes" and c["visual"]["cena3d"] == "rota", "24/11: cenário contínuo"
     assert c["roteiro"]["estilo"] == "educativo"
     assert c["tema"]["nicho"] == "Redes na Prática · EP 02", "o rótulo de toda cena mostra a série e o episódio"
     assert f"No próximo vídeo, vamos aprender {ep2['proximo']}" in c["roteiro"]["notas"]
     assert ep3["titulo"] == info["proximo_titulo"]
     assert "terminal" in c["roteiro"]["notas"] and "topologia" in c["roteiro"]["notas"]
-    assert script._alvos(c)["cenas"] == (11, 14), "episódio tem mais cenas, mais curtas (fluidez)"
+    assert script._alvos(c)["cenas"] == (12, 16), "episódio tem mais cenas, mais curtas (fluidez)"
 
 
 def test_fora_do_dia_ou_episodios_esgotados_sai_o_curto_normal():
@@ -235,7 +235,7 @@ def test_video_no_estilo_redes_exige_cenas_tecnicas():
     assert not any("cena(s) técnica(s)" in e for e in _valida(sc, 0))
     c = _cfg()
     serie.aplicar(c, INICIO, [])
-    assert c["roteiro"]["cenas_tecnicas_min"] == 3
+    assert c["roteiro"]["cenas_tecnicas_min"] == 4
     c2 = _cfg()
     pauta.aplicar(c2, dt.date(2026, 11, 23))
     assert c2["roteiro"]["so_planta"], "o vídeo de Wi-Fi é todo técnico: só cenas da planta"

@@ -105,9 +105,13 @@ def aplicar(cfg: dict, data: dt.date, hist: list) -> dict | None:
     extra = f"""SÉRIE "{nome}", episódio {n} de {len(eps)}: {ep['titulo']}.
 Público: {s.get('publico', 'técnicos de redes')}. Tom de instrutor experiente explicando para o colega de equipe: didático, prático, sem enrolação.
 - Comece direto no problema ou na pergunta do técnico (cena 1). Ensine UMA coisa bem ensinada, com o passo a passo que ele aplica em campo.
-- CENAS FLUIDAS: uma ideia por cena, e a tela mostra EXATAMENTE o que a frase diz. Comando citado -> template terminal com o comando e
-  a saída real; equipamento, caminho do sinal ou enlace -> topologia (com path do pacote, highlight no enlace certo, down no que caiu);
-  nível de sinal/atenuação/latência -> faixa com as zonas boas e ruins; número -> bignumber/kpis; antes/depois -> compare.
+- UMA CENA SÓ: o vídeo inteiro acontece no cenário 3D do caminho da internet; a câmera voa de um lugar para o outro. Toda cena diz
+  params.local (o lugar do cenário de que a frase fala) e, por cima, o desenho técnico 2D daquela frase.
+- CENAS TÉCNICAS: uma ideia por cena, e a tela mostra EXATAMENTE o que a frase diz. Comando citado -> template terminal com o
+  comando e a saída real; equipamento, caminho do sinal ou enlace -> topologia (com path, highlight no enlace certo, down no que
+  caiu); nível de sinal/atenuação/latência -> faixa com as zonas corretas; número -> bignumber/kpis; antes/depois -> compare.
+- Cada cena traz uma informação NOVA: não repita o mesmo número nem a mesma frase em várias cenas.
+- VALORES DE REFERÊNCIA (use exatamente estes; nunca invente faixas): {s.get('referencias', '')}
 - Termos técnicos corretos (dBm, nm, OLT, ONU, VLAN...) e valores típicos de mercado; nada de marca de equipamento sem necessidade.
 - {gancho}
 - Não diga o número do episódio na narração (ele já aparece na tela)."""
