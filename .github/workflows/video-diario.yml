@@ -45,6 +45,11 @@ on:
         description: "Refazer um vídeo anterior: número da execução (ex.: 11). Reaproveita roteiro e fatos; refaz narração e render"
         type: string
         default: ""
+      publicar:
+        description: "sim = publica no YouTube | nao = só gera o vídeo (prévia no artefato da execução, sem Release, YouTube nem histórico)"
+        type: choice
+        options: [sim, nao]
+        default: sim
 
 permissions:
   contents: write
@@ -185,7 +190,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publicar Release
-        if: success()
+        if: success() && inputs.publicar != 'nao'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -212,7 +217,7 @@ jobs:
           PY
 
       - name: Publicar no YouTube
-        if: success() && env.TEM_YOUTUBE == 'true'
+        if: success() && env.TEM_YOUTUBE == 'true' && inputs.publicar != 'nao'
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -229,7 +234,7 @@ jobs:
         run: python -m videobot desempenho
 
       - name: Salvar histórico de temas
-        if: success()
+        if: success() && inputs.publicar != 'nao'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import datetime as dt
+import json
 import re
 from pathlib import Path
 
@@ -19,6 +20,7 @@ INICIO = dt.date(2026, 11, 24)
 def _cfg(formato="curto"):
     c = copy.deepcopy(CFG)
     c["formato"] = formato
+    c["serie"]["roteiro_fixo"] = ""  # estes testes verificam a lógica da série; a trava do roteiro próprio tem teste próprio
     return c
 
 
@@ -239,3 +241,17 @@ def test_video_no_estilo_redes_exige_cenas_tecnicas():
     c2 = _cfg()
     pauta.aplicar(c2, dt.date(2026, 11, 23))
     assert c2["roteiro"]["so_planta"], "o vídeo de Wi-Fi é todo técnico: só cenas da planta"
+
+
+def test_episodio_so_sai_com_roteiro_e_cena_proprios():
+    """26/11: o #02 automático reaproveitou o cenário do #01. Episódio sem roteiros/redes_epNN.json não sai (curto normal)."""
+    c = copy.deepcopy(CFG); c["formato"] = "curto"
+    assert c["serie"]["roteiro_fixo"] == "roteiros/redes_ep{n:02d}.json"
+    assert serie.aplicar(c, INICIO, []) is None, "ep. 1 não tem roteiro próprio no repositório"
+    c2 = copy.deepcopy(CFG); c2["formato"] = "curto"
+    info = serie.aplicar(c2, dt.date(2026, 11, 26), [{"data": "2026-11-24", "serie": "redes", "episodio": 1}])
+    assert info and info["n"] == 2 and c2["tema"]["roteiro_fixo"] == "roteiros/redes_ep02.json"
+    r = json.loads((RAIZ / "roteiros" / "redes_ep02.json").read_text(encoding="utf-8"))
+    assert r["cena3d"] == "video:redes02" and (RAIZ / "engine" / "videos" / "redes02.js").exists()
+    assert r["chapters"][0]["scenes"][-1]["text"].startswith("No próximo vídeo, vamos aprender")
+    assert CFG["serie"]["episodios"][2]["titulo"].startswith("Splitter"), "o orçamento óptico entrou no #02; o #03 é o splitter"

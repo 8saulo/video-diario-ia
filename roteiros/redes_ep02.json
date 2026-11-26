@@ -1,0 +1,597 @@
+{
+  "tema": "Atenuação e orçamento óptico no GPON",
+  "slug": "redes02_atenuacao_orcamento_gpon",
+  "formato": "curto",
+  "cena3d": "video:redes02",
+  "serie": {
+    "id": "redes",
+    "nome": "Redes na Prática",
+    "n": 2,
+    "total": 29,
+    "titulo": "Atenuação: onde o sinal se perde"
+  },
+  "chapters": [
+    {
+      "title": "Atenuação no GPON",
+      "scenes": [
+        {
+          "id": "gancho",
+          "template": "headline",
+          "emocao": "curioso, intrigante",
+          "params": {
+            "peca": "fibra",
+            "eyebrow": "Atenuação",
+            "text": "Para onde vai a luz da OLT?",
+            "highlight": [
+              "luz"
+            ],
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/laser.jpg",
+                "rotulo": "LUZ",
+                "legenda": "LASER EM FIBRA"
+              }
+            ]
+          },
+          "text": "A luz sai forte da OLT, mas chega fraca na casa do cliente. Para onde vai essa potência?"
+        },
+        {
+          "id": "classes",
+          "template": "bars",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "olt",
+            "title": "Saída média da OLT (1490 nm)",
+            "prefix": "+",
+            "suffix": " dBm",
+            "bars": [
+              {
+                "label": "Classe B+",
+                "value": 3
+              },
+              {
+                "label": "Classe C+",
+                "value": 5,
+                "highlight": true
+              },
+              {
+                "label": "Classe C++",
+                "value": 8
+              }
+            ],
+            "hud": 5.0,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/olt_foto.jpg",
+                "rotulo": "OLT",
+                "legenda": "FOTO REAL",
+                "credito": "Vivien Guéant · CC BY-SA 3.0 · Wikimedia Commons"
+              }
+            ]
+          },
+          "text": "Tudo começa no módulo da OLT. Na classe B mais, ele transmite em média mais três dBm. Na C mais, cerca de mais cinco. E na C mais mais, perto de mais oito."
+        },
+        {
+          "id": "orcamento",
+          "template": "bars",
+          "emocao": "firme, analítico",
+          "params": {
+            "peca": "olt",
+            "title": "Orçamento óptico (perda máxima)",
+            "suffix": " dB",
+            "bars": [
+              {
+                "label": "B+",
+                "value": 28
+              },
+              {
+                "label": "C+",
+                "value": 32,
+                "highlight": true
+              },
+              {
+                "label": "C++",
+                "value": 35
+              }
+            ],
+            "hud": 5.0
+          },
+          "text": "A classe também define o orçamento óptico, a perda que o enlace aguenta: vinte e oito dB na B mais, trinta e dois na C mais e cerca de trinta e cinco na C mais mais."
+        },
+        {
+          "id": "dio",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "dio",
+            "hud": 5.0,
+            "eyebrow": "Distribuidor óptico",
+            "text": "Da OLT, a luz passa pelo DIO",
+            "highlight": [
+              "DIO"
+            ],
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/dio_foto.jpg",
+                "rotulo": "DIO",
+                "legenda": "FOTO REAL"
+              }
+            ]
+          },
+          "text": "Da OLT, um cordão leva a luz até o DIO, o distribuidor óptico que fica no mesmo rack."
+        },
+        {
+          "id": "dio_esquema",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "dio",
+            "hud": 4.0,
+            "tipo": "dio",
+            "title": "Como funciona o DIO"
+          },
+          "text": "No DIO, o cordão da OLT encontra o pigtail emendado no cabo da rua. Cada conector nesse caminho cobra até meio dB."
+        },
+        {
+          "id": "nucleo",
+          "template": "headline",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "fibra_perto",
+            "eyebrow": "Dentro da fibra",
+            "text": "A luz viaja presa no núcleo",
+            "highlight": [
+              "núcleo"
+            ],
+            "hud": 4.0,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/cabo_corte.jpg",
+                "rotulo": "CABO ÓPTICO",
+                "legenda": "FOTO REAL"
+              }
+            ]
+          },
+          "text": "Dentro da fibra, a luz viaja presa no núcleo, refletindo na casca de vidro. Mas, a cada quilômetro, um pouco dela se perde."
+        },
+        {
+          "id": "por_km",
+          "template": "kpis",
+          "emocao": "enfático no número",
+          "params": {
+            "peca": "fibra",
+            "title": "Perda da fibra por quilômetro",
+            "items": [
+              {
+                "value": 0.25,
+                "suffix": " dB/km",
+                "label": "descida · 1490 nm"
+              },
+              {
+                "value": 0.35,
+                "suffix": " dB/km",
+                "label": "subida · 1310 nm"
+              }
+            ],
+            "hud": 1.5,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/fibras.jpg",
+                "rotulo": "FIBRAS",
+                "legenda": "FOTO REAL"
+              }
+            ]
+          },
+          "text": "Na descida, em mil quatrocentos e noventa nanômetros, a fibra perde cerca de zero vírgula vinte e cinco dB por quilômetro. Em dez quilômetros, são dois vírgula cinco."
+        },
+        {
+          "id": "alcance",
+          "template": "kpis",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "bobina",
+            "title": "Alcance do GPON",
+            "items": [
+              {
+                "value": 20,
+                "suffix": " km",
+                "label": "alcance físico OLT → ONU"
+              },
+              {
+                "value": 60,
+                "suffix": " km",
+                "label": "alcance lógico máximo"
+              }
+            ],
+            "hud": 1.5,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/bobina_foto.jpg",
+                "rotulo": "BOBINA",
+                "legenda": "FOTO REAL",
+                "credito": "Antti Leppänen · CC BY 4.0 · Wikimedia Commons"
+              }
+            ]
+          },
+          "text": "Por isso o padrão GPON prevê até vinte quilômetros de alcance físico entre a OLT e a ONU, com alcance lógico de até sessenta."
+        },
+        {
+          "id": "fusao",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "fusao",
+            "eyebrow": "Emenda por fusão",
+            "text": "Fusão bem feita: até 0,1 dB",
+            "highlight": [
+              "0,1",
+              "dB"
+            ],
+            "hud": 1.5,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/fusao_foto.jpg",
+                "rotulo": "FUSÃO",
+                "legenda": "MÁQUINA DE FUSÃO",
+                "credito": "Asurnipal · CC BY-SA 4.0 · Wikimedia Commons"
+              }
+            ]
+          },
+          "text": "A emenda por fusão custa bem menos: de zero vírgula zero cinco a zero vírgula um dB, quando bem feita."
+        },
+        {
+          "id": "ceo",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "ceo",
+            "hud": 1.5,
+            "eyebrow": "Caixa de emenda",
+            "text": "No poste, a CEO guarda as emendas",
+            "highlight": [
+              "CEO"
+            ],
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/ceo_domo.jpg",
+                "rotulo": "CEO",
+                "legenda": "FOTO REAL"
+              },
+              {
+                "src": "../roteiros/midia/redes02/ceo_bandejas.jpg",
+                "rotulo": "BANDEJAS",
+                "legenda": "FOTO REAL",
+                "em": 2.4
+              }
+            ]
+          },
+          "text": "Na rua, a fibra sobe até a CEO, a caixa de emenda óptica presa no cabo."
+        },
+        {
+          "id": "ceo_esquema",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "ceo_dentro",
+            "hud": 1.2,
+            "tipo": "ceo",
+            "title": "Dentro da CEO"
+          },
+          "text": "Dentro dela, as bandejas guardam as emendas por fusão, a folga de fibra acomodada em voltas largas e o splitter primário."
+        },
+        {
+          "id": "splitter",
+          "template": "bars",
+          "emocao": "grave, cauteloso",
+          "params": {
+            "peca": "splitter",
+            "title": "Perda do splitter",
+            "prefix": "−",
+            "suffix": " dB",
+            "decimals": 1,
+            "bars": [
+              {
+                "label": "1:2",
+                "value": 3.5
+              },
+              {
+                "label": "1:4",
+                "value": 7.2
+              },
+              {
+                "label": "1:8",
+                "value": 10.5,
+                "highlight": true
+              },
+              {
+                "label": "1:16",
+                "value": 13.8
+              },
+              {
+                "label": "1:32",
+                "value": 17.1
+              }
+            ],
+            "hud": -9.3,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/splitter_foto.jpg",
+                "rotulo": "SPLITTER",
+                "legenda": "SPLITTER PLC 1:4"
+              }
+            ]
+          },
+          "text": "E o splitter é o maior vilão: um divisor de um para oito tira cerca de dez vírgula cinco dB, e um de um para dezesseis, quase catorze."
+        },
+        {
+          "id": "splitter_esquema",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "splitter",
+            "hud": -9.3,
+            "tipo": "splitter",
+            "title": "Como a luz se divide"
+          },
+          "text": "Ele divide a luz em partes iguais: a cada divisão, a potência cai pela metade. No um para oito, cada saída leva só um oitavo, mais as perdas do chip."
+        },
+        {
+          "id": "cto",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "cto",
+            "hud": -9.3,
+            "eyebrow": "Caixa de terminação",
+            "text": "A CTO no poste, perto das casas",
+            "highlight": [
+              "CTO"
+            ],
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/cto_fechada.jpg",
+                "rotulo": "CTO",
+                "legenda": "FOTO REAL"
+              },
+              {
+                "src": "../roteiros/midia/redes02/cto_aberta.jpg",
+                "rotulo": "CTO ABERTA",
+                "legenda": "FOTO REAL",
+                "em": 2.5
+              }
+            ]
+          },
+          "text": "Perto das casas fica a CTO, fechada no poste. Ao abrir, aparecem o segundo splitter e as portas dos clientes."
+        },
+        {
+          "id": "cto_esquema",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "cto_dentro",
+            "hud": -20.6,
+            "tipo": "cto",
+            "title": "Dentro da CTO"
+          },
+          "text": "Mais um splitter de um para oito e mais um conector: na porta da CTO, a luz já está em menos vinte vírgula seis dBm, e o cabo drop leva até a casa."
+        },
+        {
+          "id": "conta",
+          "template": "terminal",
+          "emocao": "firme, analítico",
+          "params": {
+            "peca": "geral",
+            "title": "A conta de uma rede real",
+            "host": "orcamento",
+            "prompt": "$",
+            "command": "calcular --olt C+ --fibra 10km",
+            "lines": [
+              "OLT C+ (saída)        +5,0 dBm",
+              "Fibra 10 km × 0,25    −2,5 dB",
+              "Splitter 1:8 (CEO)   −10,5 dB",
+              "Splitter 1:8 (CTO)   −10,5 dB",
+              "4 conectores × 0,5    −2,0 dB",
+              "6 fusões × 0,1        −0,6 dB",
+              "Perda total          −26,1 dB",
+              "Chega na ONU         −21,1 dBm"
+            ],
+            "highlight": [
+              "Chega na ONU"
+            ],
+            "tone": "good",
+            "hud": -21.1
+          },
+          "text": "Somando tudo, com OLT C mais e dez quilômetros de fibra, a perda total é de vinte e seis vírgula um dB."
+        },
+        {
+          "id": "resultado",
+          "template": "faixa",
+          "emocao": "otimista, caloroso",
+          "params": {
+            "peca": "medidor",
+            "title": "Potência na ONU",
+            "value": -21.1,
+            "unit": "dBm",
+            "decimals": 1,
+            "min": -5,
+            "max": -30,
+            "zones": [
+              {
+                "from": -8,
+                "to": -25,
+                "label": "bom",
+                "tone": "good"
+              },
+              {
+                "from": -25,
+                "to": -27,
+                "label": "",
+                "tone": "warn"
+              },
+              {
+                "from": -27,
+                "to": -30,
+                "label": "",
+                "tone": "bad"
+              }
+            ],
+            "label": "Bom: entre −8 e −25 dBm · crítico abaixo de −27",
+            "hud": -21.1,
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/medidor_foto.jpg",
+                "rotulo": "POWER METER",
+                "legenda": "FOTO REAL",
+                "credito": "Shyamal · CC BY-SA 4.0 · Wikimedia Commons"
+              }
+            ]
+          },
+          "text": "Mais cinco, menos vinte e seis vírgula um: chegam menos vinte e um vírgula um dBm na ONU. Sinal bom, dentro da faixa de menos oito a menos vinte e cinco."
+        },
+        {
+          "id": "margem",
+          "template": "bignumber",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "medidor",
+            "label": "Margem de segurança",
+            "value": 3,
+            "suffix": " dB",
+            "sub": "para envelhecimento, sujeira e emendas futuras"
+          },
+          "text": "E sempre deixe uma margem de três dB para o envelhecimento da rede, sujeira nos conectores e emendas futuras."
+        },
+        {
+          "id": "subida",
+          "template": "terminal",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "onu",
+            "title": "E na subida?",
+            "host": "OLT#",
+            "command": "show ont optical-info 0/1/3 7",
+            "lines": [
+              "ONU Rx      : -21.1 dBm",
+              "ONU Tx      :   2.1 dBm  (1310 nm)",
+              "Perda subida: 27.1 dB",
+              "OLT Rx      : -25.0 dBm"
+            ],
+            "highlight": [
+              "OLT Rx"
+            ],
+            "tone": "good",
+            "note": "C+: a OLT ainda escuta até −32 dBm"
+          },
+          "text": "Na subida, a ONU transmite perto de mais dois dBm em mil trezentos e dez. Com a perda maior da fibra nessa janela, a OLT recebe por volta de menos vinte e cinco."
+        },
+        {
+          "id": "proximo_ep",
+          "template": "headline",
+          "emocao": "curioso, intrigante",
+          "params": {
+            "peca": "splitter",
+            "eyebrow": "Próximo · EP 03",
+            "text": "Splitter: como a luz se divide",
+            "highlight": [
+              "Splitter"
+            ],
+            "icon": "splitter"
+          },
+          "text": "No próximo vídeo, vamos aprender como o splitter divide o sinal."
+        }
+      ]
+    }
+  ],
+  "thumb": {
+    "lines": [
+      {
+        "text": "ATENUAÇÃO"
+      },
+      {
+        "text": "NO GPON",
+        "hl": true
+      }
+    ],
+    "icon": "fiber",
+    "serie": {
+      "nome": "Redes na Prática",
+      "ep": 2,
+      "total": 29
+    }
+  },
+  "publicacao": {
+    "youtube": {
+      "titulo": "Redes na Prática #02 | Atenuação e orçamento no GPON",
+      "abertura": "Classes B+, C+ e C++, perda por km, conectores, fusões, splitters e a conta da potência que chega na ONU.",
+      "topicos": [
+        "🔦 Saída da OLT em B+, C+ e C++",
+        "📏 Perda por km em 1490 e 1310 nm",
+        "🟢 Conector APC e emenda por fusão",
+        "🔀 Perda dos splitters",
+        "🧮 A conta completa até a ONU",
+        "⬆️ E a subida até a OLT"
+      ],
+      "cta": "Qual a pior potência que você já mediu numa ONU? Comenta aí!",
+      "hashtags": [
+        "#gpon",
+        "#fibraoptica",
+        "#ftth"
+      ],
+      "tags": [
+        "gpon",
+        "atenuação fibra",
+        "orçamento óptico",
+        "power budget",
+        "classe c+",
+        "classe b+",
+        "c++ gpon",
+        "potência óptica",
+        "dBm",
+        "splitter",
+        "fusão óptica",
+        "conector apc",
+        "ftth",
+        "fibra óptica",
+        "técnico de fibra",
+        "redes"
+      ],
+      "comentario_fixado": "Qual a pior potência que você já mediu numa ONU?"
+    },
+    "tiktok": {
+      "legenda": "Atenuação no GPON: a conta da luz da OLT até a ONU. Comente!",
+      "hashtags": [
+        "#gpon",
+        "#fibraoptica",
+        "#ftth",
+        "#redes"
+      ],
+      "capa": "#02 Atenuação no GPON"
+    }
+  },
+  "creditos_fotos": [
+    {
+      "cena": "fusao_foto",
+      "titulo": "Fujikura-Fusion Splicer 70S-01bASD.jpg",
+      "credito": "Asurnipal · CC BY-SA 4.0 · Wikimedia Commons",
+      "pagina": "https://commons.wikimedia.org/wiki/File:Fujikura-Fusion_Splicer_70S-01bASD.jpg"
+    },
+    {
+      "cena": "bobina_foto",
+      "titulo": "Optical fibre cable reel Finland.jpg",
+      "credito": "Antti Leppänen · CC BY 4.0 · Wikimedia Commons",
+      "pagina": "https://commons.wikimedia.org/wiki/File:Optical_fibre_cable_reel_Finland.jpg"
+    },
+    {
+      "cena": "medidor_foto",
+      "titulo": "Optical power meter.jpg",
+      "credito": "Shyamal · CC BY-SA 4.0 · Wikimedia Commons",
+      "pagina": "https://commons.wikimedia.org/wiki/File:Optical_power_meter.jpg"
+    },
+    {
+      "cena": "olt_foto",
+      "titulo": "OLT Alcatel CityPlay Amiens.jpg",
+      "credito": "Vivien Guéant · CC BY-SA 3.0 · Wikimedia Commons",
+      "pagina": "https://commons.wikimedia.org/wiki/File:OLT_Alcatel_CityPlay_Amiens.jpg"
+    }
+  ]
+}

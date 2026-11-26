@@ -196,6 +196,11 @@ narracao:
     IPO: aipiou                     # sigla em inglês, como se fala no mercado
     Anthropic: Antrópic             # an-THRÓ-pic
     Claude: Clód                    # o modelo da Anthropic (inglês: "clód")
+    DIO: Dê-I-Ó                     # soletrado (distribuidor interno óptico)
+    CEO: Céo                        # caixa de emenda óptica
+    CTO: Cê-Tê-Ó                    # soletrado (caixa de terminação óptica)
+    OLT: Ó-Éle-Tê                   # soletrado
+    dBm: dê-bê-ême
 
 # ---------------- VISUAL ----------------
 visual:
@@ -347,6 +352,7 @@ roteiro:
 serie:
   ativo: true
   id: redes
+  roteiro_fixo: "roteiros/redes_ep{n:02d}.json"   # episódio só sai com roteiro e cena próprios (engine/videos/); senão, curto normal
   nome: "Redes na Prática"
   inicio: "2026-11-24"
   intervalo_dias: 2                 # um dia sim, outro não
@@ -372,10 +378,8 @@ serie:
   episodios:
     - {titulo: "Potência óptica: o que é dBm", capa: ["O QUE É", "dBm?"], icone: fiber, proximo: "onde o sinal óptico se perde",
        tema: "Potência óptica em dBm: o que significa 0 dBm, por que o valor é negativo e a relação entre dBm e miliwatt", buscas: ["dBm optical power explained", "dBm to mW conversion fiber"]}
-    - {titulo: "Atenuação: onde o sinal se perde", capa: ["ONDE O SINAL", "SE PERDE"], icone: fiber, proximo: "a calcular o orçamento óptico",
+    - {titulo: "Atenuação: onde o sinal se perde", capa: ["ONDE O SINAL", "SE PERDE"], icone: fiber, proximo: "como o splitter divide o sinal",
        tema: "Atenuação na fibra óptica: perda por km, emendas por fusão, conectores e splitters", buscas: ["fiber optic attenuation dB per km 1310 1490", "fusion splice loss typical dB"]}
-    - {titulo: "Orçamento óptico na prática", capa: ["ORÇAMENTO", "ÓPTICO"], icone: chart, proximo: "como o splitter divide o sinal",
-       tema: "Orçamento óptico (power budget) em redes GPON: classe B+ e C+, soma das perdas e margem", buscas: ["GPON optical budget class B+ C+", "optical power budget calculation"]}
     - {titulo: "Splitter: 1:8, 1:16 e as perdas", capa: ["SPLITTER", "E PERDAS"], icone: splitter, proximo: "a diferença entre conector APC e UPC",
        tema: "Splitter óptico PLC: razões 1:2 a 1:64 e a perda típica de cada uma", buscas: ["PLC splitter insertion loss 1x8 1x16 1x32", "fiber splitter loss table"]}
     - {titulo: "Conector APC x UPC", capa: ["APC OU", "UPC?"], icone: fiber, proximo: "o que a curvatura faz com a fibra",

@@ -66,7 +66,7 @@ def commons(q: str, tipo: str, n: int = 8) -> list[dict]:
     filtro = "filetype:video" if tipo == "video" else "filetype:bitmap"
     js = _get(COMMONS, {"action": "query", "format": "json", "generator": "search", "gsrnamespace": 6,
                         "gsrsearch": f"{q} {filtro}", "gsrlimit": n, "prop": "imageinfo|categories", "cllimit": 8,
-                        "iiprop": "url|size|mime|extmetadata", "iiurlwidth": 1600,
+                        "iiprop": "url|size|mime|extmetadata", "iiurlwidth": 1280,  # largura padrão do Wikimedia (1600 dá HTTP 400)
                         "iiextmetadatafilter": "LicenseShortName|License|Artist|ImageDescription|ObjectName"})
     out = []
     for p in (js.get("query") or {}).get("pages", {}).values():
@@ -87,7 +87,7 @@ def commons(q: str, tipo: str, n: int = 8) -> list[dict]:
                     "autor": _limpo((m.get("Artist") or {}).get("value", ""), 60) or "autor desconhecido",
                     "licenca": (m.get("LicenseShortName") or {}).get("value", lic),
                     "url": ii.get("url") if video else (ii.get("thumburl") or ii.get("url")),
-                    "thumb": re.sub(r"/\d+px-", "/480px-", ii.get("thumburl") or "") or ii.get("url"),
+                    "thumb": re.sub(r"/\d+px-", "/500px-", ii.get("thumburl") or "") or ii.get("url"),  # o Wikimedia só serve larguras padrão (480px dá HTTP 400)
                     "pagina": ii.get("descriptionurl", ""), "w": ii.get("width"), "h": ii.get("height"),
                     "duracao": float(ii.get("duration") or 0)})
     return out

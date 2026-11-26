@@ -186,7 +186,7 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
     longo = roteiro["formato"] == "longo"
     durs = {sid: c["dur"] + CAUDA for sid, c in narr["cenas"].items()}
     # "planta": o vídeo inteiro é uma ilustração contínua; sem fotos, recortes nem objetos 3D por cima
-    ilustrada = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") in ("planta", "rota")
+    ilustrada = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") in ("planta", "rota") or str(roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "").startswith("video:")
     quadro = bool(cfg["visual"].get("quadro", True)) and not ilustrada
     # com o quadro de dossiê, foto/vídeo viram recortes (polaroide 4:3); sem ele, ocupam a tela inteira
     mw, mh = (800, 600) if quadro else ((1920, 1080) if longo else (1080, 1920))
@@ -198,7 +198,7 @@ def executar(cfg: dict, modo: str = "completo", refazer: str = "") -> dict:
         if capa:
             roteiro["thumb"]["photo"] = capa["photo"]
             creditos = creditos + [{"cena": "thumb", "titulo": "foto da capa", "credito": capa["credito"], "pagina": capa["pagina"]}]
-    tem3d = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon", "planta", "rota")
+    tem3d = (roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "") not in ("", "gpon", "planta", "rota") and not str(roteiro.get("cena3d") or cfg["visual"].get("cena3d") or "").startswith("video:")
     if quadro:  # pessoas (foto da Wikipedia), logos das marcas, recortes de jornal, post-its e carimbos por cena
         if tem3d:  # objetos 3D ligados à fala: o quadro alterna com eles
             if arte is not None:

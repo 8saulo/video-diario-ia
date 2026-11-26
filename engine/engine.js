@@ -108,7 +108,10 @@
     Object.entries(ST.theme.vars || {}).forEach(([k, v]) => root.style.setProperty(k, v));
   }
   // 3D: "gpon" = cena fixa de fibra óptica (scene3d.js); qualquer outro valor = objetos do tema por cena (tema3d.js)
-  function modulo3d() { return ST && ST.scene3d === 'gpon' ? window.W3D : ST && ST.scene3d === 'planta' ? window.WPL : ST && ST.scene3d === 'rota' ? window.WRT : window.W3T; }
+  function modulo3d() {
+    // cena própria de um vídeo (engine/videos/<nome>.js): cada vídeo gera os seus elementos
+    if (ST && String(ST.scene3d || '').startsWith('video:')) return (window.VIDEO3D || {})[ST.scene3d.slice(6)];
+    return ST && ST.scene3d === 'gpon' ? window.W3D : ST && ST.scene3d === 'planta' ? window.WPL : ST && ST.scene3d === 'rota' ? window.WRT : window.W3T; }
   function getAcc() { return (ST && ST.theme && ST.theme.accent) || '#ff4f12'; }
 
   // ---------- templates ----------
@@ -528,7 +531,8 @@
   function caixaCheia(c) {
     if (!STAGE.classList.contains('mode3d')) return;
     // no cenário "rota" o cartão técnico fica no alto e a estação 3D continua visível embaixo
-    css(c.box, c.port ? { top: '250px', bottom: ST.scene3d === 'rota' ? '880px' : '700px' } : { right: ST.scene3d === 'rota' ? '760px' : '130px' });
+    const emCena = ST.scene3d === 'rota' || String(ST.scene3d || '').startsWith('video:');
+    css(c.box, c.port ? { top: '250px', bottom: emCena ? '880px' : '700px' } : { right: emCena ? '760px' : '130px' });
     const r = c.box.getBoundingClientRect(); c.cw = r.width; c.ch = r.height;
   }
 
@@ -718,6 +722,119 @@
       countUp(c, nb, { value: val }, 0.5 + segs.length * 0.15, 1.2);
     } else c.tl.set(mk, { autoAlpha: 0 }, 0);
     if (lb) riseIn(c.tl, lb, 1.0 + segs.length * 0.15);
+  };
+
+  /* Diagrama técnico 2D que "se abre" por cima do 3D (painel de vidro escuro; o cenário continua ao fundo, desfocado).
+     p.tipo: dio | ceo | splitter | cto. Linhas se desenham, rótulos aparecem na ordem e a luz percorre o caminho. */
+  /* Fotos reais do item, rápidas (polaroide quadrada com carimbo do nome): entram, ficam ~1,6 s e saem.
+     p.fotos = [{src, rotulo, credito?, em?}] — em segundos dentro da cena (padrão: uma depois da outra). */
+  function fotosFlash(c, fotos) {
+    (fotos || []).slice(0, 3).forEach((f, i) => {
+      const lado = c.port ? 380 : 340, at = f.em != null ? f.em : 0.35 + i * 1.75, fica = f.dur || 1.6;
+      const card = el('div', 'flash-card', c.root);
+      const dir = i % 2 ? -1 : 1;
+      css(card, { width: lado + 28 + 'px', left: (c.port ? ST.w - lado - 80 : ST.w - lado - 160) + 'px', top: (c.port ? 770 : 200) + 'px' });  // entre o título e a legenda, sem cobrir o texto
+      const jan = el('div', 'flash-janela', card); css(jan, { width: lado + 'px', height: lado + 'px' });
+      const im = el('img', '', jan); im.src = f.src; im.alt = '';
+      if (f.rotulo) { const cb = el('div', 'flash-carimbo', jan); cb.textContent = f.rotulo; }
+      const leg = el('div', 'flash-legenda', card); leg.textContent = f.legenda || 'FOTO REAL';
+      if (f.credito) { const cr = el('div', 'flash-credito', card); cr.textContent = f.credito; }
+      c.tl.fromTo(card, { autoAlpha: 0, x: dir * 220, rotation: dir * 14, scale: 0.8 }, { autoAlpha: 1, x: 0, rotation: dir * 4, scale: 1, duration: 0.45, ease: 'back.out(1.6)' }, at);
+      const cbEl = card.querySelector('.flash-carimbo');
+      if (cbEl) c.tl.fromTo(cbEl, { autoAlpha: 0, scale: 2.2 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: 'power4.in' }, at + 0.45);
+      c.tl.to(card, { autoAlpha: 0, x: -dir * 260, rotation: -dir * 10, duration: 0.35, ease: 'power2.in' }, at + fica);
+    });
+  }
+
+  T.diagrama = function (c, p) {
+    caixaCheia(c);
+    const W = c.cw, Hh = c.ch, NS = 'http://www.w3.org/2000/svg';
+    const painel = el('div', 'diag-painel', c.box); css(painel, { width: W + 'px', height: Hh + 'px' });
+    let ttl = null;
+    if (p.title) { ttl = el('div', 'h2 chk', painel); ttl.textContent = p.title; css(ttl, { width: (W - 60) + 'px', textAlign: 'center', margin: '26px auto 0' }); fit(ttl, c.port ? 58 : 54, 30, W - 60, 130); }
+    const th = ttl ? ttl.getBoundingClientRect().height + 30 : 20;
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 1000 1000'); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    css(svg, { position: 'absolute', left: '20px', top: th + 'px', width: (W - 40) + 'px', height: (Hh - th - 20) + 'px', overflow: 'visible' }); painel.appendChild(svg);
+    const ACCc = getAcc(), ACC2c = (ST.theme && ST.theme.accent2) || '#3dff9a', BR = '#c9d2df', DIM = '#56606f', OK = '#3dff9a', RUIM = '#ff4d4d';
+    const itens = [];  // [elemento, instante, tipo]
+    function add(tag, at, attrs, t0, kind) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); itens.push([e, t0 || 0, kind || (tag === 'text' ? 'fade' : 'draw')]); return e; }
+    const L = (x1, y1, x2, y2, cor, w, t0) => add('path', 0, { d: `M${x1} ${y1}L${x2} ${y2}`, stroke: cor || BR, 'stroke-width': w || 6, fill: 'none', 'stroke-linecap': 'round' }, t0);
+    const Pth = (d, cor, w, t0) => add('path', 0, { d, stroke: cor || BR, 'stroke-width': w || 6, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, t0);
+    const Rr = (x, y, w, h, cor, t0, fill) => add('rect', 0, { x, y, width: w, height: h, rx: 16, stroke: cor || BR, 'stroke-width': 5, fill: fill || 'rgba(255,255,255,.03)' }, t0);
+    const Tx = (s, x, y, t0, o) => { o = o || {}; const e = add('text', 0, { x, y, fill: o.cor || '#e8ecf2', 'font-size': Math.round((o.tam || 34) * 1.35), 'font-weight': o.peso || 800, 'text-anchor': o.al || 'middle', 'font-family': o.mono ? 'DejaVu Sans Mono, monospace' : 'Figtree, sans-serif' }, t0, 'fade'); e.textContent = s; return e; };
+    const Tag = (s, x, y, cor, t0) => { const w = s.length * 25 + 40; add('rect', 0, { x: x - w / 2, y: y - 38, width: w, height: 58, rx: 14, fill: cor }, t0, 'pop'); Tx(s, x, y + 2, t0, { cor: '#0b0d12', tam: 28, peso: 900, mono: true }); };
+    const pulsos = [];  // luz percorrendo um caminho (lista de pontos)
+    const Luz = (pts, t0, cor, r) => pulsos.push({ pts, t0, cor: cor || ACC2c, r: r || 12 });
+    const tipo = p.tipo;
+    if (tipo === 'dio') {
+      // OLT -> cordão -> adaptador do DIO -> pigtail -> fusão na bandeja -> cabo da rua
+      Rr(30, 140, 220, 150, ACCc, 0.2); Tx('OLT', 140, 205, 0.3, { tam: 40 }); Tx('PON 3', 140, 252, 0.35, { tam: 26, mono: true, cor: BR });
+      Rr(330, 60, 600, 420, BR, 0.5); Tx('DIO (rack 19")', 630, 108, 0.6, { tam: 32, cor: BR });
+      for (let i = 0; i < 12; i++) add('rect', 0, { x: 370 + (i % 6) * 48, y: 150 + Math.floor(i / 6) * 60, width: 34, height: 40, rx: 6, fill: i === 2 ? '#2fae5b' : 'rgba(47,174,91,.35)', stroke: 'none' }, 0.7 + i * 0.03, 'pop');
+      Pth('M250 215 C300 215 320 172 386 172', '#f2c230', 9, 0.9);                         // cordão da OLT
+      Pth('M402 172 C520 172 560 330 700 330', '#f2c230', 6, 1.4);                          // pigtail (atrás do painel)
+      Rr(690, 290, 200, 90, ACC2c, 1.6); Tx('bandeja', 790, 330, 1.7, { tam: 26 }); Tx('fusão', 790, 362, 1.75, { tam: 24, cor: OK });
+      Pth('M890 335 C940 335 960 420 960 560', '#2b2f36', 16, 2.0); Tx('cabo para a rua', 960, 600, 2.1, { tam: 26, cor: BR, al: 'end' });
+      Tag('conector −0,5 dB', 394, 120, '#ffb020', 2.3); Tag('emenda −0,1 dB', 790, 440, ACC2c, 2.6);
+      Tx('Cada encaixe no caminho cobra potência', 500, 760, 2.9, { tam: 34 }); Tx('cordão + pigtail = 2 conectores ≈ −1,0 dB', 500, 815, 3.1, { tam: 28, mono: true, cor: '#ffb020' });
+      Luz([[250, 215], [386, 172], [402, 172], [700, 330], [890, 335], [960, 560]], 1.2);
+    } else if (tipo === 'ceo') {
+      // corte da CEO: cabo entra por baixo, bandejas empilhadas, emendas, splitter e saídas
+      Pth('M330 960 L330 180 Q330 60 500 60 Q670 60 670 180 L670 960', BR, 6, 0.1); Tx('CEO (caixa de emenda)', 500, 30, 0.2, { tam: 30, cor: BR });
+      const bandejas = [[360, 150], [360, 330], [360, 510], [360, 690]];
+      bandejas.forEach(([x, y], k) => { Rr(x, y, 280, 140, k === 1 ? ACC2c : DIM, 0.4 + k * 0.25); });
+      // bandeja 2 em destaque: folga acomodada, emendas e splitter
+      add('ellipse', 0, { cx: 430, cy: 400, rx: 50, ry: 38, stroke: '#f2c230', 'stroke-width': 4, fill: 'none' }, 1.5);
+      add('ellipse', 0, { cx: 430, cy: 400, rx: 36, ry: 26, stroke: '#f2c230', 'stroke-width': 4, fill: 'none' }, 1.6);
+      for (let i = 0; i < 3; i++) add('rect', 0, { x: 500, y: 360 + i * 26, width: 60, height: 14, rx: 6, fill: '#cfefff' }, 1.8 + i * 0.1, 'pop');
+      Rr(575, 365, 50, 70, ACCc, 2.1, 'rgba(25,195,255,.25)'); Tx('1:8', 600, 408, 2.2, { tam: 22, mono: true });
+      Pth('M500 980 L500 880 C500 820 420 470 430 440', '#2b2f36', 12, 0.3); Tx('cabo alimentador', 500, 1000, 0.4, { tam: 24, cor: BR });
+      for (let i = 0; i < 4; i++) Pth(`M670 ${380 + i * 10} C760 ${380 + i * 10} 800 ${600 + i * 60} 880 ${600 + i * 60}`, '#f2c230', 4, 2.4 + i * 0.08);
+      Tx('para as CTOs', 880, 860, 2.8, { tam: 24, cor: BR, al: 'end' });
+      Tag('bandejas', 210, 260, DIM === DIM ? '#7fdcff' : DIM, 2.9); L(270, 250, 355, 220, '#7fdcff', 3, 2.9);
+      Tag('folga acomodada', 190, 420, '#f2c230', 3.2); L(290, 410, 380, 400, '#f2c230', 3, 3.2);
+      Tag('emendas', 820, 300, '#cfefff', 3.5); L(760, 305, 565, 370, '#cfefff', 3, 3.5);
+      Tag('splitter 1:8', 820, 470, ACCc, 3.8); L(730, 470, 628, 410, ACCc, 3, 3.8);
+      Luz([[500, 980], [500, 880], [430, 440], [600, 400], [670, 400], [880, 640]], 2.2);
+    } else if (tipo === 'splitter') {
+      // árvore 1 -> 2 -> 4 -> 8: a cada divisão a luz cai pela metade (−3 dB) e o chip soma perdas
+      const X = [120, 380, 620, 860], ys = n => Array.from({ length: n }, (_, i) => 500 + (i - (n - 1) / 2) * (760 / Math.max(1, n)));
+      Tx('entrada', 120, 450, 0.2, { tam: 28, cor: BR }); add('circle', 0, { cx: 120, cy: 500, r: 22, fill: ACC2c }, 0.2, 'pop');
+      [1, 2, 4].forEach((n, k) => { const a = ys(n), b = ys(n * 2); a.forEach((y, i) => { [b[i * 2], b[i * 2 + 1]].forEach(y2 => Pth(`M${X[k]} ${y} C${X[k] + 120} ${y} ${X[k + 1] - 120} ${y2} ${X[k + 1]} ${y2}`, ACCc, 7 - k * 1.5, 0.5 + k * 0.6)); }); });
+      ys(8).forEach((y, i) => { add('circle', 0, { cx: 860, cy: y, r: 12, fill: ACC2c, opacity: 0.55 }, 2.4 + i * 0.05, 'pop'); });
+      Tag('1:2  −3,5 dB', 380, 140, '#7fdcff', 1.0); Tag('1:4  −7,2 dB', 620, 100, '#7fdcff', 1.6); Tag('1:8  −10,5 dB', 860, 60, ACC2c, 2.2);
+      Tx('cada saída leva 1/8 da luz (−9 dB)', 500, 930, 2.8, { tam: 30 }); Tx('+ perdas do chip ≈ −10,5 dB', 500, 980, 3.0, { tam: 28, mono: true, cor: '#ffb020' });
+      [[[120, 500], [380, 405], [620, 357], [860, 333]], [[120, 500], [380, 595], [620, 643], [860, 857]]].forEach((pts, k) => Luz(pts, 1.0 + k * 0.4, ACC2c, 14));
+    } else if (tipo === 'cto') {
+      Rr(250, 120, 500, 560, BR, 0.1); Tx('CTO (no poste)', 500, 95, 0.2, { tam: 30, cor: BR });
+      Pth('M500 0 L500 160', '#2b2f36', 12, 0.3); Tx('da CEO', 540, 40, 0.35, { tam: 24, cor: BR, al: 'start' });
+      Rr(420, 200, 160, 110, ACCc, 0.6, 'rgba(25,195,255,.2)'); Tx('splitter 1:8', 500, 265, 0.7, { tam: 26 });
+      for (let i = 0; i < 8; i++) { const x = 290 + i * 60; Pth(`M500 310 C500 400 ${x + 20} 420 ${x + 20} 520`, '#f2c230', 3, 1.0 + i * 0.05); add('rect', 0, { x, y: 520, width: 40, height: 60, rx: 6, fill: '#2fae5b' }, 1.3 + i * 0.05, 'pop'); }
+      Tx('8 portas SC/APC', 500, 640, 1.8, { tam: 28 });
+      [[310, 820, 'cliente 1'], [500, 860, 'cliente 2'], [690, 820, 'cliente 3']].forEach(([x, y, n], k) => { Pth(`M${290 + 20 + k * 180} 580 C${x} 680 ${x} 720 ${x} ${y - 40}`, '#1b1f26', 9, 2.1 + k * 0.15); Tx('⌂ ' + n, x, y + 10, 2.3 + k * 0.15, { tam: 28 }); });
+      Tag('drop', 820, 720, '#f2c230', 2.6); Tag('−10,5 dB (1:8)', 820, 255, ACC2c, 2.9); Tag('conector −0,5 dB', 180, 550, '#ffb020', 3.1);
+      Luz([[500, 0], [500, 160], [500, 310], [330, 520], [310, 780]], 1.6);
+    }
+    // abertura do painel e desenho das linhas
+    c.tl.fromTo(painel, { scaleY: 0.02, autoAlpha: 0 }, { scaleY: 1, autoAlpha: 1, duration: 0.5, ease: 'power3.out' }, 0);
+    if (ttl) riseIn(c.tl, ttl, 0.25);
+    const vel = Math.min(1, Math.max(0.55, (c.d - 1.2) / 4));  // cenas curtas desenham mais rápido
+    itens.forEach(([e, t0, k]) => {
+      const at = 0.35 + t0 * vel;
+      if (k === 'draw' && e.getTotalLength) { const Lg = e.getTotalLength() + 2; e.style.strokeDasharray = Lg + ' ' + Lg; c.tl.fromTo(e, { strokeDashoffset: Lg }, { strokeDashoffset: 0, duration: 0.6, ease: 'power2.inOut' }, at); }
+      else if (k === 'pop') c.tl.fromTo(e, { opacity: 0, scale: 0.6, transformOrigin: '50% 50%' }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' }, at);
+      else c.tl.fromTo(e, { opacity: 0 }, { opacity: 1, duration: 0.35 }, at);
+    });
+    pulsos.forEach(o => {
+      const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('r', o.r); dot.setAttribute('fill', o.cor); dot.style.filter = 'drop-shadow(0 0 10px ' + o.cor + ')'; svg.appendChild(dot);
+      const t0 = 0.35 + o.t0 * vel, seg = 0.45, volta = (o.pts.length - 1) * seg + 0.3;
+      c.tl.set(dot, { attr: { cx: o.pts[0][0], cy: o.pts[0][1] }, opacity: 0 }, 0);
+      for (let v = 0; t0 + v * volta < c.d - 0.3; v++) {
+        const b = t0 + v * volta; c.tl.set(dot, { attr: { cx: o.pts[0][0], cy: o.pts[0][1] }, opacity: 1 }, b);
+        o.pts.slice(1).forEach((q, j) => c.tl.to(dot, { attr: { cx: q[0], cy: q[1] }, duration: seg, ease: 'none' }, b + j * seg));
+        c.tl.to(dot, { opacity: 0, duration: 0.2 }, b + (o.pts.length - 1) * seg);
+      }
+    });
   };
 
   /* Ilustração contínua (planta.js): a cena em si é desenhada no fundo; aqui só o título curto no alto
@@ -980,6 +1097,7 @@
     try { fn(c, seg.kind === 'chapter' || seg.kind === 'seguir' ? seg : (seg.params || {})); }
     catch (err) { box.innerHTML = ''; c.counters = []; T.headline(c, { text: (seg.params && (seg.params.text || seg.params.title)) || seg.text || '' }); seg.error = String(err); }
     tl.fromTo(cam, { scale: 1 }, { scale: seg.kind === 'chapter' ? 1.06 : 1.04, duration: seg.dur, ease: 'none' }, 0);
+    if (seg.params && seg.params.fotos) fotosFlash(c, seg.params.fotos);
     if (photoImg) {  // Ken Burns: zoom e deslize lentos (vídeo: mais sutil), direção alternada por cena
       const dir = (SEGS_N++ % 2) ? 1 : -1, v = P._video ? 0.4 : 1;
       tl.fromTo(photoImg, { scale: 1 + 0.06 * v, xPercent: -1.6 * dir * v }, { scale: 1 + 0.16 * v, xPercent: 1.6 * dir * v, duration: seg.dur, ease: 'none' }, 0);
@@ -1087,6 +1205,9 @@
     await document.fonts.load('900 60px Figtree'); await document.fonts.load('700 60px Figtree'); await document.fonts.load('500 60px Figtree');
     await document.fonts.load('60px Anton'); await document.fonts.ready;
     buildBg(STAGE, ST.port);
+    if (String(ST.scene3d || '').startsWith('video:') && !modulo3d()) {
+      await new Promise(ok => { const s = document.createElement('script'); s.src = 'videos/' + ST.scene3d.slice(6) + '.js'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
+    }
     if (ST.scene3d && modulo3d() && window.THREE) { STAGE.classList.add('mode3d'); await modulo3d().init(STAGE, ST); }
     if ((ST.segments || []).some(s => s.params && s.params._quadro)) STAGE.classList.add('mode-quadro');
     const fotos = [...new Set((ST.segments || []).map(s => s.params && s.params._photo).filter(Boolean))];

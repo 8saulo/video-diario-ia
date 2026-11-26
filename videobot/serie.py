@@ -84,6 +84,14 @@ def aplicar(cfg: dict, data: dt.date, hist: list) -> dict | None:
         nota(f"Série '{s.get('nome')}': os {len(eps)} episódios do config já saíram; hoje sai o curto normal. "
              "Acrescente episódios em config.yml → serie.episodios para continuar.")
         return None
+    modelo = str(s.get("roteiro_fixo") or "").strip()
+    arq = modelo.format(n=n) if modelo else ""
+    if arq:  # 26/11: cada episódio tem roteiro e cena próprios; sem eles, o episódio não sai (nada de cenário reaproveitado)
+        from .util import RAIZ
+        if not (RAIZ / arq).exists():
+            nota(f"Série '{s.get('nome')}': o episódio {n} ainda não tem roteiro e cena próprios ({arq}); hoje sai o curto normal "
+                 f"e a série continua do episódio {n} no próximo dia da série.")
+            return None
     ep, prox = eps[n - 1], (eps[n] if n < len(eps) else None)
     novo = _merge(cfg, s.get("config") or {})
     cfg.clear(); cfg.update(novo)
@@ -94,6 +102,8 @@ def aplicar(cfg: dict, data: dt.date, hist: list) -> dict | None:
     t["angulo"] = (f"Episódio {n} de {len(eps)} da série '{nome}' para {s.get('publico', 'técnicos de redes')}: "
                    f"{ep['titulo']}. Didático e prático, do jeito que o técnico usa em campo.")
     t["nicho"] = f"{nome} · EP {n:02d}"
+    if arq:
+        t["roteiro_fixo"] = arq  # storyboard, narração e cena próprios do episódio
     t.pop("categoria", None)
     info = {"id": s.get("id", "serie"), "nome": nome, "n": n, "total": len(eps), "titulo": str(ep["titulo"]).strip(),
             "capa": list(ep.get("capa") or [])[:2], "icone": ep.get("icone") or "signal",

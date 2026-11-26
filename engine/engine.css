@@ -265,3 +265,18 @@ html, body { background: #000; overflow: hidden; }
 .faixa-esc { position: absolute; left: 0; top: 84px; font: 700 26px/1 "DejaVu Sans Mono", Consolas, monospace; color: var(--fog-400); }
 .faixa-mk { position: absolute; top: -26px; width: 12px; height: 122px; margin-left: -6px; border-radius: 6px; background: #fff;
   box-shadow: 0 0 0 4px rgba(0,0,0,.5), 0 0 30px #fff; }
+
+/* diagrama 2D que se abre por cima do 3D */
+.diag-painel { position: relative; border-radius: 34px; background: rgba(7,10,15,.80); backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 3px rgba(var(--acc-rgb),.55), 0 40px 90px rgba(0,0,0,.6); transform-origin: 50% 50%; overflow: hidden; }
+
+/* fotos reais rápidas (polaroide quadrada com carimbo) */
+.flash-card { position: absolute; z-index: 40; background: #f3efe6; padding: 14px 14px 0; box-shadow: 0 30px 60px rgba(0,0,0,.65); }
+.flash-janela { position: relative; overflow: hidden; background: #111; }
+.flash-janela img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flash-carimbo { position: absolute; left: 50%; top: 62%; transform-origin: 50% 50%; margin-left: -44%; width: 88%; text-align: center; padding: 10px 6px;
+  font: 900 44px/1 Figtree, sans-serif; letter-spacing: .06em; color: #d81f2a; border: 6px solid #d81f2a; border-radius: 10px; rotate: -10deg;
+  background: rgba(255,255,255,.86); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.flash-legenda { padding: 12px 6px 14px; font: 800 26px/1 'DejaVu Sans Mono', Consolas, monospace; color: #15171c; letter-spacing: .08em; }
+.flash-credito { position: absolute; left: 4px; right: 4px; bottom: -28px; font: 600 15px/1 'DejaVu Sans Mono', Consolas, monospace; color: rgba(235,235,240,.75);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
