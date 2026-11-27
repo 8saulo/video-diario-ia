@@ -815,6 +815,59 @@
       Tag('drop', 820, 720, '#f2c230', 2.6); Tag('−10,5 dB (1:8)', 820, 255, ACC2c, 2.9); Tag('conector −0,5 dB', 180, 550, '#ffb020', 3.1);
       Luz([[500, 0], [500, 160], [500, 310], [330, 520], [310, 780]], 1.6);
     }
+    else if (tipo === 'potencia_arvore') {
+      // potência em cada nível com +3 dBm na entrada (1 -> 2 -> 4 -> 8)
+      const X = [110, 370, 610, 860], ys = n => Array.from({ length: n }, (_, i) => 520 + (i - (n - 1) / 2) * (720 / Math.max(1, n)));
+      Tx('entrada', 110, 455, 0.2, { tam: 26, cor: BR }); Tag('+3,0 dBm', 110, 600, ACC2c, 0.3); add('circle', 0, { cx: 110, cy: 520, r: 24, fill: ACC2c }, 0.2, 'pop');
+      [1, 2, 4].forEach((n, k) => { const a = ys(n), b = ys(n * 2); a.forEach((y, i) => { [b[i * 2], b[i * 2 + 1]].forEach(y2 => Pth(`M${X[k]} ${y} C${X[k] + 110} ${y} ${X[k + 1] - 110} ${y2} ${X[k + 1]} ${y2}`, ACCc, 8 - k * 2, 0.5 + k * 0.7)); }); });
+      [[370, '−0,5 dBm', 1.1], [610, '−4,2 dBm', 1.8], [860, '−7,5 dBm', 2.5]].forEach(([x, s, t]) => Tag(s, x, 110, x === 860 ? '#ffb020' : '#7fdcff', t));
+      ys(8).forEach((y, i) => add('circle', 0, { cx: 860, cy: y, r: 13, fill: ACC2c, opacity: 0.5 }, 2.5 + i * 0.05, 'pop'));
+      Tx('cada saída do 1:8 recebe ~1/8 da luz', 500, 950, 2.9, { tam: 30 });
+      Luz([[110, 520], [370, 340], [610, 430], [860, 475]], 1.0, ACC2c, 14);
+    } else if (tipo === 'formula') {
+      Tx('Perda ideal = 10 × log₁₀(N)', 500, 110, 0.2, { tam: 46, peso: 900, cor: '#fff' });
+      Tx('N = número de saídas', 500, 175, 0.5, { tam: 28, cor: BR });
+      const linhas = [['1:2', '3,0', '3,5'], ['1:4', '6,0', '7,2'], ['1:8', '9,0', '10,5'], ['1:16', '12,0', '13,8'], ['1:32', '15,0', '17,1'], ['1:64', '18,1', '20,5']];
+      Tx('divisão', 200, 290, 0.8, { tam: 26, cor: BR }); Tx('ideal', 520, 290, 0.8, { tam: 26, cor: '#7fdcff' }); Tx('real (com o chip)', 800, 290, 0.8, { tam: 26, cor: '#ffb020' });
+      linhas.forEach(([n, i, r], k) => { const y = 370 + k * 95, t = 1.0 + k * 0.25;
+        add('rect', 0, { x: 60, y: y - 50, width: 880, height: 80, rx: 14, fill: k === 2 ? 'rgba(61,255,154,.12)' : 'rgba(255,255,255,.04)', stroke: 'none' }, t, 'pop');
+        Tx(n, 200, y, t, { tam: 34, peso: 900 }); Tx(i + ' dB', 520, y, t + 0.1, { tam: 32, mono: true, cor: '#7fdcff' }); Tx(r + ' dB', 800, y, t + 0.2, { tam: 32, mono: true, cor: '#ffb020' }); });
+      Tx('o chip soma de 0,5 a 2,5 dB de perda extra', 500, 960, 2.8, { tam: 28, cor: BR });
+    } else if (tipo === 'balanceado') {
+      // 50/50 (balanceado) x 10/90 (desbalanceado)
+      [[250, 'BALANCEADO 50/50', [['50%', '−3,5 dB', 'saída 1'], ['50%', '−3,5 dB', 'saída 2']], ACCc], [750, 'DESBALANCEADO 10/90', [['90%', '−0,5 dB', 'segue na rede'], ['10%', '−10,5 dB', 'derivação']], '#ffb020']].forEach(([cx, nome, saidas, cor], k) => {
+        const t = 0.2 + k * 1.4;
+        Tx(nome, cx, 120, t, { tam: 28, peso: 900, cor });
+        add('circle', 0, { cx, cy: 260, r: 22, fill: ACC2c }, t + 0.1, 'pop');
+        saidas.forEach(([pc, db, rot], i) => { const x2 = cx + (i ? 140 : -140), w = k ? (i ? 3 : 12) : 8;
+          Pth(`M${cx} 260 C${cx} 420 ${x2} 460 ${x2} 640`, cor, w, t + 0.3 + i * 0.2);
+          Tag(pc, x2, 700, cor, t + 0.6 + i * 0.2); Tx(db, x2, 790, t + 0.7 + i * 0.2, { tam: 30, mono: true }); Tx(rot, x2, 850, t + 0.8 + i * 0.2, { tam: 24, cor: BR }); });
+        Luz([[cx, 260], [cx, 420], [cx + (k ? -140 : -140), 640]], t + 0.4, ACC2c, 13);
+      });
+      Tx('o 10/90 alimenta várias caixas ao longo da rua (rede linear)', 500, 960, 3.2, { tam: 26, cor: BR });
+    } else if (tipo === 'cascata') {
+      // centralizado 1:32 x distribuído 1:4 + 1:8
+      const bloco = (y, rot, t, cor) => { Rr(380, y - 50, 240, 100, cor, t, 'rgba(25,195,255,.15)'); Tx(rot, 500, y + 12, t + 0.1, { tam: 30, peso: 900 }); };
+      Tx('CENTRALIZADO', 500, 70, 0.2, { tam: 30, peso: 900, cor: ACCc });
+      Pth('M120 200 L380 200', '#f2c230', 7, 0.3); Tx('OLT', 90, 210, 0.3, { tam: 26, al: 'end' }); bloco(200, '1:32', 0.5, ACCc);
+      for (let i = 0; i < 6; i++) Pth(`M620 200 C700 200 760 ${120 + i * 32} 900 ${120 + i * 32}`, '#f2c230', 3, 0.8 + i * 0.05);
+      Tag('−17,1 dB', 500, 310, ACCc, 1.1);
+      Tx('DISTRIBUÍDO', 500, 470, 1.6, { tam: 30, peso: 900, cor: '#ffb020' });
+      Pth('M120 600 L250 600', '#f2c230', 7, 1.7); Tx('OLT', 90, 610, 1.7, { tam: 26, al: 'end' });
+      Rr(250, 550, 170, 100, '#ffb020', 1.9, 'rgba(255,176,32,.15)'); Tx('1:4', 335, 612, 2.0, { tam: 30, peso: 900 }); Tx('CEO', 335, 690, 2.0, { tam: 22, cor: BR });
+      [520, 600, 680, 760].forEach((y, i) => { Pth(`M420 600 C480 600 500 ${y} 580 ${y}`, '#f2c230', 4, 2.2 + i * 0.05); });
+      Rr(580, 720, 170, 80, '#ffb020', 2.5, 'rgba(255,176,32,.15)'); Tx('1:8', 665, 772, 2.6, { tam: 28, peso: 900 }); Tx('CTO', 665, 830, 2.6, { tam: 22, cor: BR });
+      for (let i = 0; i < 4; i++) Pth(`M750 760 C800 760 820 ${700 + i * 30} 900 ${700 + i * 30}`, '#f2c230', 3, 2.8 + i * 0.05);
+      Tag('−7,2 − 10,5 = −17,7 dB', 500, 900, '#ffb020', 3.1);
+      Luz([[120, 200], [380, 200], [620, 200], [900, 152]], 0.9, ACC2c, 12); Luz([[120, 600], [250, 600], [420, 600], [580, 760], [750, 760], [900, 730]], 2.4, ACC2c, 12);
+    } else if (tipo === 'plc_fbt') {
+      const linhas = [['construção', 'chip de vidro', 'fibras fundidas'], ['divisões', 'até 1:64', 'melhor até 1:4'], ['comprimento de onda', 'estável', 'varia'], ['temperatura', 'estável', 'sensível'], ['preço', 'maior', 'menor']];
+      Tx('PLC', 600, 110, 0.2, { tam: 44, peso: 900, cor: ACC2c }); Tx('FBT', 860, 110, 0.4, { tam: 44, peso: 900, cor: '#ffb020' });
+      linhas.forEach(([a, b, d], k) => { const y = 230 + k * 140, t = 0.7 + k * 0.4;
+        add('rect', 0, { x: 40, y: y - 55, width: 920, height: 110, rx: 16, fill: 'rgba(255,255,255,.04)', stroke: 'none' }, t, 'pop');
+        Tx(a, 70, y + 10, t, { tam: 30, al: 'start', cor: BR }); Tx(b, 600, y + 10, t + 0.1, { tam: 30, peso: 900 }); Tx(d, 860, y + 10, t + 0.2, { tam: 30, peso: 900 }); });
+      Tx('rede GPON com 1:8 e 1:16 → PLC', 500, 960, 2.9, { tam: 30, cor: ACC2c });
+    }
     // abertura do painel e desenho das linhas
     c.tl.fromTo(painel, { scaleY: 0.02, autoAlpha: 0 }, { scaleY: 1, autoAlpha: 1, duration: 0.5, ease: 'power3.out' }, 0);
     if (ttl) riseIn(c.tl, ttl, 0.25);

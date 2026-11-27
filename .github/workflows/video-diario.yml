@@ -8,6 +8,9 @@ on:
     # O PC (rodar_diario.ps1) dispara esta rotina às 05:00 UTC; se ela já rodou no dia, o agendado é pulado.
     # Para mudar o horário, edite a linha abaixo.
     - cron: "47 4 * * *"
+    # 00:07 de Brasília: só roda quando o episódio do dia tem cena pesada e já foi aprovado (render_cedo + aprovado
+    # no roteiros/redes_epNN.json); o render pode levar horas e assim o vídeo fica pronto de manhã.
+    - cron: "7 3 * * *"
   workflow_dispatch:
     inputs:
       modo:
@@ -89,6 +92,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then echo "pular=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "${{ github.event.schedule }}" = "7 3 * * *" ]; then
+            cedo=$(python -m videobot.pauta --cedo)
+            echo "episódio pesado e aprovado para render às 00h: $cedo"
+            if [ "$cedo" != "1" ]; then echo "pular=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          fi
           hoje=$(TZ=America/Sao_Paulo date +%F)
           n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow video-diario.yml --limit 40                 --json databaseId,displayTitle,createdAt,status,conclusion                 -q "[.[] | select(.databaseId != $GITHUB_RUN_ID)
                          | select((.displayTitle | startswith(\"Refazer\")) | not)

@@ -80,6 +80,29 @@ def formatos(cfg: dict, data: dt.date, evento: str = "schedule", formato_in: str
     return list(dict.fromkeys(fs)) or padrao
 
 
+def render_cedo(cfg: dict, data: dt.date, raiz: Path | None = None) -> bool:
+    """Episódio da série com cena pesada (render longo) e já aprovado: roda às 00h de Brasília em vez do horário normal.
+    Só PyYAML aqui (o job "checar" usa antes de instalar o projeto): repete a conta do número do episódio de serie.py."""
+    s = cfg.get("serie") or {}
+    if not s.get("ativo") or not s.get("roteiro_fixo"):
+        return False
+    try:
+        ini = dt.date.fromisoformat(str(s.get("inicio")))
+    except ValueError:
+        return False
+    if data < ini or (data - ini).days % max(1, int(s.get("intervalo_dias", 2))):
+        return False
+    raiz = raiz or Path(__file__).resolve().parents[1]
+    hist = json.loads((raiz / "historico" / "temas.json").read_text(encoding="utf-8")) if (raiz / "historico" / "temas.json").exists() else []
+    feitos = [int(h["episodio"]) for h in hist if h.get("serie") == s.get("id") and h.get("episodio") and h.get("data", "") < data.isoformat()]
+    n = (max(feitos) if feitos else 0) + 1
+    arq = raiz / str(s["roteiro_fixo"]).format(n=n)
+    if not arq.exists():
+        return False
+    r = json.loads(arq.read_text(encoding="utf-8"))
+    return bool(r.get("render_cedo") and r.get("aprovado"))
+
+
 def mesclar_temas(remoto: list, nosso: list, limite: int = 200) -> list:
     """Dois jobs do mesmo dia (curto e longo) gravam o histórico a partir do mesmo commit: junta sem perder entrada."""
     vistos = {json.dumps(e, sort_keys=True, ensure_ascii=False) for e in remoto}
@@ -113,6 +136,7 @@ def main(argv=None):
     ap.add_argument("--formato", default="")
     ap.add_argument("--tema", default="")
     ap.add_argument("--refazer", default="")
+    ap.add_argument("--cedo", action="store_true", help="imprime 1 se hoje é episódio pesado e aprovado (render às 00h)")
     ap.add_argument("--mesclar", nargs="+", metavar="ARQ", help="temas.json [desempenho.json] deste job, para juntar ao histórico atual")
     a = ap.parse_args(argv)
     if a.mesclar:
@@ -121,6 +145,9 @@ def main(argv=None):
         return
     cfg = yaml.safe_load(Path(a.config).read_text(encoding="utf-8"))
     data = dt.date.fromisoformat(a.data) if a.data else hoje_brasilia()
+    if a.cedo:
+        print("1" if render_cedo(cfg, data, Path(a.config).resolve().parent) else "0")
+        return
     print(json.dumps(formatos(cfg, data, a.evento, a.formato, a.tema, a.refazer)))
 
 

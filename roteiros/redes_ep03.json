@@ -1,0 +1,294 @@
+{
+  "tema": "Splitter óptico: como a luz se divide",
+  "slug": "redes03_splitter_optico",
+  "formato": "curto",
+  "cena3d": "video:redes03",
+  "render_cedo": true,
+  "aprovado": false,
+  "serie": {
+    "id": "redes",
+    "nome": "Redes na Prática",
+    "n": 3,
+    "total": 29,
+    "titulo": "Splitter: 1:8, 1:16 e as perdas"
+  },
+  "chapters": [
+    {
+      "title": "Splitter óptico",
+      "scenes": [
+        {
+          "id": "gancho",
+          "template": "headline",
+          "emocao": "curioso, intrigante",
+          "params": {
+            "peca": "plc",
+            "eyebrow": "Splitter óptico",
+            "text": "Uma fibra, até 64 casas",
+            "highlight": [
+              "64"
+            ]
+          },
+          "text": "Uma única fibra sai da OLT e chega a até sessenta e quatro casas. Quem faz isso é o splitter."
+        },
+        {
+          "id": "o_que_e",
+          "template": "headline",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "plc",
+            "eyebrow": "Divisor passivo",
+            "text": "Não usa energia: só reparte a luz",
+            "highlight": [
+              "reparte"
+            ]
+          },
+          "text": "Ele é um divisor passivo: não usa energia nenhuma, só reparte a luz que entra entre as saídas."
+        },
+        {
+          "id": "formatos",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "formatos",
+            "eyebrow": "Formatos",
+            "text": "Caixinha, mini tubo ou cassete",
+            "highlight": [
+              "mini",
+              "tubo",
+              "cassete"
+            ],
+            "fotos": [
+              {
+                "src": "../roteiros/midia/redes02/splitter_foto.jpg",
+                "rotulo": "SPLITTER",
+                "legenda": "PLC COM CONECTORES",
+                "em": 2.2
+              }
+            ]
+          },
+          "text": "Ele aparece em caixinha com cordões, em mini tubo de aço para emendar dentro da CEO, ou em cassete com conectores para o rack."
+        },
+        {
+          "id": "chip",
+          "template": "headline",
+          "emocao": "surpresa contida",
+          "params": {
+            "peca": "chip",
+            "eyebrow": "Por dentro do PLC",
+            "text": "Um chip de vidro que divide em Y",
+            "highlight": [
+              "Y"
+            ]
+          },
+          "text": "Por dentro do PLC existe um chip de vidro com caminhos gravados, que dividem a luz em Y, sempre de dois em dois."
+        },
+        {
+          "id": "arvore",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "chip",
+            "tipo": "potencia_arvore",
+            "title": "A luz a cada divisão"
+          },
+          "text": "A cada divisão, metade da luz vai para cada lado. Entrando com mais três dBm, cada saída de um splitter um para oito recebe cerca de menos sete e meio."
+        },
+        {
+          "id": "formula",
+          "template": "diagrama",
+          "emocao": "firme, analítico",
+          "params": {
+            "peca": "chip",
+            "tipo": "formula",
+            "title": "A conta da perda"
+          },
+          "text": "A conta ideal é dez vezes o logaritmo do número de saídas: três dB no um para dois e nove no um para oito. Na prática, o chip ainda soma um pouco de perda."
+        },
+        {
+          "id": "saidas",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "saidas",
+            "eyebrow": "Uniformidade",
+            "text": "As 8 saídas quase iguais",
+            "highlight": [
+              "iguais"
+            ]
+          },
+          "text": "Medindo as oito saídas, os valores ficam bem próximos. A diferença entre a melhor e a pior porta se chama uniformidade, e deve ficar em torno de um dB."
+        },
+        {
+          "id": "fbt",
+          "template": "headline",
+          "emocao": "interessado, explicativo",
+          "params": {
+            "peca": "fbt",
+            "eyebrow": "Splitter FBT",
+            "text": "Fibras fundidas e esticadas",
+            "highlight": [
+              "fundidas"
+            ]
+          },
+          "text": "Existe também o FBT, feito torcendo, fundindo e esticando fibras. É mais barato, mas muda com o comprimento de onda e com o calor."
+        },
+        {
+          "id": "plc_fbt",
+          "template": "diagrama",
+          "emocao": "firme, analítico",
+          "params": {
+            "peca": "fbt",
+            "tipo": "plc_fbt",
+            "title": "PLC ou FBT?"
+          },
+          "text": "Por isso, nas divisões de um para oito e um para dezesseis do GPON, o padrão é o PLC."
+        },
+        {
+          "id": "desbalanceado",
+          "template": "diagrama",
+          "emocao": "surpresa contida",
+          "params": {
+            "peca": "fbt",
+            "tipo": "balanceado",
+            "title": "Nem todo splitter divide por igual"
+          },
+          "text": "E nem todo splitter divide por igual. O desbalanceado dez por noventa manda noventa por cento da luz adiante, e só dez por cento para a derivação."
+        },
+        {
+          "id": "cascata",
+          "template": "diagrama",
+          "emocao": "didático, acolhedor",
+          "params": {
+            "peca": "geral",
+            "tipo": "cascata",
+            "title": "Concentrar ou distribuir?"
+          },
+          "text": "Na rede balanceada, dá para dividir tudo num um para trinta e dois, ou em dois níveis: um para quatro na CEO e um para oito na CTO. A perda total quase não muda."
+        },
+        {
+          "id": "clientes",
+          "template": "kpis",
+          "emocao": "enfático no número",
+          "params": {
+            "peca": "plc",
+            "title": "Quantos clientes por porta PON",
+            "items": [
+              {
+                "value": 8,
+                "prefix": "1:",
+                "label": "splitter na CEO"
+              },
+              {
+                "value": 8,
+                "prefix": "1:",
+                "label": "splitter na CTO"
+              },
+              {
+                "value": 64,
+                "label": "clientes numa porta PON"
+              }
+            ]
+          },
+          "text": "Com um para oito na CEO e outro na CTO, uma única porta PON atende até sessenta e quatro clientes."
+        },
+        {
+          "id": "projeto",
+          "template": "headline",
+          "emocao": "reflexivo",
+          "params": {
+            "peca": "plc",
+            "eyebrow": "Projeto",
+            "text": "Cada divisão a mais custa luz",
+            "highlight": [
+              "luz"
+            ]
+          },
+          "text": "Cada nível a mais de divisão custa potência. Por isso o splitter é escolhido no projeto, antes de lançar o cabo."
+        },
+        {
+          "id": "proximo_ep",
+          "template": "headline",
+          "emocao": "curioso, intrigante",
+          "params": {
+            "peca": "plc",
+            "eyebrow": "Próximo · EP 04",
+            "text": "Conector APC ou UPC?",
+            "highlight": [
+              "APC",
+              "UPC?"
+            ]
+          },
+          "text": "No próximo vídeo, vamos aprender a diferença entre conector APC e UPC."
+        }
+      ]
+    }
+  ],
+  "thumb": {
+    "lines": [
+      {
+        "text": "SPLITTER"
+      },
+      {
+        "text": "COMO DIVIDE",
+        "hl": true
+      }
+    ],
+    "icon": "splitter",
+    "serie": {
+      "nome": "Redes na Prática",
+      "ep": 3,
+      "total": 29
+    }
+  },
+  "creditos_fotos": [],
+  "publicacao": {
+    "youtube": {
+      "titulo": "Redes na Prática #03 | Splitter: 1:8, 1:16 e as perdas",
+      "abertura": "Como o splitter óptico divide a luz: PLC e FBT, perdas de 1:2 a 1:64, uniformidade, desbalanceado 10/90 e divisão em cascata.",
+      "topicos": [
+        "🔀 O que é um splitter passivo",
+        "🧪 Por dentro do chip PLC",
+        "🧮 A conta 10 × log(N)",
+        "📏 Uniformidade das saídas",
+        "🧵 PLC x FBT",
+        "⚖️ Balanceado x desbalanceado",
+        "🏘️ 64 clientes numa porta PON"
+      ],
+      "cta": "Na sua rede é 1:8 + 1:8 ou 1:4 + 1:16? Comenta aí!",
+      "hashtags": [
+        "#gpon",
+        "#splitter",
+        "#ftth"
+      ],
+      "tags": [
+        "splitter óptico",
+        "splitter plc",
+        "splitter fbt",
+        "splitter desbalanceado",
+        "perda splitter",
+        "1:8",
+        "1:16",
+        "1:32",
+        "gpon",
+        "ftth",
+        "fibra óptica",
+        "cto",
+        "ceo",
+        "uniformidade",
+        "técnico de fibra",
+        "redes"
+      ],
+      "comentario_fixado": "Na sua rede é 1:8 + 1:8 ou 1:4 + 1:16?"
+    },
+    "tiktok": {
+      "legenda": "Como o splitter divide a luz da fibra. Comente!",
+      "hashtags": [
+        "#gpon",
+        "#splitter",
+        "#ftth",
+        "#redes"
+      ],
+      "capa": "#03 Splitter"
+    }
+  }
+}
