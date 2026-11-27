@@ -23,12 +23,12 @@
           "params": {
             "peca": "plc",
             "eyebrow": "Splitter óptico",
-            "text": "Uma fibra, até 64 casas",
+            "text": "Uma fibra, até 128 casas",
             "highlight": [
-              "64"
+              "128"
             ]
           },
-          "text": "Uma única fibra sai da OLT e chega a até sessenta e quatro casas. Quem faz isso é o splitter."
+          "text": "Uma única fibra sai da OLT e chega a até cento e vinte e oito casas. Quem faz isso é o splitter."
         },
         {
           "id": "o_que_e",
@@ -179,17 +179,17 @@
                 "label": "splitter na CEO"
               },
               {
-                "value": 8,
+                "value": 16,
                 "prefix": "1:",
                 "label": "splitter na CTO"
               },
               {
-                "value": 64,
+                "value": 128,
                 "label": "clientes numa porta PON"
               }
             ]
           },
-          "text": "Com um para oito na CEO e outro na CTO, uma única porta PON atende até sessenta e quatro clientes."
+          "text": "Com um para oito na CEO e um para dezesseis na CTO, uma única porta PON atende até cento e vinte e oito clientes, com óptica classe C mais."
         },
         {
           "id": "projeto",
@@ -244,7 +244,7 @@
   "publicacao": {
     "youtube": {
       "titulo": "Redes na Prática #03 | Splitter: 1:8, 1:16 e as perdas",
-      "abertura": "Como o splitter óptico divide a luz: PLC e FBT, perdas de 1:2 a 1:64, uniformidade, desbalanceado 10/90 e divisão em cascata.",
+      "abertura": "Como o splitter óptico divide a luz: PLC e FBT, perdas de 1:2 a 1:64, uniformidade, desbalanceado 10/90 e divisão em cascata, até 128 clientes por porta PON.",
       "topicos": [
         "🔀 O que é um splitter passivo",
         "🧪 Por dentro do chip PLC",
@@ -252,9 +252,9 @@
         "📏 Uniformidade das saídas",
         "🧵 PLC x FBT",
         "⚖️ Balanceado x desbalanceado",
-        "🏘️ 64 clientes numa porta PON"
+        "🏘️ 128 clientes numa porta PON"
       ],
-      "cta": "Na sua rede é 1:8 + 1:8 ou 1:4 + 1:16? Comenta aí!",
+      "cta": "Na sua rede é 1:8 + 1:16 ou 1:4 + 1:32? Comenta aí!",
       "hashtags": [
         "#gpon",
         "#splitter",
@@ -278,7 +278,7 @@
         "técnico de fibra",
         "redes"
       ],
-      "comentario_fixado": "Na sua rede é 1:8 + 1:8 ou 1:4 + 1:16?"
+      "comentario_fixado": "Na sua rede é 1:8 + 1:16 ou 1:4 + 1:32?"
     },
     "tiktok": {
       "legenda": "Como o splitter divide a luz da fibra. Comente!",

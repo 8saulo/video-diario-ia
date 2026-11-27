@@ -373,7 +373,7 @@ serie:
     -15 e -24), atenção entre -25 e -27, crítico abaixo de -27 (sensibilidade -28); acima de -8 satura. -30 dBm na ONU é
     péssimo (quase sem sinal). 0 dBm = 1 mW; -10 dBm = 0,1 mW; -20 dBm = 0,01 mW; cada -3 dB = metade da potência.
     Perdas típicas: splitter 1:2 3,5 dB; 1:4 7,2; 1:8 10,5; 1:16 13,8; 1:32 17,1; 1:64 20,5. Fibra 0,35 dB/km em 1310 e
-    0,25 dB/km em 1490/1550. Emenda por fusão 0,05 a 0,1 dB; conector 0,3 a 0,5 dB. Orçamento classe B+: 28 dB; C+: 32 dB.
+    0,25 dB/km em 1490/1550. Emenda por fusão 0,05 a 0,1 dB; conector 0,3 a 0,5 dB. Orçamento classe B+: 28 dB; C+: 32 dB. Divisão por porta PON: até 1:128 (ex.: 1:8 na CEO x 1:16 na CTO = 24,3 dB de splitters, exige óptica C+); 1:64 é o limite com B+.
     Wi-Fi (é outra escala, não misture com fibra): -30 a -50 dBm excelente, -67 bom para vídeo, -70 limite, abaixo de -80 ruim.
   episodios:
     - {titulo: "Potência óptica: o que é dBm", capa: ["O QUE É", "dBm?"], icone: fiber, proximo: "onde o sinal óptico se perde",

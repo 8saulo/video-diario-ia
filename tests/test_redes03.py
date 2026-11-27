@@ -67,3 +67,13 @@ def test_roteiro_03_tecnicamente_correto_e_cabe_no_shorts():
         assert f"'{v}'" in eng
     assert ROT["thumb"]["serie"]["ep"] == 3 and "#03" in ROT["publicacao"]["youtube"]["titulo"]
     assert ROT["render_cedo"] is True
+
+
+def test_ate_128_clientes_por_porta_pon():
+    """27/11: o canal adota o padrão atual de até 128 clientes por porta PON (1:8 x 1:16, com óptica C+)."""
+    sc = {s["id"]: s for s in CENAS}
+    assert "128" in sc["gancho"]["params"]["text"] and "cento e vinte e oito" in sc["gancho"]["text"]
+    assert [i["value"] for i in sc["clientes"]["params"]["items"]] == [8, 16, 128]
+    assert "classe C mais" in sc["clientes"]["text"]
+    assert "64 clientes" not in json.dumps(ROT, ensure_ascii=False)
+    assert "até 1:128" in CFG["serie"]["referencias"]
