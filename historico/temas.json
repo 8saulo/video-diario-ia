@@ -322,5 +322,20 @@
     "referencia": "https://www.youtube.com/watch?v=6JjvQQTXTXs",
     "youtube": "Fq4WqQjAjs0",
     "titulo": "CVT vs Manual: Qual economiza mais? #shorts"
+  },
+  {
+    "data": "2026-11-28",
+    "tema": "Splitter óptico: como a luz se divide",
+    "tema_pesquisa": "",
+    "slug": "redes03_splitter_optico",
+    "paleta": "redes",
+    "formato": "curto",
+    "categoria": "",
+    "serie": "redes",
+    "episodio": 3,
+    "gancho": "Uma única fibra sai da OLT e chega a até cento e vinte e oito casas.",
+    "referencia": "",
+    "youtube": "e7qMj9DuBww",
+    "titulo": "Redes na Prática #03 | Splitter: 1:8, 1:16 e as perdas #shorts"
   }
 ]
