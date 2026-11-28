@@ -52,7 +52,7 @@ def test_episodio_03_tem_cena_propria_sem_reaproveitar_o_02():
 
 def test_diagramas_novos_do_03_existem_no_motor():
     tipos = {sc["params"]["tipo"] for sc in CENAS if sc["template"] == "diagrama"}
-    assert tipos == {"potencia_arvore", "formula", "plc_fbt", "balanceado", "cascata"}
+    assert tipos == {"olt128", "potencia_arvore", "formula", "plc_fbt", "balanceado", "cascata"}
     for t in tipos:
         assert f"tipo === '{t}'" in ENG
 
@@ -72,7 +72,8 @@ def test_roteiro_03_tecnicamente_correto_e_cabe_no_shorts():
 def test_ate_128_clientes_por_porta_pon():
     """27/11: o canal adota o padrão atual de até 128 clientes por porta PON (1:8 x 1:16, com óptica C+)."""
     sc = {s["id"]: s for s in CENAS}
-    assert "128" in sc["gancho"]["params"]["text"] and "cento e vinte e oito" in sc["gancho"]["text"]
+    assert sc["gancho"]["params"]["tipo"] == "olt128", "28/11: o gancho mostra a fibra da OLT chegando às 128 casas"
+    assert "128" in sc["gancho"]["params"]["title"] and "cento e vinte e oito" in sc["gancho"]["text"]
     assert [i["value"] for i in sc["clientes"]["params"]["items"]] == [8, 16, 128]
     assert "classe C mais" in sc["clientes"]["text"]
     assert "64 clientes" not in json.dumps(ROT, ensure_ascii=False)

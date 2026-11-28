@@ -18,15 +18,12 @@
       "scenes": [
         {
           "id": "gancho",
-          "template": "headline",
+          "template": "diagrama",
           "emocao": "curioso, intrigante",
           "params": {
             "peca": "plc",
-            "eyebrow": "Splitter óptico",
-            "text": "Uma fibra, até 128 casas",
-            "highlight": [
-              "128"
-            ]
+            "tipo": "olt128",
+            "title": "Uma fibra, até 128 casas"
           },
           "text": "Uma única fibra sai da OLT e chega a até cento e vinte e oito casas. Quem faz isso é o splitter."
         },

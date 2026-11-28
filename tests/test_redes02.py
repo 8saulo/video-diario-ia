@@ -67,7 +67,7 @@ def test_parametros_gpon_corretos():
 
 def test_pronuncia_das_siglas():
     pr = yaml.safe_load((RAIZ / "config.yml").read_text(encoding="utf-8"))["narracao"]["pronuncia"]
-    assert pr["DIO"] == "Dê-I-Ó" and pr["CEO"] == "Céo" and pr["CTO"] == "Cê-Tê-Ó"
+    assert pr["DIO"] == "Dê-I-Ó" and pr["CEO"] == "Céu" and pr["CTO"] == "Cê-Tê-Ó"  # 28/11: "Céo" saía "ceó"
 
 
 def test_miniaturas_do_wikimedia_em_largura_padrao():

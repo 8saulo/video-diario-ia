@@ -815,7 +815,22 @@
       Tag('drop', 820, 720, '#f2c230', 2.6); Tag('−10,5 dB (1:8)', 820, 255, ACC2c, 2.9); Tag('conector −0,5 dB', 180, 550, '#ffb020', 3.1);
       Luz([[500, 0], [500, 160], [500, 310], [330, 520], [310, 780]], 1.6);
     }
-    else if (tipo === 'potencia_arvore') {
+    else if (tipo === 'olt128') {
+      // uma fibra da OLT -> splitter 1:8 (CEO) -> oito 1:16 (CTOs) -> 128 casas que acendem
+      Rr(20, 440, 150, 120, ACCc, 0.1); Tx('OLT', 95, 512, 0.15, { tam: 34, peso: 900 });
+      Pth('M170 500 L285 500', ACC2c, 10, 0.3); Tx('1 fibra', 228, 470, 0.35, { tam: 24, cor: ACC2c });
+      add('circle', 0, { cx: 300, cy: 500, r: 22, fill: ACCc }, 0.5, 'pop'); Tx('1:8', 300, 560, 0.55, { tam: 26, peso: 900 }); Tx('CEO', 300, 595, 0.55, { tam: 22, cor: BR });
+      const ys = Array.from({ length: 8 }, (_, i) => 95 + i * 117);
+      ys.forEach((y, i) => { Pth(`M322 500 C380 500 400 ${y} 455 ${y}`, '#f2c230', 4, 0.7 + i * 0.05);
+        add('circle', 0, { cx: 468, cy: y, r: 13, fill: '#ffb020' }, 0.95 + i * 0.05, 'pop'); });
+      Tx('1:16', 468, 40, 1.0, { tam: 24, peso: 900, cor: '#ffb020' }); Tx('CTOs', 468, 1000, 1.0, { tam: 22, cor: BR });
+      const casa = (x, y, t) => add('path', 0, { d: `M${x - 9} ${y + 8} L${x - 9} ${y - 2} L${x} ${y - 10} L${x + 9} ${y - 2} L${x + 9} ${y + 8} Z`, fill: ACC2c, stroke: 'none' }, t, 'pop');
+      ys.forEach((y, i) => { for (let k = 0; k < 16; k++) { const col = k % 8, lin = Math.floor(k / 8), x = 545 + col * 55, yy = y - 22 + lin * 44;
+        Pth(`M481 ${y} C510 ${y} 515 ${yy} ${x - 14} ${yy}`, 'rgba(242,194,48,.45)', 1.5, 1.3 + i * 0.08); casa(x, yy, 1.6 + i * 0.12 + k * 0.012); } });
+      const cont = Tx('0', 905, 1000, 1.5, { tam: 40, peso: 900, cor: ACC2c, al: 'end' });
+      const obj = { v: 0 }; c.tl.to(obj, { v: 128, duration: 1.4, ease: 'power1.out', onUpdate: () => { cont.textContent = Math.round(obj.v) + ' casas'; } }, 0.35 + 1.6 * Math.min(1, Math.max(0.55, (c.d - 1.2) / 4)));
+      Luz([[170, 500], [300, 500], [455, 95 + 3 * 117], [468, 95 + 3 * 117], [740, 95 + 3 * 117]], 0.4, ACC2c, 13);
+    } else if (tipo === 'potencia_arvore') {
       // potência em cada nível com +3 dBm na entrada (1 -> 2 -> 4 -> 8)
       const X = [110, 370, 610, 860], ys = n => Array.from({ length: n }, (_, i) => 520 + (i - (n - 1) / 2) * (720 / Math.max(1, n)));
       Tx('entrada', 110, 455, 0.2, { tam: 26, cor: BR }); Tag('+3,0 dBm', 110, 600, ACC2c, 0.3); add('circle', 0, { cx: 110, cy: 520, r: 24, fill: ACC2c }, 0.2, 'pop');
