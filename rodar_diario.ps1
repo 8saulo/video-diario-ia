@@ -3,6 +3,9 @@
 # - Espera ate 60 min pela internet antes de comecar.
 # - Atualiza o codigo (git pull) e dispara a rotina no GitHub (o video e feito e publicado la).
 # Agendar/desagendar: agendar_local.ps1 (ou: agendar_local.ps1 -Remover)
+# -Cedo (tarefa das 00:00): so dispara se o episodio do dia for pesado e aprovado (videobot.pauta --cedo);
+#  senao sai sem marcar o dia, e o horario normal (02:00) segue valendo.
+param([switch]$Cedo)
 $ErrorActionPreference = "Continue"
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $raiz
@@ -32,9 +35,15 @@ try {
     }
     if (-not $online) { Log "sem internet por 60 min; tento de novo no proximo gatilho"; exit 1 }
 
-    Log "inicio"
+    Log ("inicio" + $(if ($Cedo) { " (00h)" } else { "" }))
     $git = & git pull --ff-only 2>&1 | Out-String
     Log ("git pull: " + $git.Trim())
+    if ($Cedo) {
+        $py = Join-Path $raiz ".venv\Scripts\python.exe"
+        $cedo = (& $py -m videobot.pauta --cedo 2>$null | Out-String).Trim()
+        if ($cedo -ne "1") { Log "00h: hoje nao e episodio pesado aprovado; fica para o horario normal"; exit 0 }
+        Log "00h: episodio pesado e aprovado; disparando agora"
+    }
 
     # o agendamento do GitHub atrasa horas: o PC dispara a rotina de la na hora certa,
     # se ainda nao houve video do dia (concluido com sucesso ou em andamento) no GitHub

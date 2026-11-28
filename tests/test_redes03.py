@@ -77,3 +77,12 @@ def test_ate_128_clientes_por_porta_pon():
     assert "classe C mais" in sc["clientes"]["text"]
     assert "64 clientes" not in json.dumps(ROT, ensure_ascii=False)
     assert "até 1:128" in CFG["serie"]["referencias"]
+
+
+def test_pc_dispara_as_00h_so_em_episodio_pesado_aprovado():
+    """28/11: o cron das 00h do GitHub não disparou; o PC passa a disparar às 00:00 (modo -Cedo)."""
+    rd = (RAIZ / "rodar_diario.ps1").read_text(encoding="utf-8")
+    assert "param([switch]$Cedo)" in rd and "-m videobot.pauta --cedo" in rd
+    assert rd.index("git pull --ff-only") < rd.index("-m videobot.pauta --cedo"), "atualiza o código antes de ler a aprovação"
+    ag = (RAIZ / "agendar_local.ps1").read_text(encoding="utf-8")
+    assert '-Daily -At "00:00"' in ag and '-Cedo"' in ag and "video-diario-ia-00h" in ag
