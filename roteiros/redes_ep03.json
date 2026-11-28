@@ -4,7 +4,7 @@
   "formato": "curto",
   "cena3d": "video:redes03",
   "render_cedo": true,
-  "aprovado": false,
+  "aprovado": true,
   "serie": {
     "id": "redes",
     "nome": "Redes na Prática",
